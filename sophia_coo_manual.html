@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sophia COO Manual — Spextrum</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;600;700&family=Noto+Sans+KR:wght@300;400;500;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #1A1A2E;
+  --bg: #F7F5F0;
+  --cream: #FFFEF9;
+  --accent: #2D5016;
+  --accent2: #8B4513;
+  --gold: #C9A84C;
+  --mid: #6B6B7B;
+  --line: #E0DDD6;
+  --red: #C0392B;
+  --sidebar-w: 260px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  display: flex;
+}
+
+/* ── 사이드바 ── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--ink);
+  min-height: 100vh;
+  position: fixed;
+  top: 0; left: 0;
+  overflow-y: auto;
+  z-index: 100;
+  padding-bottom: 40px;
+}
+
+.sidebar-brand {
+  padding: 32px 24px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.sidebar-brand-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 18px;
+  color: #fff;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.sidebar-brand-sub {
+  font-size: 9px;
+  color: var(--gold);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.sidebar-section {
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 20px 24px 8px;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 24px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.65);
+  cursor: pointer;
+  transition: all 0.15s;
+  border-left: 2px solid transparent;
+  text-decoration: none;
+}
+
+.sidebar-item:hover {
+  background: rgba(255,255,255,0.05);
+  color: #fff;
+}
+
+.sidebar-item.active {
+  color: #fff;
+  border-left-color: var(--gold);
+  background: rgba(201,168,76,0.08);
+}
+
+.sidebar-num {
+  font-size: 9px;
+  color: rgba(255,255,255,0.3);
+  min-width: 16px;
+}
+
+/* ── 메인 ── */
+.main {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  min-height: 100vh;
+}
+
+.page {
+  display: none;
+  padding: 56px 64px;
+  max-width: 900px;
+}
+
+.page.active {
+  display: block;
+}
+
+/* ── 타이포 ── */
+.page-eyebrow {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.page-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 42px;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin-bottom: 8px;
+}
+
+.page-title em {
+  font-style: italic;
+  color: var(--accent);
+}
+
+.page-subtitle {
+  font-size: 13px;
+  color: var(--mid);
+  line-height: 1.8;
+  margin-bottom: 40px;
+  max-width: 600px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 32px;
+}
+
+.section {
+  margin-bottom: 48px;
+}
+
+.section-title {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.section-num {
+  font-family: 'DM Serif Display', serif;
+  font-size: 13px;
+  color: var(--gold);
+  min-width: 24px;
+}
+
+/* ── 체크리스트 ── */
+.checklist {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.checklist li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--ink);
+  padding: 10px 16px;
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.checklist li:hover {
+  border-color: var(--accent);
+}
+
+.checklist li.done {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.check-box {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--line);
+  border-radius: 3px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  transition: all 0.15s;
+}
+
+.checklist li.done .check-box {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+/* ── 카드 ── */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.card {
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.card-label {
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.card-body {
+  font-size: 11px;
+  color: var(--mid);
+  line-height: 1.8;
+}
+
+/* ── 테이블 ── */
+.manual-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  margin-bottom: 16px;
+}
+
+.manual-table th {
+  background: var(--ink);
+  color: #fff;
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.manual-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  vertical-align: top;
+  line-height: 1.7;
+}
+
+.manual-table tr:nth-child(even) td {
+  background: var(--cream);
+}
+
+/* ── 플로우 ── */
+.flow-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+}
+
+.flow-step {
+  display: flex;
+  gap: 20px;
+  position: relative;
+}
+
+.flow-step-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 40px;
+  flex-shrink: 0;
+}
+
+.flow-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+  font-family: 'DM Serif Display', serif;
+  z-index: 1;
+}
+
+.flow-line {
+  width: 1px;
+  flex: 1;
+  background: var(--line);
+  margin: 4px 0;
+  min-height: 24px;
+}
+
+.flow-content {
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px 20px;
+  flex: 1;
+  margin-bottom: 12px;
+}
+
+.flow-content-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.flow-content-body {
+  font-size: 11px;
+  color: var(--mid);
+  line-height: 1.8;
+}
+
+.flow-content-body ul {
+  list-style: none;
+  padding: 0;
+}
+
+.flow-content-body ul li::before {
+  content: '→ ';
+  color: var(--gold);
+}
+
+/* ── 태그 ── */
+.tag {
+  display: inline-block;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tag-green { background: #ECFDF5; color: #065F46; }
+.tag-red { background: #FEF2F2; color: #991B1B; }
+.tag-gold { background: #FFFBEB; color: #92400E; }
+.tag-ink { background: var(--ink); color: #fff; }
+
+/* ── 인용 ── */
+.principle-box {
+  border-left: 3px solid var(--gold);
+  background: var(--cream);
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  border-radius: 0 6px 6px 0;
+}
+
+.principle-box p {
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--ink);
+}
+
+.principle-box strong {
+  color: var(--accent);
+}
+
+/* ── 표지 ── */
+.cover {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 56px 64px;
+  background: linear-gradient(135deg, #F7F5F0 0%, #FFFEF9 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.cover::before {
+  content: 'COO';
+  position: absolute;
+  font-family: 'DM Serif Display', serif;
+  font-size: 320px;
+  color: rgba(0,0,0,0.03);
+  right: -40px;
+  top: 50%;
+  transform: translateY(-50%);
+  line-height: 1;
+  pointer-events: none;
+}
+
+.cover-eyebrow {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+}
+
+.cover-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 64px;
+  color: var(--ink);
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  margin-bottom: 24px;
+}
+
+.cover-title em {
+  font-style: italic;
+  color: var(--accent);
+}
+
+.cover-desc {
+  font-size: 13px;
+  color: var(--mid);
+  line-height: 1.9;
+  max-width: 480px;
+  margin-bottom: 48px;
+}
+
+.cover-meta {
+  display: flex;
+  gap: 32px;
+}
+
+.cover-meta-item label {
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.cover-meta-item span {
+  font-size: 12px;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* ── 반응형 토스트 ── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 11px;
+  padding: 10px 18px;
+  border-radius: 6px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: all 0.2s;
+  pointer-events: none;
+  z-index: 999;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── 프로젝트 유형 배지 ── */
+.project-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.type-badge {
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 11px;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.type-badge.active {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+
+/* ── 구분선 ── */
+.divider {
+  height: 1px;
+  background: var(--line);
+  margin: 32px 0;
+}
+
+/* ── 알림 박스 ── */
+.alert-box {
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  border-left: 3px solid var(--gold);
+  border-radius: 0 6px 6px 0;
+  padding: 14px 18px;
+  font-size: 11px;
+  line-height: 1.8;
+  color: #92400E;
+  margin-bottom: 16px;
+}
+
+.alert-box.red {
+  background: #FEF2F2;
+  border-color: #FECACA;
+  border-left-color: var(--red);
+  color: #991B1B;
+}
+
+.alert-box.green {
+  background: #ECFDF5;
+  border-color: #A7F3D0;
+  border-left-color: var(--accent);
+  color: #065F46;
+}
+</style>
+</head>
+<body>
+
+<!-- 사이드바 -->
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-brand-title">Sophia<br>COO Manual</div>
+    <div class="sidebar-brand-sub">Spextrum · 2026</div>
+  </div>
+
+  <div class="sidebar-section">개요</div>
+  <a class="sidebar-item active" onclick=\"showPage('cover', this)\">
+    <span class="sidebar-num">00</span> 표지 & 철학
+  </a>
+
+  <div class="sidebar-section">프로젝트 운영</div>
+  <a class="sidebar-item" onclick=\"showPage('p01', this)\">
+    <span class="sidebar-num">01</span> 프로젝트 시작
+  </a>
+  <a class="sidebar-item" onclick=\"showPage('p02', this)\">
+    <span class="sidebar-num">02</span> 기획 단계
+  </a>
+  <a class="sidebar-item" onclick=\"showPage('p03', this)\">
+    <span class="sidebar-num">03</span> 디자인 검수
+  </a>
+  <a class="sidebar-item" onclick=\"showPage('p04', this)\">
+    <span class="sidebar-num">04</span> 런칭 전 체크
+  </a>
+  <a class="sidebar-item" onclick=\"showPage('p05', this)\">
+    <span class="sidebar-num">05</span> 사후 관리
+  </a>
+
+  <div class="sidebar-section">운영 원칙</div>
+  <a class="sidebar-item" onclick=\"showPage('p06', this)\">
+    <span class="sidebar-num">06</span> 커뮤니케이션
+  </a>
+  <a class="sidebar-item" onclick=\"showPage('p07', this)\">
+    <span class="sidebar-num">07</span> 위임 기준
+  </a>
+  <a class="sidebar-item" onclick=\"showPage('p08', this)\">
+    <span class="sidebar-num">08</span> 판단 기준
+  </a>
+
+  <div class="sidebar-section">채널별</div>
+  <a class="sidebar-item" onclick=\"showPage('p09', this)\">
+    <span class="sidebar-num">09</span> 채널별 런칭
+  </a>
+
+  <div class="sidebar-section">유형별</div>
+  <a class="sidebar-item" onclick=\"showPage('p10', this)\">
+    <span class="sidebar-num">10</span> 프로젝트 유형별
+  </a>
+</nav>
+
+<!-- 메인 -->
+<main class="main">
+
+  <!-- 00 표지 -->
+  <div class="page cover active" id="page-cover">
+    <div class="cover-eyebrow">Spextrum · COO Operating Manual</div>
+    <div class="cover-title">일하는 방식을<br><em>자산으로</em> 남긴다</div>
+    <div class="cover-desc">
+      이 문서는 소피아님의 COO 운영 방식을 언어화한 것입니다.<br>
+      회사가 바뀌어도, 팀이 바뀌어도, 이 매뉴얼은 당신과 함께 이동합니다.<br>
+      프로젝트의 시작부터 사후 관리까지 — Spextrum식 운영의 모든 것.
+    </div>
+    <div class="cover-meta">
+      <div class="cover-meta-item">
+        <label>작성자</label>
+        <span>Sophia Kim (수경) · COO</span>
+      </div>
+      <div class="cover-meta-item">
+        <label>소속</label>
+        <span>Spextrum</span>
+      </div>
+      <div class="cover-meta-item">
+        <label>버전</label>
+        <span>2026 v1.0</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">핵심 원칙</span></div>
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-label">원칙 01</div>
+          <div class="card-title">소비자는 제품이 아니라 변화를 산다</div>
+          <div class="card-body">Brian Tracy의 원칙. 모든 기획과 전략의 출발점. 제품이 아니라 그 제품이 만드는 삶의 변화를 먼저 설계한다.</div>
+        </div>
+        <div class="card">
+          <div class="card-label">원칙 02</div>
+          <div class="card-title">COO는 일을 하는 사람이 아니라 흐름을 관리하는 사람</div>
+          <div class="card-body">직접 처리율이 높아지는 순간이 구조 붕괴 신호다. 내가 손대기 전에 위임 구조를 먼저 점검한다.</div>
+        </div>
+        <div class="card">
+          <div class="card-label">원칙 03</div>
+          <div class="card-title">즉흥은 리스크다</div>
+          <div class="card-body">급한 느낌 = 위험 신호. 화난 상태의 메시지, 수면 부족의 결정, 확신 100%의 판단은 모두 멈추는 기준이다.</div>
+        </div>
+        <div class="card">
+          <div class="card-label">원칙 04</div>
+          <div class="card-title">기록이 자산이다</div>
+          <div class="card-body">결정한 것, 위임한 것, 배운 것을 모두 남긴다. 언젠가 이 기록이 새로운 팀원의 온보딩 문서가 된다.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 01 프로젝트 시작 -->
+  <div class="page" id="page-p01">
+    <div class="page-eyebrow">Chapter 01</div>
+    <div class="page-title">프로젝트를<br><em>시작할 때</em></div>
+    <div class="page-subtitle">모든 프로젝트는 명확한 정의에서 시작됩니다. 시작 단계에서 흐릿한 것은 끝까지 흐립니다.</div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">01</span> 프로젝트 정의 5문항</div>
+      <div class="alert-box green">이 5가지 질문에 답할 수 없으면 프로젝트를 시작하지 않습니다.</div>
+      <table class="manual-table">
+        <tr><th>질문</th><th>작성 예시</th></tr>
+        <tr><td><strong>이 프로젝트의 목적은 무엇인가?</strong></td><td>쓰리포 IP를 활용한 힐링 굿즈 브랜드 런칭. 20-30대 직장인의 일상 회복 경험 제공.</td></tr>
+        <tr><td><strong>끝나면 무엇이 남는가? (자산화)</strong></td><td>IP 굿즈 라인업 3종, 브랜드 포트폴리오, 온라인 판매 채널 구축.</td></tr>
+        <tr><td><strong>결정권자는 누구인가?</strong></td><td>최종: 대표님. 실무: 소피아. 디자인: 디자인팀장.</td></tr>
+        <tr><td><strong>성공 기준은 무엇인가?</strong></td><td>런칭 3개월 내 손익분기점 달성 / 재구매율 20% 이상.</td></tr>
+        <tr><td><strong>실패로 보는 기준은 무엇인가?</strong></td><td>런칭 후 재고 70% 이상 / 브랜드 세계관 훼손 / 팀 번아웃 발생.</td></tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">02</span> 프로젝트 킥오프 체크리스트</div>
+      <ul class="checklist" id="cl-01">
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 프로젝트명 확정 (내부용 코드명 포함)</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 목적 / 자산화 목표 문서화</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 담당자 배정 (디자인 / 콘텐츠 / 운영 각 1인)</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 전체 타임라인 초안 작성 (마일스톤 포함)</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 예산 범위 확인 및 대표 승인</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 외부 파트너/외주 여부 결정</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 킥오프 미팅 일정 확정 및 아젠다 배포</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 프로젝트 드라이브 폴더 생성 및 구조 설정</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 1차 컨펌 시점 대표님과 사전 합의</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">03</span> 드라이브 폴더 구조 (표준)</div>
+      <div class="principle-box">
+        <p>
+          <strong>📁 [프로젝트명]_[연도]</strong><br>
+          &nbsp;&nbsp;├ 00_참고자료 (레퍼런스, 경쟁사 분석)<br>
+          &nbsp;&nbsp;├ 01_기획 (브리프, 기획안, 회의록)<br>
+          &nbsp;&nbsp;├ 02_디자인 (시안, 수정본, 최종본)<br>
+          &nbsp;&nbsp;├ 03_콘텐츠 (카피, 촬영본, 편집본)<br>
+          &nbsp;&nbsp;├ 04_운영 (발주서, 계약서, 납기 관련)<br>
+          &nbsp;&nbsp;└ 05_런칭 (최종 에셋, 배포 링크, 결과 리포트)
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">04</span> 킥오프 미팅 아젠다 (표준)</div>
+      <table class="manual-table">
+        <tr><th>순서</th><th>내용</th><th>소요 시간</th></tr>
+        <tr><td>1</td><td>프로젝트 배경 및 목적 공유</td><td>5분</td></tr>
+        <tr><td>2</td><td>성공/실패 기준 합의</td><td>10분</td></tr>
+        <tr><td>3</td><td>담당자별 역할 명확화</td><td>10분</td></tr>
+        <tr><td>4</td><td>전체 타임라인 리뷰</td><td>10분</td></tr>
+        <tr><td>5</td><td>1차 컨펌 시점 및 방식 합의</td><td>5분</td></tr>
+        <tr><td>6</td><td>각자 Q&A / 우려 사항 공유</td><td>10분</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 02 기획 단계 -->
+  <div class="page" id="page-p02">
+    <div class="page-eyebrow">Chapter 02</div>
+    <div class="page-title">기획<br><em>단계</em></div>
+    <div class="page-subtitle">기획은 방향을 잡는 단계입니다. 이 단계에서 흔들리면 이후 모든 단계가 흔들립니다.</div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">01</span> 기획 브리프 필수 항목</div>
+      <table class="manual-table">
+        <tr><th>항목</th><th>설명</th><th>작성 책임</th></tr>
+        <tr><td><strong>브랜드 세계관</strong></td><td>이 프로젝트가 브랜드 전체 세계관에서 어디에 위치하는가</td><td>COO / 대표</td></tr>
+        <tr><td><strong>타깃 고객</strong></td><td>구체적인 페르소나 (연령, 라이프스타일, 구매 동기)</td><td>COO</td></tr>
+        <tr><td><strong>핵심 감정</strong></td><td>이 제품/콘텐츠를 받았을 때 고객이 느껴야 할 감정 1가지</td><td>COO / 디자인팀</td></tr>
+        <tr><td><strong>레퍼런스</strong></td><td>방향성 레퍼런스 3-5개 (이유 포함)</td><td>디자인팀</td></tr>
+        <tr><td><strong>금지 방향</strong></td><td>절대 하지 말아야 할 것 (톤, 색상, 표현 방식)</td><td>COO</td></tr>
+        <tr><td><strong>산출물 정의</strong></td><td>최종 결과물의 형태, 수량, 포맷</td><td>COO / 운영팀</td></tr>
+        <tr><td><strong>컨펌 기준</strong></td><td>무엇이 완성으로 보이는가 (수치 or 기준)</td><td>COO</td></tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">02</span> 기획 단계 체크리스트</div>
+      <ul class="checklist" id="cl-02">
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 브랜드 브리프 작성 완료 및 팀 공유</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 타깃 페르소나 정의 (최소 1인)</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 경쟁사/레퍼런스 분석 (3개 이상)</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 핵심 감정 키워드 합의 (팀 내)</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 금지 방향 문서화</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 기획안 대표님 1차 보고 및 피드백 반영</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 수정 범위 및 횟수 사전 합의</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 외주/파트너가 있다면 브리프 전달 완료</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">03</span> 기획 검토 필터 (진행 전 필수)</div>
+      <div class="alert-box">아래 4가지를 통과하지 못한 기획은 다음 단계로 넘기지 않습니다.</div>
+      <ul class="checklist">
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> <strong>지속성</strong> — 3년 뒤에도 브랜드 방향과 일치하는가?</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> <strong>정체성</strong> — Spextrum의 세계관 (굿즈/캐릭터/공간) 중 하나에 속하는가?</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> <strong>자산화</strong> — 이 프로젝트가 끝나도 남는 무언가가 있는가?</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> <strong>지금 시점</strong> — 지금 해야 할 이유가 있는가? (트렌드, 예산, 팀 역량)</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 03 디자인 검수 -->
+  <div class="page" id="page-p03">
+    <div class="page-eyebrow">Chapter 03</div>
+    <div class="page-title">디자인<br><em>검수 기준</em></div>
+    <div class="page-subtitle">디자인 검수는 취향이 아니라 기준으로 합니다. 감각적 판단 이전에 구조적 체크가 먼저입니다.</div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">01</span> 검수 전 확인 (COO → 디자인팀)</div>
+      <div class="alert-box">시안을 받기 전에 이 내용이 전달되었는지 확인합니다.</div>
+      <ul class="checklist">
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 브리프 전달 완료 여부 확인</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 레퍼런스 공유 여부 확인</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 금지 방향 전달 여부 확인</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 산출물 포맷 / 사이즈 / 수량 합의 여부</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 납기일 재확인</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">02</span> 시안 1차 검수 기준</div>
+      <table class="manual-table">
+        <tr><th>검수 항목</th><th>기준</th><th>판정</th></tr>
+        <tr><td><strong>세계관 일치</strong></td><td>브랜드 무드보드 / 브리프와 방향이 맞는가</td><td><span class="tag tag-red">필수</span></td></tr>
+        <tr><td><strong>핵심 감정 전달</strong></td><td>브리프에서 정한 핵심 감정이 느껴지는가</td><td><span class="tag tag-red">필수</span></td></tr>
+        <tr><td><strong>금지 방향 준수</strong></td><td>절대 하지 말아야 할 것이 없는가</td><td><span class="tag tag-red">필수</span></td></tr>
+        <tr><td><strong>가독성</strong></td><td>텍스트가 있다면 읽히는가</td><td><span class="tag tag-gold">권장</span></td></tr>
+        <tr><td><strong>실물 적용 가능성</strong></td><td>인쇄/제조 시 재현 가능한 색상과 형태인가</td><td><span class="tag tag-red">필수</span></td></tr>
+        <tr><td><strong>파일 정리 상태</strong></td><td>레이어 명칭, 폴더 구조가 정리되어 있는가</td><td><span class="tag tag-gold">권장</span></td></tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">03</span> 피드백 작성 원칙</div>
+      <div class="principle-box">
+        <p><strong>피드백은 항상 이 구조로 작성합니다.</strong><br><br>
+        [잘된 것] — 구체적으로 무엇이 좋은지 먼저 말한다.<br>
+        [수정 요청] — "느낌이 아니라" 이유와 방향을 함께 말한다.<br>
+        [수정 범위] — 전체인지, 부분인지, 색상만인지 명확히 한다.<br>
+        [다음 시안 기준] — 다음에 뭘 보면 OK인지를 명시한다.
+        </p>
+      </div>
+      <div class="alert-box red">❌ 하지 말아야 할 피드백: "좀 더 세련되게", "느낌이 달라", "뭔가 아쉬워" — 방향 없는 피드백은 팀을 지치게 합니다.</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">04</span> 수정 횟수 원칙</div>
+      <table class="manual-table">
+        <tr><th>단계</th><th>기준</th></tr>
+        <tr><td><strong>1차 시안</strong></td><td>방향성 검토. 전면 수정 가능. 단, 브리프 기준으로만 판단.</td></tr>
+        <tr><td><strong>2차 시안</strong></td><td>디테일 수정. 전면 수정은 브리프가 바뀐 경우에만 허용.</td></tr>
+        <tr><td><strong>3차 시안</strong></td><td>최종 확인. 오탈자, 컬러값, 파일 정리만 확인.</td></tr>
+        <tr><td><strong>3차 이후</strong></td><td>브리프 또는 대표 지시 변경이 있는 경우에만 추가 수정 진행. 반드시 COO 판단.</td></tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">05</span> 최종 디자인 파일 납품 기준</div>
+      <ul class="checklist">
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 원본 파일 (AI / PSD / Figma) 정리 완료</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 인쇄용 PDF / 웹용 PNG 각각 추출</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 컬러 코드 문서화 (CMYK / RGB / HEX)</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 폰트 아웃라인 처리 또는 폰트 파일 첨부</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 드라이브 02_디자인 → 최종본 폴더에 업로드</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 파일명 규칙 준수: [프로젝트]_[용도]_[날짜]_final</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 04 런칭 전 -->
+  <div class="page" id="page-p04">
+    <div class="page-eyebrow">Chapter 04</div>
+    <div class="page-title">런칭 전<br><em>체크리스트</em></div>
+    <div class="page-subtitle">런칭은 돌이킬 수 없는 순간입니다. 이 체크리스트를 통과하지 않으면 런칭하지 않습니다.</div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">01</span> D-7 체크 (런칭 1주 전)</div>
+      <ul class="checklist" id="cl-04a">
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 최종 디자인 파일 납품 완료</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 제조/인쇄 샘플 컨펌 완료</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 상세페이지 초안 완성 및 내부 검토</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> SNS 콘텐츠 스케줄 확정</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 가격 / 수량 / 배송 정책 확정</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> CS 대응 시나리오 작성 완료</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 채널별 등록 계정 접근 권한 확인</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">02</span> D-1 체크 (런칭 전날)</div>
+      <ul class="checklist" id="cl-04b">
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 모든 채널 상품 등록 완료 (비공개 상태)</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 링크 테스트 (결제 / 이미지 / 텍스트 오탈자)</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 첫 SNS 콘텐츠 예약 완료</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 내부 팀 공유 — 런칭 시간 / 역할 / 비상 연락망</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 재고 수량 최종 확인</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 대표님 최종 컨펌</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">03</span> 런칭 당일 타임라인 (표준)</div>
+      <div class="flow-steps">
+        <div class="flow-step">
+          <div class="flow-step-left">
+            <div class="flow-dot">9</div>
+            <div class="flow-line"></div>
+          </div>
+          <div class="flow-content">
+            <div class="flow-content-title">09:00 — 최종 점검</div>
+            <div class="flow-content-body">전체 팀 온라인 확인 / 채널 접속 확인 / 재고 수량 재확인</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-left">
+            <div class="flow-dot">10</div>
+            <div class="flow-line"></div>
+          </div>
+          <div class="flow-content">
+            <div class="flow-content-title">10:00 — 공개 전환</div>
+            <div class="flow-content-body">모든 채널 상품 공개 전환 / SNS 첫 콘텐츠 업로드 / 링크 최종 확인</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-left">
+            <div class="flow-dot">12</div>
+            <div class="flow-line"></div>
+          </div>
+          <div class="flow-content">
+            <div class="flow-content-title">12:00 — 중간 점검</div>
+            <div class="flow-content-body">주문 현황 / CS 인입 현황 / SNS 반응 / 이슈 없으면 오후 콘텐츠 예약 확인</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-left">
+            <div class="flow-dot">18</div>
+            <div class="flow-line"></div>
+          </div>
+          <div class="flow-content">
+            <div class="flow-content-title">18:00 — 저녁 콘텐츠</div>
+            <div class="flow-content-body">SNS 저녁 콘텐츠 업로드 / 하루 판매량 중간 집계</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-left">
+            <div class="flow-dot">21</div>
+          </div>
+          <div class="flow-content">
+            <div class="flow-content-title">21:00 — 마감 리포트</div>
+            <div class="flow-content-body">판매량 / CS 건수 / 채널별 성과 / 내일 팔로업 사항 정리 후 대표 보고</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">04</span> 비상 대응 시나리오</div>
+      <table class="manual-table">
+        <tr><th>상황</th><th>즉각 대응</th><th>담당</th></tr>
+        <tr><td>결제 오류 발생</td><td>채널 담당 CS 즉시 연락 / 고객 사과 메시지 발송 / 재결제 안내</td><td>운영팀</td></tr>
+        <tr><td>품절 조기 발생</td><td>품절 공지 업로드 / 재입고 알림 신청 안내 / 대표 보고</td><td>운영팀 + COO</td></tr>
+        <tr><td>SNS 부정 반응</td><td>즉답 금지 / 내용 스크린샷 / COO 판단 후 대응</td><td>COO</td></tr>
+        <tr><td>배송 지연 예상</td><td>전체 구매자 선제적 안내 발송 / 사유 명확히 작성</td><td>운영팀</td></tr>
+        <tr><td>제품 하자 발견</td><td>즉각 판매 중단 / 대표 보고 / CS 대응 문구 작성</td><td>COO + 대표</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 05 사후 관리 -->
+  <div class="page" id="page-p05">
+    <div class="page-eyebrow">Chapter 05</div>
+    <div class="page-title">사후<br><em>관리 루틴</em></div>
+    <div class="page-subtitle">런칭 후 30일이 브랜드를 만듭니다. 판매가 끝나도 고객과의 관계는 계속됩니다.</div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">01</span> 런칭 후 D+3 리포트 (필수)</div>
+      <div class="principle-box">
+        <p>런칭 3일 후, 아래 항목을 정리해서 대표님께 보고합니다.</p>
+      </div>
+      <table class="manual-table">
+        <tr><th>항목</th><th>기준</th></tr>
+        <tr><td><strong>판매량 / 매출</strong></td><td>채널별 분리 집계</td></tr>
+        <tr><td><strong>CS 건수 및 유형</strong></td><td>배송 / 제품 / 기타 분류</td></tr>
+        <tr><td><strong>SNS 반응</strong></td><td>도달 / 좋아요 / 저장 / 공유 수</td></tr>
+        <tr><td><strong>예상 대비 실적</strong></td><td>목표 판매량 달성률</td></tr>
+        <tr><td><strong>팀 피드백</strong></td><td>이번 프로젝트에서 잘된 것 / 개선할 것</td></tr>
+        <tr><td><strong>다음 액션</strong></td><td>재입고 / 추가 콘텐츠 / 후속 프로젝트 여부</td></tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">02</span> D+30 사후 관리 체크리스트</div>
+      <ul class="checklist">
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 전체 정산 완료 및 손익 확인</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 고객 리뷰 수집 및 분석</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 재구매율 확인</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 재고 현황 정리 (보관/처리 방향 결정)</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 드라이브 05_런칭 폴더에 결과 리포트 업로드</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 포트폴리오 업데이트 (사진 + 성과 수치)</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 다음 시즌 또는 후속 기획 여부 결정</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 이번 프로젝트 SOP 업데이트 (배운 것 문서화)</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">03</span> 고객 CS 루틴</div>
+      <table class="manual-table">
+        <tr><th>시점</th><th>액션</th></tr>
+        <tr><td>주문 직후</td><td>자동 주문 확인 메시지 발송 확인</td></tr>
+        <tr><td>배송 출발 시</td><td>배송 안내 메시지 발송</td></tr>
+        <tr><td>배송 완료 후 3일</td><td>리뷰 요청 메시지 발송</td></tr>
+        <tr><td>CS 인입 시</td><td>24시간 내 1차 응답 필수</td></tr>
+        <tr><td>환불/교환 요청</td><td>48시간 내 처리 원칙</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 06 커뮤니케이션 -->
+  <div class="page" id="page-p06">
+    <div class="page-eyebrow">Chapter 06</div>
+    <div class="page-title">커뮤니케이션<br><em>원칙</em></div>
+    <div class="page-subtitle">말하는 방식이 신뢰를 만듭니다. COO의 언어는 팀의 언어가 됩니다.</div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">01</span> 내부 커뮤니케이션 원칙</div>
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-label">원칙 1</div>
+          <div class="card-title">배경 → 결정 → 다음 액션</div>
+          <div class="card-body">어떤 공유도 이 3단계 구조로 합니다. 결론만 말하거나 배경만 설명하는 커뮤니케이션은 팀을 혼란스럽게 합니다.</div>
+        </div>
+        <div class="card">
+          <div class="card-label">원칙 2</div>
+          <div class="card-title">즉답 금지</div>
+          <div class="card-body">대표/외부에서 즉답을 요청해도 "확인 후 드리겠습니다"가 먼저입니다. 즉답은 실수를 만듭니다.</div>
+        </div>
+        <div class="card">
+          <div class="card-label">원칙 3</div>
+          <div class="card-title">감정 메시지 10분 룰</div>
+          <div class="card-body">화가 난 상태에서 작성한 메시지는 발송 전 10분 대기. 재검토 후 발송. 이 룰을 어긴 메시지는 대부분 후회합니다.</div>
+        </div>
+        <div class="card">
+          <div class="card-label">원칙 4</div>
+          <div class="card-title">약속은 서면으로</div>
+          <div class="card-body">구두로 합의한 것은 반드시 메신저나 메일로 정리해서 재확인합니다. "말했잖아요"는 운영의 적입니다.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">02</span> 대표님 커뮤니케이션 원칙</div>
+      <div class="alert-box">대표님의 말은 '지시'가 아니라 '의도'입니다. COO는 그 의도를 팀이 실행 가능한 언어로 번역합니다.</div>
+      <table class="manual-table">
+        <tr><th>상황</th><th>원칙</th></tr>
+        <tr><td>보고할 때</td><td>현황 → 판단 → 요청 사항 순서로. 결론을 먼저 말한다.</td></tr>
+        <tr><td>지시를 받았을 때</td><td>즉시 수행보다 "제가 이렇게 이해했는데 맞나요?" 확인 먼저.</td></tr>
+        <tr><td>이견이 있을 때</td><td>감정이 아닌 데이터와 이유로. "제가 다르게 보이는 부분이 있어서요."</td></tr>
+        <tr><td>문제가 생겼을 때</td><td>숨기지 말고 빠르게. 문제 + 원인 + 대안을 함께 가져간다.</td></tr>
+        <tr><td>컨펌이 필요할 때</td><td>선택지 2-3개를 제시하고 권장안을 명시. "A를 추천하는 이유는 ~입니다."</td></tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">03</span> 팀원 커뮤니케이션 원칙</div>
+      <table class="manual-table">
+        <tr><th>상황</th><th>원칙</th></tr>
+        <tr><td>업무 지시</td><td>목적 + 범위 + 완료 기준 + 납기를 반드시 포함. "알아서 잘 해줘"는 금지.</td></tr>
+        <tr><td>피드백</td><td>잘한 것 먼저 → 수정 요청 → 다음 기준 제시. SBI 구조 활용.</td></tr>
+        <tr><td>실수 발생 시</td><td>책임 추궁보다 원인 파악. "왜 이렇게 됐는지" 먼저 이해.</td></tr>
+        <tr><td>병목 발생 시</td><td>담당자 탓이 아닌 구조 문제로 접근. "어디서 막혔어요?"</td></tr>
+        <tr><td>칭찬/인정</td><td>구체적으로. "잘했어요"보다 "이 부분이 특히 좋았어요."</td></tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">04</span> 외부 커뮤니케이션 원칙</div>
+      <table class="manual-table">
+        <tr><th>상황</th><th>원칙</th></tr>
+        <tr><td>제안/미팅 요청</td><td>목적 + 기대 아웃풋 + 소요 시간을 미리 안내.</td></tr>
+        <tr><td>컨펌 요청</td><td>마감일 명시 + 컨펌 방식 명시. 기다리지 않고 D-2에 리마인드.</td></tr>
+        <tr><td>거절</td><td>이유 + 대안 제시. 단순 거절은 관계를 끊는다.</td></tr>
+        <tr><td>계약/협의</td><td>내부 컨펌 없이 확정 발언 금지. 반드시 "내부 확인 후 연락드리겠습니다."</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 07 위임 기준 -->
+  <div class="page" id="page-p07">
+    <div class="page-eyebrow">Chapter 07</div>
+    <div class="page-title">위임<br><em>기준과 방식</em></div>
+    <div class="page-subtitle">위임은 손 놓는 것이 아닙니다. 구조를 만들고, 기준을 주고, 흐름을 보는 것입니다.</div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">01</span> 위임 결정 기준</div>
+      <div class="alert-box">이 중 하나라도 해당하면 위임합니다. 직접 처리율이 60% 넘으면 구조를 점검합니다.</div>
+      <ul class="checklist">
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 반복되는 업무인가? (같은 일을 3번 이상 직접 했다면 위임 구조를 만들 시점)</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 담당자가 더 잘할 수 있는 영역인가?</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 내가 하지 않아도 기준이 전달 가능한가?</li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 지금 내 시간이 더 가치 있는 곳에 쓰여야 하는가?</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">02</span> 위임카드 작성 기준</div>
+      <div class="principle-box">
+        <p><strong>위임카드는 반드시 이 6가지를 포함합니다.</strong><br><br>
+        1. 업무명 — 무엇을 해야 하는가<br>
+        2. 세부 업무 — 구체적으로 어떤 것들인가<br>
+        3. 완료 기준 — 이것이 되면 완료로 본다<br>
+        4. 실패 기준 — 이것이 없으면 실패다<br>
+        5. 데드라인 — 언제까지<br>
+        6. 컨펌 방식 — 어떻게 확인받는가
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">03</span> 담당자별 위임 가이드</div>
+      <table class="manual-table">
+        <tr><th>팀</th><th>위임 가능한 것</th><th>COO가 계속 봐야 하는 것</th></tr>
+        <tr><td><strong>디자인팀 (3인)</strong></td><td>시안 제작, 수정, 파일 정리, 레퍼런스 수집</td><td>브리프 해석 방향, 세계관 일치 여부, 최종 컨펌</td></tr>
+        <tr><td><strong>콘텐츠팀 (2인)</strong></td><td>카피 작성, SNS 스케줄 관리, 콘텐츠 업로드</td><td>브랜드 톤앤매너, 민감 이슈 판단, 성과 방향</td></tr>
+        <tr><td><strong>운영팀 (4인)</strong></td><td>발주, CS 대응, 배송 관리, 채널 등록</td><td>CS 이슈 방향, 재고 판단, 채널 전략 변경</td></tr>
+        <tr><td><strong>경영팀 (2인)</strong></td><td>정산, 계약서 정리, 일정 관리</td><td>계약 조건 판단, 예산 승인, 법무 리스크</td></tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">04</span> 위임 후 팔로업 루틴</div>
+      <table class="manual-table">
+        <tr><th>시점</th><th>액션</th></tr>
+        <tr><td>위임 직후</td><td>위임카드 전달 + 구두 브리핑 + 질문 받기</td></tr>
+        <tr><td>중간 점검 (마감 절반 시점)</td><td>진행 상황 확인 / 막힌 것 해소 / 방향 재확인</td></tr>
+        <tr><td>완료 전날</td><td>완료 가능 여부 확인 / 지연 리스크 체크</td></tr>
+        <tr><td>완료 후</td><td>완료 기준 충족 확인 / 피드백 제공 / 기록</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 08 판단 기준 -->
+  <div class="page" id="page-p08">
+    <div class="page-eyebrow">Chapter 08</div>
+    <div class="page-title">판단<br><em>기준</em></div>
+    <div class="page-subtitle">좋은 COO는 판단을 잘하는 사람이 아니라, 판단 기준을 가진 사람입니다.</div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">01</span> CORE AXIS — 절대 판단 기준 6축</div>
+      <table class="manual-table">
+        <tr><th>축</th><th>해야 할 것</th><th>하지 말아야 할 것</th></tr>
+        <tr><td><strong>에너지</strong></td><td>공유 구조 만들기 / 혼자 결정·실행 금지</td><td>감정적 대립 / 즉흥 확대</td></tr>
+        <tr><td><strong>사업</strong></td><td>기존 프로젝트 집중 / 완성도 먼저</td><td>신규 영역 즉흥 수락 / 동시다발 확장</td></tr>
+        <tr><td><strong>관계</strong></td><td>구조로 소통 / 역할 명확화</td><td>구설수 가능성 있는 발언 / 즉흥 약속</td></tr>
+        <tr><td><strong>시간</strong></td><td>핵심 3개 우선 / 단기보다 장기 자산</td><td>즉흥 일정 수락 / 회의 과다</td></tr>
+        <tr><td><strong>재정</strong></td><td>예산 내 실험 / 손익 기준 판단</td><td>예산 초과 즉흥 결정 / 불확실한 투자</td></tr>
+        <tr><td><strong>확장</strong></td><td>기존 IP / 채널 깊이 파기</td><td>새 IP / 채널 즉흥 시작</td></tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">02</span> 우선순위 판단 기준 (P1/P2/P3)</div>
+      <div class="card-grid">
+        <div class="card" style="border-top:3px solid #DC2626;">
+          <div class="card-label" style="color:#DC2626;">P1 — 즉각</div>
+          <div class="card-title">오늘 안 하면 리스크</div>
+          <div class="card-body">매출/출고/납기 영향 / 대표 컨펌 필요 / 외부 신뢰 영향 / 팀 병목 즉각 해소</div>
+        </div>
+        <div class="card" style="border-top:3px solid #D97706;">
+          <div class="card-label" style="color:#D97706;">P2 — 이번 주</div>
+          <div class="card-title">병목 해소</div>
+          <div class="card-body">팀 업무 흐름 막히는 것 / 이번 주 마감 있는 것 / 외부 파트너 대기 중인 것</div>
+        </div>
+        <div class="card" style="grid-column:span 2;border-top:3px solid #4F46E5;">
+          <div class="card-label" style="color:#4F46E5;">P3 — 장기</div>
+          <div class="card-title">구조 자산화</div>
+          <div class="card-body">SOP 만들기 / 매뉴얼 업데이트 / 시스템 개선 / 다음 프로젝트 준비 / 커리어 자산 축적</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">03</span> 운영 금지선</div>
+      <div class="alert-box red">이 상황에서 내린 결정은 높은 확률로 후회합니다. 멈추세요.</div>
+      <table class="manual-table">
+        <tr><th>상황</th><th>금지 행동</th><th>대신 이렇게</th></tr>
+        <tr><td>수면 5시간 이하</td><td>계약 / 중요 결정</td><td>오늘은 실행만. 결정은 내일.</td></tr>
+        <tr><td>감정이 올라와 있다</td><td>메시지 발송</td><td>초안 저장 → 10분 후 재검토</td></tr>
+        <tr><td>오늘 핵심 3개 초과</td><td>신규 업무 수락</td><td>"이번 주 검토 후 연락드리겠습니다"</td></tr>
+        <tr><td>즉답 요청이 왔다</td><td>즉답</td><td>"확인 후 드리겠습니다" 먼저</td></tr>
+        <tr><td>직접 처리율 70% 이상</td><td>신규 업무 수락</td><td>위임 구조 먼저 점검</td></tr>
+        <tr><td>"내가 하는 게 빠르겠다"</td><td>직접 실행</td><td>위임 기준 재검토</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 09 채널별 런칭 -->
+  <div class="page" id="page-p09">
+    <div class="page-eyebrow">Chapter 09</div>
+    <div class="page-title">채널별<br><em>런칭 가이드</em></div>
+    <div class="page-subtitle">채널마다 고객이 다르고 룰이 다릅니다. 같은 상품도 채널에 맞게 다르게 포장합니다.</div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">01</span> 채널별 특성 및 핵심 원칙</div>
+      <table class="manual-table">
+        <tr><th>채널</th><th>고객 특성</th><th>핵심 원칙</th><th>담당</th></tr>
+        <tr><td><strong>자사몰</strong></td><td>브랜드 팬 / 재구매 고객</td><td>브랜드 세계관 최우선. 가격 정책 표준 기준.</td><td>운영팀</td></tr>
+        <tr><td><strong>스마트스토어</strong></td><td>검색 유입 / 가격 비교 고객</td><td>키워드 최적화 / 상세페이지 정보 중심</td><td>운영팀</td></tr>
+        <tr><td><strong>팝업</strong></td><td>경험 탐색 고객</td><td>공간 경험 설계 우선. 판매보다 브랜드 인식.</td><td>COO + 디자인팀</td></tr>
+        <tr><td><strong>SNS</strong></td><td>콘텐츠 소비 / 브랜드 발견</td><td>세계관 일관성. 판매보다 관계 구축.</td><td>콘텐츠팀</td></tr>
+        <tr><td><strong>B2B</strong></td><td>구매 담당자 / 기업</td><td>제안서 + 샘플 + 단가표 준비. 빠른 응대.</td><td>COO + 경영팀</td></tr>
+        <tr><td><strong>해외 전시</strong></td><td>바이어 / 미디어</td><td>영문 소개자료 / 수출 가격 정책 / MOQ 기준</td><td>COO + 경영팀</td></tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">02</span> 채널별 런칭 체크리스트</div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">자사몰 / 스마트스토어</div>
+        <ul class="checklist" style="margin-top:12px;">
+          <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 상품명 / 카테고리 / 태그 설정</li>
+          <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 대표 이미지 (흰 배경 + 무드 컷)</li>
+          <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 상세페이지 (브랜드 스토리 + 스펙 + 사용법)</li>
+          <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 가격 / 배송비 / 교환환불 정책 설정</li>
+          <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 재고 수량 설정</li>
+        </ul>
+      </div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-label">SNS (인스타그램 / 기타)</div>
+        <ul class="checklist" style="margin-top:12px;">
+          <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 런칭 D-7부터 티저 콘텐츠 시작</li>
+          <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 런칭 당일 메인 콘텐츠 + 스토리</li>
+          <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 바이오 링크 업데이트</li>
+          <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 댓글 대응 시나리오 준비</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-label">해외 전시 / B2B</div>
+        <ul class="checklist" style="margin-top:12px;">
+          <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 영문 브랜드 소개서 (1-2페이지)</li>
+          <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 수출 단가표 (FOB / CIF 기준)</li>
+          <li onclick="toggleCheck(this)"><span class="check-box">✓</span> MOQ / 납기 / 결제 조건 문서화</li>
+          <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 샘플 준비 (전시용)</li>
+          <li onclick="toggleCheck(this)"><span class="check-box">✓</span> 바이어 미팅 스크립트 준비</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10 프로젝트 유형별 -->
+  <div class="page" id="page-p10">
+    <div class="page-eyebrow">Chapter 10</div>
+    <div class="page-title">프로젝트<br><em>유형별 가이드</em></div>
+    <div class="page-subtitle">유형마다 주의 포인트와 핵심 산출물이 다릅니다. 유형을 먼저 확인하고 시작하세요.</div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">01</span> 굿즈 브랜드</div>
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-label">핵심 리스크</div>
+          <div class="card-title">재고 과다 / 브랜드 세계관 훼손</div>
+          <div class="card-body">제조 수량은 보수적으로. 브랜드 일관성을 위해 COO가 최종 디자인 컨펌.</div>
+        </div>
+        <div class="card">
+          <div class="card-label">핵심 산출물</div>
+          <div class="card-title">브랜드 브리프 + 제조 샘플 + 상세페이지</div>
+          <div class="card-body">이 3가지가 없으면 런칭하지 않는다.</div>
+        </div>
+      </div>
+      <table class="manual-table">
+        <tr><th>단계</th><th>핵심 액션</th><th>주의점</th></tr>
+        <tr><td>기획</td><td>세계관 정의 → 페르소나 → 제품 컨셉</td><td>트렌드 추종 금지. 세계관 우선.</td></tr>
+        <tr><td>디자인</td><td>무드보드 → 시안 → 샘플</td><td>인쇄/제조 가능 여부 초기에 확인</td></tr>
+        <tr><td>제조</td><td>샘플 컨펌 → 발주 → 납기 관리</td><td>납기 여유 2주 이상 확보</td></tr>
+        <tr><td>런칭</td><td>채널 등록 → SNS → CS</td><td>재고 수량 보수적으로</td></tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">02</span> 캐릭터 브랜드</div>
+      <div class="alert-box">캐릭터는 IP입니다. 한번 훼손된 세계관은 회복이 어렵습니다. 모든 표현물에 COO가 관여합니다.</div>
+      <table class="manual-table">
+        <tr><th>단계</th><th>핵심 액션</th><th>주의점</th></tr>
+        <tr><td>IP 관리</td><td>캐릭터 가이드라인 문서화 / 사용 승인 프로세스</td><td>외주 시 가이드라인 필수 전달</td></tr>
+        <tr><td>콘텐츠</td><td>세계관 내 스토리텔링 / 감정 중심</td><td>일회성 트렌드 콘텐츠 자제</td></tr>
+        <tr><td>협업</td><td>브랜드 궁합 확인 → 계약 → 공동 기획</td><td>세계관 훼손 가능성 먼저 검토</td></tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">03</span> 외부 브랜드 협업 / 외주</div>
+      <table class="manual-table">
+        <tr><th>단계</th><th>핵심 액션</th><th>주의점</th></tr>
+        <tr><td>제안 검토</td><td>CORE AXIS로 필터링</td><td>금전적 조건보다 세계관 궁합 먼저</td></tr>
+        <tr><td>계약</td><td>범위 / 납기 / 수정 횟수 / 저작권 명확화</td><td>구두 합의 없음. 모두 서면.</td></tr>
+        <tr><td>진행</td><td>중간 컨펌 포인트 사전 합의</td><td>중간 방향 이탈 방지</td></tr>
+        <tr><td>납품</td><td>완료 기준 체크 → 정산</td><td>정산은 납품 확인 후. 선입금 원칙.</td></tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">04</span> 정부 지원 사업</div>
+      <div class="alert-box red">정부 사업은 서류와 기간을 지키지 않으면 지원금을 받을 수 없습니다. 별도 캘린더 관리 필수.</div>
+      <table class="manual-table">
+        <tr><th>단계</th><th>핵심 액션</th><th>주의점</th></tr>
+        <tr><td>공고 확인</td><td>마감일 / 자격 요건 / 제출 서류 리스트</td><td>서울 등록 요건 등 지역 조건 먼저 확인</td></tr>
+        <tr><td>신청서 작성</td><td>사업 목적 = 심사위원 언어로</td><td>내부 언어가 아닌 공공 언어로 번역</td></tr>
+        <tr><td>진행 관리</td><td>중간 보고 / 증빙 서류 수집</td><td>영수증 실시간 수집. 나중에 찾으면 늦음.</td></tr>
+        <tr><td>정산</td><td>집행 내역 정리 → 제출</td><td>지출 항목 사전 확인 필수</td></tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">05</span> 공간 / 팝업</div>
+      <table class="manual-table">
+        <tr><th>단계</th><th>핵심 액션</th><th>주의점</th></tr>
+        <tr><td>기획</td><td>공간 컨셉 → 동선 설계 → 콘텐츠 기획</td><td>판매보다 경험 설계 우선</td></tr>
+        <tr><td>준비</td><td>설치 업체 / 비품 / 인력 배치</td><td>설치 시간 D-1까지 완료 원칙</td></tr>
+        <tr><td>운영</td><td>담당자 교대 스케줄 / CS 현장 대응</td><td>현장 COO 직접 첫날 상주</td></tr>
+        <tr><td>마감</td><td>철수 / 결과 집계 / 사진 아카이빙</td><td>팝업 후 브랜드 콘텐츠 바로 생산</td></tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><span class="section-num">06</span> 해외 영업</div>
+      <table class="manual-table">
+        <tr><th>단계</th><th>핵심 액션</th><th>주의점</th></tr>
+        <tr><td>타깃 시장</td><td>국가별 트렌드 / 규제 / 유통 구조 파악</td><td>마종&오베 등 해외 전시 일정 역산 기획</td></tr>
+        <tr><td>자료 준비</td><td>영문 브랜드 덱 / 제품 카탈로그 / 단가표</td><td>번역은 전문가에게. 기계번역 금지.</td></tr>
+        <tr><td>바이어 미팅</td><td>브랜드 스토리 3분 / 샘플 지참 / 조건 협의</td><td>즉답 금지. 국내 컨펌 후 답변.</td></tr>
+        <tr><td>계약</td><td>MOQ / 납기 / 결제 조건 / 독점 여부</td><td>법무 검토 필수. 경영팀과 함께.</td></tr>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast">체크 완료!</div>
+
+<script>
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.sidebar-item').forEach(function(s){ s.classList.remove('active'); });
+  var target = document.getElementById('page-' + id);
+  if(target) target.classList.add('active');
+  if(el) el.classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function toggleCheck(el) {
+  el.classList.toggle('done');
+  var box = el.querySelector('.check-box');
+  if(el.classList.contains('done')) {
+    box.textContent = '✓';
+    box.style.background = '#2D5016';
+    box.style.borderColor = '#2D5016';
+    box.style.color = 'white';
+    showToast();
+  } else {
+    box.textContent = '✓';
+    box.style.background = '';
+    box.style.borderColor = '';
+    box.style.color = '';
+  }
+}
+
+function showToast() {
+  var t = document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 1500);
+}
+</script>
+</body>
+</html>
