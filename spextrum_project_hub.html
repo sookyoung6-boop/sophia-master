@@ -3788,7 +3788,8 @@ function weeklyGanttHTML(){
       </div>`;
 
       return `<div style="position:relative;display:flex;align-items:center;border-bottom:1px solid var(--border);min-height:36px" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
-        <div style="width:${LABEL_W}px;flex-shrink:0;padding:0 8px 0 24px;display:flex;align-items:center;gap:7px">
+        <div style="width:${LABEL_W}px;flex-shrink:0;padding:0 8px 0 12px;display:flex;align-items:center;gap:7px;position:sticky;left:0;background:var(--surface);z-index:2;border-right:1px solid var(--border2)"
+          onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background='var(--surface)'">
           <div class="chk${t.done?' on':''}" onclick="pkToggleTask('${p.id}','${t.schedId}','${t.id}')" style="flex-shrink:0">${t.done?'✓':''}</div>
           <div style="flex:1;min-width:0">
             <div style="font-size:11px;color:var(--text);${t.done?'text-decoration:line-through;color:var(--text3)':''}overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.name}</div>
@@ -3818,42 +3819,10 @@ function weeklyGanttHTML(){
       <button class="btn xs ghost" onclick="shiftWeeklyGantt('${nextStr}')">다음 주 ›</button>
       <span style="font-size:11px;color:var(--text3);margin-left:6px">${mon.getMonth()+1}/${mon.getDate()} – ${sun.getMonth()+1}/${sun.getDate()}</span>
     </div>
-    <div style="display:flex;border:1px solid var(--border);border-radius:var(--rsm);overflow:hidden">
-      <!-- 왼쪽 고정 레이블 -->
-      <div style="flex-shrink:0;width:${LABEL_W}px;border-right:2px solid var(--border2);background:var(--surface)">
-        <div style="height:32px;padding:0 12px;display:flex;align-items:center;border-bottom:1px solid var(--border);background:var(--surface2)">
-          <span style="font-size:11px;color:var(--text3);font-weight:600">프로젝트 / 태스크</span>
-        </div>
-        ${(projects||[]).flatMap(p=>{
-          const c=COLORS[p.color];
-          const weekTasks=[];
-          (p.schedules||[]).forEach(s=>{
-            (s.tasks||[]).forEach(t=>{
-              const sd=t.startDate?parseLocalDate(t.startDate):null;
-              const ed=t.dueDate?parseLocalDate(t.dueDate):null;
-              const inWeek=(sd&&sd<=sun&&(!ed||ed>=mon))||(ed&&ed>=mon&&ed<=sun)||(sd&&sd>=mon&&sd<=sun);
-              if(inWeek) weekTasks.push({...t,schedId:s.id});
-            });
-          });
-          if(!weekTasks.length) return [`<div style="height:36px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 10px;opacity:.4">
-            <span style="width:7px;height:7px;border-radius:50%;background:${c.dot};flex-shrink:0;margin-right:6px"></span>
-            <span style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</span>
-          </div>`];
-          const projLabel=`<div style="height:32px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 10px;background:${c.tag}22">
-            <span style="width:7px;height:7px;border-radius:50%;background:${c.dot};flex-shrink:0;margin-right:6px"></span>
-            <span style="font-size:12px;font-weight:600;color:${c.dot};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</span>
-          </div>`;
-          const taskLabels=weekTasks.map(t=>`<div style="height:36px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 8px;gap:6px">
-            <div class="chk${t.done?' on':''}" onclick="pkToggleTask('${p.id}','${t.schedId}','${t.id}')" style="flex-shrink:0;width:14px;height:14px;font-size:9px">${t.done?'✓':''}</div>
-            <span style="font-size:11px;color:var(--text);${t.done?'text-decoration:line-through;color:var(--text3)':''}overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${t.name}</span>
-          </div>`);
-          return [projLabel,...taskLabels];
-        }).join('')}
-      </div>
-      <!-- 오른쪽 스크롤 영역 -->
-      <div style="overflow-x:auto;flex:1">
-        ${header.replace(`style="min-width:${TOTAL_W}px`,'style="min-width:770px')}
-        ${(rows||'<div class="empty" style="padding:20px;min-width:770px">이번 주 마감 태스크가 없습니다</div>').replace(/width:\$\{LABEL_W\}px[^"]*"[^>]*>[^<]*<\/div>/g,'<div style="display:none"></div>')}
+    <div style="overflow-x:auto;border:1px solid var(--border);border-radius:var(--rsm)">
+      <div style="min-width:${TOTAL_W}px">
+        ${header}
+        ${rows||'<div class="empty" style="padding:20px">이번 주 마감 태스크가 없습니다</div>'}
       </div>
     </div>
   </div>`;
