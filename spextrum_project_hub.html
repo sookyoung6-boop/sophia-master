@@ -5292,12 +5292,15 @@ function getAllTasks(){
   projects.forEach(p=>{
     p.schedules.forEach(s=>{
       s.tasks.forEach(t=>{
+        // meta에서 파트 추론, 없으면 프로젝트 파트 fallback
+        const metaDepts=deptsFromMeta(t.meta);
+        const depts=metaDepts.length?metaDepts:p.departments;
         rows.push({
           ...t,
           projId:p.id, projName:p.name, projColor:p.color,
           schedId:s.id, schedName:s.name,
-          dept: t.dept || (p.departments[0]||'기타'),
-          depts: t.depts || p.departments,
+          dept: depts[0]||'기타',
+          depts: depts,
         });
       });
     });
@@ -5504,7 +5507,11 @@ function statusBoardHTML(){
   // status board: show done tasks even if tbHideDone (user chose this view to see flow)
   // but respect person/dept filter
   let base=allTasks;
-  if(tbFilter!=='전체') base=base.filter(t=>t.depts.includes(tbFilter)||t.dept===tbFilter);
+  if(tbFilter!=='전체') base=base.filter(t=>{
+    const metaDepts=deptsFromMeta(t.meta);
+    if(metaDepts.includes(tbFilter)) return true;
+    return t.depts&&t.depts.includes(tbFilter);
+  });
   if(tbPersonFilter!=='전체') base=base.filter(t=>t.meta&&t.meta.split(/[,·\/]/).map(m=>m.trim()).includes(tbPersonFilter));
   const today=new Date();today.setHours(0,0,0,0);
 
@@ -5612,7 +5619,7 @@ function deptColor(d){return DEPT_COLORS[d]||{bg:'#f1efe8',t:'#5f5e5a'};}
 
 function boardViewHTML(){
   const allTasks=getAllTasks();
-  const depts=getAllDepts().slice(1);
+  const depts=tbFilter!=='전체'?[tbFilter]:getAllDepts().slice(1);
   const filtered=applyTbFilters(allTasks);
   const today=new Date();today.setHours(0,0,0,0);
 
@@ -5698,7 +5705,8 @@ function boardViewHTML(){
 // ── DEPT TIMELINE VIEW ───────────────────────────────────────
 function deptTimelineHTML(){
   const allTasks=getAllTasks();
-  const depts=getAllDepts().slice(1);
+  // 파트 필터 걸릴 때 해당 파트만 표시
+  const depts=tbFilter!=='전체'?[tbFilter]:getAllDepts().slice(1);
   const filtered=applyTbFilters(allTasks);
 
   // compute global date range
