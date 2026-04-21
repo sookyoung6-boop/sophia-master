@@ -647,6 +647,10 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
     <div class="nav-item" onclick="navFilter('진행중')"><div class="nav-dot" style="background:#378ADD"></div>진행중 <span class="nav-count" id="nav-c1"></span></div>
     <div class="nav-item" onclick="navFilter('예정')"><div class="nav-dot" style="background:#EF9F27"></div>예정 <span class="nav-count" id="nav-c2"></span></div>
     <div class="nav-item" onclick="navFilter('완료')"><div class="nav-dot" style="background:#27ae60"></div>완료 <span class="nav-count" id="nav-c3"></span></div>
+    <div class="nav-item" id="nav-archive" onclick="goArchive()">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="3" width="11" height="8" rx="1.5" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M1 5.5h11M4.5 7.5h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      아카이브 <span class="nav-count" id="nav-archive-count"></span>
+    </div>
     <div class="nav-label">태스크</div>
     <div class="nav-item" id="nav-tasks" onclick="goTaskBoard()">
       <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="3" height="11" rx="1" fill="currentColor" opacity=".5"/><rect x="5.5" y="1" width="3" height="7" rx="1" fill="currentColor" opacity=".5"/><rect x="10" y="1" width="3" height="9" rx="1" fill="currentColor" opacity=".5"/></svg>
@@ -821,10 +825,14 @@ function goBack(){
   else goHome();
 }
 function updateSb(){
-  document.getElementById('nav-total').textContent=projects.length;
-  document.getElementById('nav-c1').textContent=projects.filter(p=>p.schedules.some(s=>s.status==='진행중')).length||'';
-  document.getElementById('nav-c2').textContent=projects.filter(p=>p.schedules.some(s=>s.status==='예정')).length||'';
-  document.getElementById('nav-c3').textContent=projects.filter(p=>p.schedules.every(s=>s.status==='완료')).length||'';
+  const active=projects.filter(p=>!p.archived);
+  document.getElementById('nav-total').textContent=active.length;
+  document.getElementById('nav-c1').textContent=active.filter(p=>p.schedules.some(s=>s.status==='진행중')).length||'';
+  document.getElementById('nav-c2').textContent=active.filter(p=>p.schedules.some(s=>s.status==='예정')).length||'';
+  document.getElementById('nav-c3').textContent=active.filter(p=>p.schedules.every(s=>s.status==='완료')).length||'';
+  const archiveCount=projects.filter(p=>p.archived).length;
+  const archiveEl=document.getElementById('nav-archive-count');
+  if(archiveEl) archiveEl.textContent=archiveCount||'';
   // Refresh home KPI cards if home is currently visible
   refreshHomeKPI();
 }
@@ -861,7 +869,10 @@ function renderProjectGrid(){
   if(!projects) return;
   setBc([{label:'전체 프로젝트'}]);
   if(!document.getElementById('proj-grid')){const kb=document.getElementById('kanban-board');if(kb){const d=document.createElement('div');d.id='proj-grid';d.className='proj-grid';kb.replaceWith(d);}}
-  let list=filterStatus?projects.filter(p=>p.schedules.some(s=>s.status===filterStatus)):projects;
+  // 아카이브된 프로젝트 제외
+  let list=(filterStatus
+    ?projects.filter(p=>!p.archived&&p.schedules.some(s=>s.status===filterStatus))
+    :projects.filter(p=>!p.archived));
   document.getElementById('list-sub').textContent=filterStatus?`'${filterStatus}' 포함 · ${list.length}개`:`총 ${list.length}개 프로젝트`;
   const grid=document.getElementById('proj-grid');
   grid.className='proj-grid';
@@ -875,6 +886,7 @@ function renderProjectGrid(){
       ondragend="projCardDragEnd(event)"
       onclick="openProj('${p.id}')">
       <button class="card-del" onclick="event.stopPropagation();deleteProj('${p.id}')" title="프로젝트 삭제">✕</button>
+      <button class="card-del" onclick="event.stopPropagation();archiveProj('${p.id}')" title="아카이브" style="right:32px;opacity:0">📦</button>
       <span class="ptag" style="background:${c.tag};color:${c.tagT}">${p.tag}</span>
       <div class="ptitle">${p.name}</div>
       <div class="pdesc">${p.desc}</div>
@@ -915,6 +927,56 @@ function deleteProj(id){
   cfm('프로젝트 삭제',`"${p.name}"을 삭제하면 복구할 수 없습니다.`,()=>{
     projects=projects.filter(x=>x.id!==id);saveToLS();toast('프로젝트가 삭제됐습니다');renderList();
   });
+}
+
+function archiveProj(id){
+  const p=projects.find(x=>x.id===id);if(!p)return;
+  p.archived=true;saveToLS();
+  toast(`"${p.name}" 아카이브됐습니다`);
+  renderList();updateSb();
+}
+
+function unarchiveProj(id){
+  const p=projects.find(x=>x.id===id);if(!p)return;
+  p.archived=false;saveToLS();
+  toast(`"${p.name}" 복원됐습니다`);
+  goArchive();updateSb();
+}
+
+function goArchive(){
+  filterStatus=null;
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('nav-archive')?.classList.add('active');
+  setBc([{label:'아카이브'}]);
+  document.getElementById('topbar-actions').innerHTML='';
+  const archived=projects.filter(p=>p.archived);
+  if(!document.getElementById('proj-grid')){const kb=document.getElementById('kanban-board');if(kb){const d=document.createElement('div');d.id='proj-grid';d.className='proj-grid';kb.replaceWith(d);}}
+  const grid=document.getElementById('proj-grid');
+  grid.className='proj-grid';
+  grid.removeAttribute('ondragover');grid.removeAttribute('ondrop');
+  if(!archived.length){
+    grid.innerHTML=`<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px;grid-column:1/-1">아카이브된 프로젝트가 없습니다</div>`;
+  } else {
+    grid.innerHTML=archived.map(p=>{
+      const c=COLORS[p.color],pr=prog(p);
+      const allT=p.schedules.flatMap(s=>s.tasks);
+      return `<div class="proj-card" style="opacity:.75" onclick="openProj('${p.id}')">
+        <span class="ptag" style="background:${c.tag};color:${c.tagT}">${p.tag}</span>
+        <span style="font-size:10px;color:var(--text3);float:right;margin-top:2px">📦 아카이브</span>
+        <div class="ptitle">${p.name}</div>
+        <div class="pdesc">${p.desc}</div>
+        <div class="pmeta"><span>${p.start} – ${p.end}</span><span>${p.departments.length}개 파트</span></div>
+        <div class="pb"><div class="pbf" style="width:${pr}%;background:${c.dot}"></div></div>
+        <div class="pb-pct">${pr}% · ${allT.filter(t=>t.done).length}/${allT.length}</div>
+        <div class="btn-row" style="margin-top:10px">
+          <button class="btn xs" onclick="event.stopPropagation();unarchiveProj('${p.id}')">↩ 복원</button>
+          <button class="btn xs danger" onclick="event.stopPropagation();deleteProj('${p.id}')">삭제</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('list-sub').textContent=`아카이브 ${archived.length}개`;
+  showView('v-list');
 }
 
 // PROJ DETAIL — single page scroll
@@ -4318,8 +4380,8 @@ async function driveLoadData(){
     driveLastSaved = new Date(file.modifiedTime);
     updateDriveStatus('synced');
     toast(`✅ Drive에서 불러왔습니다 (${driveLastSaved.toLocaleString('ko-KR')})`);
-    // Re-render current view
-    goHome(); renderList(); updateSb();
+    // 현재 뷰만 새로고침 (홈으로 강제 이동 안 함)
+    refreshCurrentView();
   }catch(e){
     updateDriveStatus('error');
     toast('Drive 불러오기 오류: '+e.message);
@@ -4731,6 +4793,7 @@ function initFirebase(){
     // 실시간 변경 감지 — 초기화 완료 후에만 UI 반영
     fbDB.ref('spextrum').on('value',snap=>{
       if(!fbInitDone) return;
+      if(_fbSaving) return; // 내가 저장 중일 때는 무시
       const d=snap.val();
       if(!d) return;
       try{
@@ -4799,13 +4862,18 @@ function applyFirebaseData(d){
   try{localStorage.setItem(LS_KEY,JSON.stringify({projects,notices,campaigns,meetings,gcClientId,teamMembers}));}catch(e){}
 }
 
+let _fbSaving=false;
 function fbSaveData(){
   if(!fbConnected||!fbDB) return;
   clearTimeout(fbSaveTimer);
   fbSaveTimer=setTimeout(()=>{
+    _fbSaving=true;
     fbDB.ref('spextrum').set({projects,notices,campaigns,meetings,gcClientId,teamMembers})
-      .then(()=>updateFbStatus('✅ 저장됨 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})))
-      .catch(e=>updateFbStatus('❌ 저장 실패'));
+      .then(()=>{
+        updateFbStatus('✅ 저장됨 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}));
+        setTimeout(()=>{_fbSaving=false;},500); // 0.5초 후 해제
+      })
+      .catch(e=>{updateFbStatus('❌ 저장 실패');_fbSaving=false;});
   },1500);
 }
 
@@ -4821,7 +4889,8 @@ function fbLoadData(){
       // Firebase 데이터 불러오기 (배열 변환 포함)
       try{
         applyFirebaseData(d);
-        goHome(); renderList(); updateSb();
+        if(!fbInitDone) refreshCurrentView(); // 초기 로드 시에만 뷰 갱신
+        updateSb();
         toast('✅ Firebase 데이터 로드 완료');
       }catch(e){console.warn('FB load error:',e);}
       fbInitDone=true;
