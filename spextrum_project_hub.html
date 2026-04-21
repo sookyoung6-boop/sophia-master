@@ -680,7 +680,11 @@ function cfm(title,msg,onYes){
   ov.addEventListener('click',e=>{if(e.target===ov)document.body.removeChild(ov)});
 }
 
-function prog(p){const a=p.schedules.flatMap(s=>s.tasks);return a.length?Math.round(a.filter(t=>t.done).length/a.length*100):0}
+function prog(p){
+  if(!p||!p.schedules)return 0;
+  const a=p.schedules.flatMap(s=>(s.tasks||[]));
+  return a.length?Math.round(a.filter(t=>t&&t.done).length/a.length*100):0;
+}
 function showView(id){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById(id).classList.add('active')}
 function setBc(segs){document.getElementById('topbar-bc').innerHTML=segs.map((s,i)=>i===segs.length-1?`<span class="bc-seg cur">${s.label}</span>`:`<span class="bc-seg lnk" onclick="${s.fn}">${s.label}</span><span class="bc-sep">›</span>`).join('')}
 function updateSb(){
@@ -3385,32 +3389,36 @@ function renderHomeCal(){
   }
 
   // 1. Meetings
-  meetings.forEach(m=>{
+  (meetings||[]).forEach(m=>{
+    if(!m||!m.date)return;
     const pts=m.date.split('.');
+    if(pts.length<3)return;
     const my=parseInt(pts[0]),mm=parseInt(pts[1])-1,md=parseInt(pts[2]);
-    if(my===yr&&mm===mo) addEv(md,{type:'meet',label:m.title,color:'#185fa5',bg:'#e6f1fb'});
+    if(my===yr&&mm===mo) addEv(md,{type:'meet',label:m.title||'',color:'#185fa5',bg:'#e6f1fb'});
   });
 
   // 2. Task due dates (all projects)
-  projects.forEach(p=>{
-    const c=COLORS[p.color];
+  (projects||[]).forEach(p=>{
+    if(!p||!p.schedules)return;
+    const c=COLORS[p.color]||COLORS['teal'];
     p.schedules.forEach(s=>{
-      s.tasks.forEach(t=>{
-        if(!t.dueDate||t.done)return;
+      (s.tasks||[]).forEach(t=>{
+        if(!t||!t.dueDate||t.done)return;
         const d=parseLocalDate(t.dueDate);
         if(d&&d.getFullYear()===yr&&d.getMonth()===mo)
-          addEv(d.getDate(),{type:'task',label:t.name,color:c.dot,bg:c.tag,proj:p.name,pid:p.id,sid:s.id});
+          addEv(d.getDate(),{type:'task',label:t.name||'',color:c.dot,bg:c.tag,proj:p.name,pid:p.id,sid:s.id});
       });
     });
   });
 
   // 3. Campaign dates
-  campaigns.forEach(c=>{
+  (campaigns||[]).forEach(c=>{
+    if(!c)return;
     // start date
     if(c.start){
       const pts=c.start.split('.');
-      const cy=parseInt(pts[0]),cm=parseInt(pts[1])-1,cd=parseInt(pts[2]);
-      if(cy===yr&&cm===mo) addEv(cd,{type:'camp',label:'▶ '+c.name,color:'#854f0b',bg:'#faeeda'});
+      if(pts.length>=3){const cy=parseInt(pts[0]),cm=parseInt(pts[1])-1,cd=parseInt(pts[2]);
+      if(cy===yr&&cm===mo) addEv(cd,{type:'camp',label:'▶ '+c.name,color:'#854f0b',bg:'#faeeda'});}
     }
     // end date
     if(c.end){
@@ -4275,6 +4283,7 @@ const firebaseConfig = {
 
 let fbApp=null, fbDB=null, fbConnected=false;
 let fbSaveTimer=null;
+let fbInitDone=false; // 초기 로드 완료 후에만 실시간 반영
 
 function initFirebase(){
   try{
@@ -4282,65 +4291,72 @@ function initFirebase(){
     fbDB=firebase.database();
     fbConnected=true;
     updateFbStatus('연결 중...');
-    // 연결 상태 감지
     fbDB.ref('.info/connected').on('value',snap=>{
       if(snap.val()===true){
         updateFbStatus('✅ Firebase 연결됨');
-        fbLoadData(); // 앱 시작 시 최신 데이터 불러오기
+        fbLoadData();
       } else {
         updateFbStatus('⚠️ 오프라인 — 로컬 저장 중');
       }
     });
-    // 실시간 변경 감지 (다른 기기에서 변경 시 자동 반영)
+    // 실시간 변경 감지 — 초기화 완료 후에만 UI 반영
     fbDB.ref('spextrum').on('value',snap=>{
+      if(!fbInitDone) return; // 초기화 중엔 무시
       const d=snap.val();
-      if(!d)return;
-      if(d.projects)  projects  =d.projects;
-      if(d.notices)   notices   =d.notices;
-      if(d.campaigns) campaigns =d.campaigns;
-      if(d.meetings)  meetings  =d.meetings;
-      if(d.teamMembers) teamMembers=d.teamMembers;
-      if(d.gcClientId)  gcClientId =d.gcClientId;
-      // localStorage도 동기화
-      try{localStorage.setItem(LS_KEY,JSON.stringify({projects,notices,campaigns,meetings,gcClientId,teamMembers}));}catch(e){}
-      // 현재 뷰 새로고침
-      refreshCurrentView();
+      if(!d) return;
+      try{
+        if(d.projects)  projects  =d.projects;
+        if(d.notices)   notices   =d.notices;
+        if(d.campaigns) campaigns =d.campaigns;
+        if(d.meetings)  meetings  =d.meetings;
+        if(d.teamMembers) teamMembers=d.teamMembers;
+        if(d.gcClientId)  gcClientId =d.gcClientId;
+        try{localStorage.setItem(LS_KEY,JSON.stringify({projects,notices,campaigns,meetings,gcClientId,teamMembers}));}catch(e){}
+        refreshCurrentView();
+      }catch(e){console.warn('Firebase sync error:',e);}
     });
   }catch(e){
     console.warn('Firebase 초기화 실패, localStorage 사용');
     fbConnected=false;
+    updateFbStatus('Firebase 미연결');
   }
 }
 
 function fbSaveData(){
-  if(!fbConnected||!fbDB)return;
+  if(!fbConnected||!fbDB) return;
   clearTimeout(fbSaveTimer);
   fbSaveTimer=setTimeout(()=>{
     fbDB.ref('spextrum').set({projects,notices,campaigns,meetings,gcClientId,teamMembers})
       .then(()=>updateFbStatus('✅ 저장됨 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})))
       .catch(e=>updateFbStatus('❌ 저장 실패'));
-  },1500); // 1.5초 디바운스
+  },1500);
 }
 
 function fbLoadData(){
-  if(!fbConnected||!fbDB)return;
+  if(!fbConnected||!fbDB) return;
   fbDB.ref('spextrum').once('value').then(snap=>{
     const d=snap.val();
     if(!d){
       // 첫 실행 — 로컬 데이터 Firebase에 업로드
-      const local=localStorage.getItem(LS_KEY);
-      if(local){
-        const ld=JSON.parse(local);
-        if(ld.projects)projects=ld.projects;
-        if(ld.notices)notices=ld.notices;
-        if(ld.campaigns)campaigns=ld.campaigns;
-        if(ld.meetings)meetings=ld.meetings;
-        if(ld.teamMembers)teamMembers=ld.teamMembers;
-      }
-      fbDB.ref('spextrum').set({projects,notices,campaigns,meetings,gcClientId,teamMembers});
-      toast('✅ 로컬 데이터를 Firebase에 업로드했습니다');
+      fbDB.ref('spextrum').set({projects,notices,campaigns,meetings,gcClientId,teamMembers})
+        .then(()=>{ fbInitDone=true; toast('✅ 데이터를 Firebase에 업로드했습니다'); });
+    } else {
+      // Firebase 데이터 불러오기
+      try{
+        if(d.projects)  projects  =d.projects;
+        if(d.notices)   notices   =d.notices;
+        if(d.campaigns) campaigns =d.campaigns;
+        if(d.meetings)  meetings  =d.meetings;
+        if(d.teamMembers) teamMembers=d.teamMembers;
+        if(d.gcClientId)  gcClientId =d.gcClientId;
+        try{localStorage.setItem(LS_KEY,JSON.stringify({projects,notices,campaigns,meetings,gcClientId,teamMembers}));}catch(e){}
+        // UI 새로고침
+        goHome(); renderList(); updateSb();
+        toast('✅ Firebase에서 최신 데이터를 불러왔습니다');
+      }catch(e){console.warn('FB load error:',e);}
+      fbInitDone=true;
     }
-  });
+  }).catch(e=>{ fbInitDone=true; console.warn('FB load failed:',e); });
 }
 
 function updateFbStatus(msg){
@@ -5516,8 +5532,10 @@ const DEFAULT_RULES = {
 
 // Main automation runner — call after any data mutation
 function automate(pid) {
+  if(!projects||!projects.length) return;
   const toRun = pid ? [projects.find(x=>x.id===pid)].filter(Boolean) : projects;
   toRun.forEach(p => {
+    if(!p||!p.schedules) return;
     if (!p.autoRules) p.autoRules = {...DEFAULT_RULES};
     if (!p.autoLog)   p.autoLog = [];
     const rules = p.autoRules;
