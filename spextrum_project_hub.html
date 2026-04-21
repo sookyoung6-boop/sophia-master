@@ -725,6 +725,7 @@ function renderList(){
 }
 
 function renderProjectGrid(){
+  if(!projects) return;
   setBc([{label:'전체 프로젝트'}]);
   if(!document.getElementById('proj-grid')){const kb=document.getElementById('kanban-board');if(kb){const d=document.createElement('div');d.id='proj-grid';d.className='proj-grid';kb.replaceWith(d);}}
   let list=filterStatus?projects.filter(p=>p.schedules.some(s=>s.status===filterStatus)):projects;
@@ -3211,12 +3212,14 @@ function goHome(){
   renderHome();showView('v-home');
 }
 function renderHome(){
+  if(!projects||!meetings||!campaigns) return;
+  const thisMonthMeetings=(()=>{const n=new Date();const prefix=n.getFullYear()+'.'+String(n.getMonth()+1).padStart(2,'0');return (meetings||[]).filter(m=>m&&m.date&&m.date.startsWith(prefix)).length;})();
   document.getElementById('home-content').innerHTML=`
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
-    <div class="kpi-card" style="background:var(--surface);border:1px solid var(--border)"><div class="kpi-l">전체 프로젝트</div><div class="kpi-v">${projects.length}</div></div>
-    <div class="kpi-card" style="background:var(--surface);border:1px solid var(--border)"><div class="kpi-l">진행중 프로젝트</div><div class="kpi-v" style="color:#185fa5">${projects.filter(p=>p.schedules.some(s=>s.status==='진행중')).length}</div></div>
-    <div class="kpi-card" style="background:var(--surface);border:1px solid var(--border)"><div class="kpi-l">이번 달 회의</div><div class="kpi-v">${(()=>{const n=new Date();const prefix=n.getFullYear()+'.'+String(n.getMonth()+1).padStart(2,'0');return meetings.filter(m=>m.date.startsWith(prefix)).length;})()}</div></div>
-    <div class="kpi-card" style="background:var(--surface);border:1px solid var(--border)"><div class="kpi-l">진행중 캠페인</div><div class="kpi-v" style="color:#854f0b">${campaigns.filter(c=>c.status==='진행중').length}</div></div>
+    <div class="kpi-card" style="background:var(--surface);border:1px solid var(--border)"><div class="kpi-l">전체 프로젝트</div><div class="kpi-v">${(projects||[]).length}</div></div>
+    <div class="kpi-card" style="background:var(--surface);border:1px solid var(--border)"><div class="kpi-l">진행중 프로젝트</div><div class="kpi-v" style="color:#185fa5">${(projects||[]).filter(p=>p&&p.schedules&&p.schedules.some(s=>s.status==='진행중')).length}</div></div>
+    <div class="kpi-card" style="background:var(--surface);border:1px solid var(--border)"><div class="kpi-l">이번 달 회의</div><div class="kpi-v">${thisMonthMeetings}</div></div>
+    <div class="kpi-card" style="background:var(--surface);border:1px solid var(--border)"><div class="kpi-l">진행중 캠페인</div><div class="kpi-v" style="color:#854f0b">${(campaigns||[]).filter(c=>c&&c.status==='진행중').length}</div></div>
   </div>
   <div id="home-sections" ondragover="homeSectionDragOver(event)" ondrop="event.preventDefault()">
   <div class="h-section" data-section="notice">
@@ -4287,7 +4290,12 @@ let fbInitDone=false; // 초기 로드 완료 후에만 실시간 반영
 
 function initFirebase(){
   try{
-    fbApp=firebase.initializeApp(firebaseConfig);
+    // 이미 초기화된 경우 재사용
+    if(firebase.apps.length){
+      fbApp=firebase.apps[0];
+    } else {
+      fbApp=firebase.initializeApp(firebaseConfig);
+    }
     fbDB=firebase.database();
     fbConnected=true;
     updateFbStatus('연결 중...');
@@ -4296,27 +4304,27 @@ function initFirebase(){
         updateFbStatus('✅ Firebase 연결됨');
         fbLoadData();
       } else {
-        updateFbStatus('⚠️ 오프라인 — 로컬 저장 중');
+        updateFbStatus('⚠️ 오프라인');
       }
     });
     // 실시간 변경 감지 — 초기화 완료 후에만 UI 반영
     fbDB.ref('spextrum').on('value',snap=>{
-      if(!fbInitDone) return; // 초기화 중엔 무시
+      if(!fbInitDone) return;
       const d=snap.val();
       if(!d) return;
       try{
-        if(d.projects)  projects  =d.projects;
-        if(d.notices)   notices   =d.notices;
-        if(d.campaigns) campaigns =d.campaigns;
-        if(d.meetings)  meetings  =d.meetings;
-        if(d.teamMembers) teamMembers=d.teamMembers;
-        if(d.gcClientId)  gcClientId =d.gcClientId;
+        if(d.projects&&Array.isArray(d.projects))   projects  =d.projects;
+        if(d.notices&&Array.isArray(d.notices))     notices   =d.notices;
+        if(d.campaigns&&Array.isArray(d.campaigns)) campaigns =d.campaigns;
+        if(d.meetings&&Array.isArray(d.meetings))   meetings  =d.meetings;
+        if(d.teamMembers&&Array.isArray(d.teamMembers)) teamMembers=d.teamMembers;
+        if(d.gcClientId) gcClientId=d.gcClientId;
         try{localStorage.setItem(LS_KEY,JSON.stringify({projects,notices,campaigns,meetings,gcClientId,teamMembers}));}catch(e){}
         refreshCurrentView();
       }catch(e){console.warn('Firebase sync error:',e);}
     });
   }catch(e){
-    console.warn('Firebase 초기화 실패, localStorage 사용');
+    console.warn('Firebase 초기화 실패:', e);
     fbConnected=false;
     updateFbStatus('Firebase 미연결');
   }
@@ -4343,12 +4351,12 @@ function fbLoadData(){
     } else {
       // Firebase 데이터 불러오기
       try{
-        if(d.projects)  projects  =d.projects;
-        if(d.notices)   notices   =d.notices;
-        if(d.campaigns) campaigns =d.campaigns;
-        if(d.meetings)  meetings  =d.meetings;
-        if(d.teamMembers) teamMembers=d.teamMembers;
-        if(d.gcClientId)  gcClientId =d.gcClientId;
+        if(d.projects&&Array.isArray(d.projects))   projects  =d.projects;
+        if(d.notices&&Array.isArray(d.notices))     notices   =d.notices;
+        if(d.campaigns&&Array.isArray(d.campaigns)) campaigns =d.campaigns;
+        if(d.meetings&&Array.isArray(d.meetings))   meetings  =d.meetings;
+        if(d.teamMembers&&Array.isArray(d.teamMembers)) teamMembers=d.teamMembers;
+        if(d.gcClientId) gcClientId=d.gcClientId;
         try{localStorage.setItem(LS_KEY,JSON.stringify({projects,notices,campaigns,meetings,gcClientId,teamMembers}));}catch(e){}
         // UI 새로고침
         goHome(); renderList(); updateSb();
