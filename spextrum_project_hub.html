@@ -5331,6 +5331,7 @@ function goTaskBoard(){
   document.getElementById('nav-tasks').classList.add('active');
   setBc([{label:'태스크 보드'}]);
   document.getElementById('topbar-actions').innerHTML=
+    '<button class="btn sm" onclick="openMeetingReport()" style="gap:6px">📋 주간 보고</button> '+
     '<button class="btn sm" onclick="openWeeklyReport()" style="gap:6px">'+
     '<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M4 4h5M4 6.5h5M4 9h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>'+
     '주간 리포트</button>';
@@ -6398,7 +6399,116 @@ function pasteDataFromClipboard(){
   });
 }
 
-// ─── 주간 리포트 ─────────────────────────────────────────────
+// ─── 주간 회의 보고 ───────────────────────────────────────────
+function openMeetingReport(){
+  const today=new Date();today.setHours(0,0,0,0);
+  const dow=today.getDay()||7;
+  const thisMon=new Date(today);thisMon.setDate(today.getDate()-(dow-1));
+  const thisSun=new Date(thisMon);thisSun.setDate(thisMon.getDate()+6);
+  const lastMon=new Date(thisMon);lastMon.setDate(thisMon.getDate()-7);
+  const lastSun=new Date(thisMon);lastSun.setDate(thisMon.getDate()-1);
+
+  const fmt=d=>`${d.getMonth()+1}/${d.getDate()}`;
+  const fmtFull=d=>`${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+
+  // 파트별 데이터 수집
+  const depts=[...new Set(projects.flatMap(p=>p.departments||[]))].filter(Boolean);
+
+  const allTasks=projects.flatMap(p=>(p.schedules||[]).flatMap(s=>(s.tasks||[]).map(t=>({
+    ...t, projName:p.name, projId:p.id, schedName:s.name,
+    departments:p.departments||[], color:p.color
+  }))));
+
+  // 저번주 완료: dueDate 또는 startDate가 저번주에 속하거나, done=true인 태스크
+  const lastWeekDone=allTasks.filter(t=>{
+    if(!t.done) return false;
+    const d=t.dueDate?parseLocalDate(t.dueDate):null;
+    const s=t.startDate?parseLocalDate(t.startDate):null;
+    return (d&&d>=lastMon&&d<=lastSun)||(s&&s>=lastMon&&s<=lastSun);
+  });
+
+  // 이번주 예정: dueDate 또는 startDate가 이번주
+  const thisWeekPlan=allTasks.filter(t=>{
+    if(t.done) return false;
+    const d=t.dueDate?parseLocalDate(t.dueDate):null;
+    const s=t.startDate?parseLocalDate(t.startDate):null;
+    return (d&&d>=thisMon&&d<=thisSun)||(s&&s>=thisMon&&s<=thisSun);
+  });
+
+  // 파트별로 묶기
+  const byDept=(tasks)=>{
+    const map={};
+    tasks.forEach(t=>{
+      (t.departments.length?t.departments:['기타']).forEach(dept=>{
+        if(!map[dept]) map[dept]=[];
+        map[dept].push(t);
+      });
+    });
+    return map;
+  };
+
+  const lastMap=byDept(lastWeekDone);
+  const thisMap=byDept(thisWeekPlan);
+  const allDepts=[...new Set([...Object.keys(lastMap),...Object.keys(thisMap)])].sort();
+
+  const DEPT_COLORS={
+    'COO':'#185fa5','콘텐츠파트':'#3c3489','디자인파트':'#854f0b',
+    '운영팀':'#27ae60','경영지원팀':'#E24B4A','CEO':'#1a1917','기타':'#888'
+  };
+
+  const tableRows=allDepts.map(dept=>{
+    const done=(lastMap[dept]||[]);
+    const plan=(thisMap[dept]||[]);
+    const maxRows=Math.max(done.length,plan.length,1);
+    const color=DEPT_COLORS[dept]||'#378ADD';
+
+    return Array.from({length:maxRows},(_,i)=>{
+      const d=done[i];
+      const p=plan[i];
+      return `<tr>
+        ${i===0?`<td rowspan="${maxRows}" style="background:${color}18;color:${color};font-weight:700;font-size:12px;text-align:center;vertical-align:middle;padding:8px 6px;border:1px solid #e0ddd8;border-right:2px solid ${color}">${dept}</td>`:''}
+        <td style="padding:7px 10px;border:1px solid #e0ddd8;font-size:12px;vertical-align:middle">${d?`<span style="color:#27ae60;margin-right:4px">✓</span>${d.projName} · ${d.name}${d.meta?`<br><span style='font-size:10px;color:#999'>${d.meta}</span>`:''}`:''}</td>
+        <td style="padding:7px 10px;border:1px solid #e0ddd8;font-size:12px;vertical-align:middle;color:#185fa5">${p?`${p.projName} · ${p.name}${p.dueDate?`<br><span style='font-size:10px;color:#999'>마감 ${p.dueDate}</span>`:''}`:''}</td>
+      </tr>`;
+    }).join('');
+  }).join('');
+
+  const ov=document.createElement('div');
+  ov.id='meeting-report-ov';
+  ov.style.cssText='position:fixed;inset:0;background:#f7f6f2;z-index:1000;overflow-y:auto;padding:32px 40px';
+  ov.innerHTML=`
+    <div style="max-width:1100px;margin:0 auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+        <div>
+          <div style="font-size:11px;font-weight:600;color:#888;letter-spacing:.1em;margin-bottom:4px">SPEXTRUM 주간 보고</div>
+          <div style="font-size:20px;font-weight:700">${fmt(thisMon)} – ${fmt(thisSun)} 주간 업무 보고</div>
+          <div style="font-size:12px;color:#999;margin-top:3px">${fmtFull(today)} 기준</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn sm" onclick="window.print()">🖨️ 인쇄/PDF</button>
+          <button class="btn sm" onclick="document.getElementById('meeting-report-ov').remove()">✕ 닫기</button>
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 8px rgba(0,0,0,.08)">
+        <thead>
+          <tr style="background:#1a1917;color:#fff">
+            <th style="padding:10px 12px;font-size:12px;font-weight:600;width:100px;text-align:center">파트</th>
+            <th style="padding:10px 12px;font-size:12px;font-weight:600;width:50%">✅ 저번 주 완료 (${fmt(lastMon)}–${fmt(lastSun)})</th>
+            <th style="padding:10px 12px;font-size:12px;font-weight:600">📅 이번 주 예정 (${fmt(thisMon)}–${fmt(thisSun)})</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRows||`<tr><td colspan="3" style="text-align:center;padding:20px;color:#999">이번 주 태스크가 없습니다</td></tr>`}
+        </tbody>
+      </table>
+      <div style="margin-top:16px;font-size:11px;color:#aaa;text-align:right">* 시작일 또는 마감일이 해당 주에 속한 태스크 기준</div>
+    </div>
+    <style>@media print{button{display:none!important}body{margin:0}}</style>
+  `;
+  document.body.appendChild(ov);
+}
+
+
 function openWeeklyReport(){
   const now=new Date();
   const day=now.getDay();
