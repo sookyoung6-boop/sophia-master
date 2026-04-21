@@ -4152,9 +4152,17 @@ function renderCalSettings(){
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between">
     <div>
       <div style="font-size:13px;font-weight:700;color:var(--text)">태스크 마감일 → 캘린더</div>
-      <div style="font-size:11px;color:var(--text3);margin-top:2px">마감일 있는 미완료 태스크를 전부 Calendar에 등록합니다</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">서류마감/타임라인 캘린더에 자동 분류 등록</div>
     </div>
     <button class="btn sm" onclick="syncAllTasksToCalendar()">📅 전체 등록</button>
+  </div>
+  <!-- 캠페인 캘린더 -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div style="font-size:13px;font-weight:700;color:var(--text)">캠페인 → 전시/이벤트 캘린더</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">진행중/예정 캠페인 시작·마감일 등록</div>
+    </div>
+    <button class="btn sm" onclick="syncAllCampaignsToCalendar()">🎯 전체 등록</button>
   </div>
   <!-- Gmail 발송 -->
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;margin-bottom:20px">
@@ -4396,11 +4404,12 @@ async function syncMeetingToCalendar(mid){
   if(!gcConnected){toast('캘린더 연동 후 사용할 수 있습니다');return}
   const m=meetings.find(x=>x.id===mid);if(!m)return;
   let res;
+  const calId=GCAL.meeting;
   if(m.calEventId){
-    res=await calFetch('PATCH',`/calendars/primary/events/${m.calEventId}`,meetToEvent(m));
+    res=await calFetch('PATCH',`/calendars/${calId}/events/${m.calEventId}`,meetToEvent(m));
     if(res)toast('캘린더 일정이 업데이트됐습니다');
   }else{
-    res=await calFetch('POST','/calendars/primary/events',meetToEvent(m));
+    res=await calFetch('POST',`/calendars/${calId}/events`,meetToEvent(m));
     if(res&&res.id){m.calEventId=res.id;toast('"'+m.title+'" 캘린더에 추가됐습니다')}
   }
   if(document.getElementById('meet-list'))document.getElementById('meet-list').innerHTML=meetListHTML();
@@ -4419,9 +4428,10 @@ async function syncAllMeetings(){
   if(!pending.length){toast('동기화할 회의가 없습니다');return}
   toast('동기화 중...');
   for(const m of pending){
-    const res=await calFetch('POST','/calendars/primary/events',meetToEvent(m));
+    const res=await calFetch('POST',`/calendars/${GCAL.meeting}/events`,meetToEvent(m));
     if(res&&res.id)m.calEventId=res.id;
   }
+  saveToLS();
   toast(`${pending.length}개 회의가 캘린더에 추가됐습니다`);
   if(document.getElementById('meet-list'))document.getElementById('meet-list').innerHTML=meetListHTML();
 }
@@ -4429,21 +4439,99 @@ async function syncAllMeetings(){
 async function loadUpcomingEvents(){
   const el=document.getElementById('gcal-upcoming');if(!el)return;
   const now=new Date().toISOString();
-  const res=await calFetch('GET',`/calendars/primary/events?timeMin=${now}&maxResults=6&singleEvents=true&orderBy=startTime`);
-  if(!res||!res.items){if(el)el.innerHTML='<div style="font-size:13px;color:var(--text3);padding:8px 0">불러오기 실패</div>';return}
-  if(!res.items.length){el.innerHTML='<div style="font-size:13px;color:var(--text3);padding:8px 0">다가오는 일정이 없습니다</div>';return}
-  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:6px">${res.items.map(ev=>{
+  // 4개 캘린더에서 모두 가져오기
+  const allItems=[];
+  for(const [name,calId] of Object.entries(GCAL)){
+    const res=await calFetch('GET',`/calendars/${encodeURIComponent(calId)}/events?timeMin=${now}&maxResults=5&singleEvents=true&orderBy=startTime`);
+    if(res?.items) res.items.forEach(ev=>allItems.push({...ev,_calName:name}));
+  }
+  if(!allItems.length){el.innerHTML='<div style="font-size:13px;color:var(--text3);padding:8px 0">다가오는 일정이 없습니다</div>';return;}
+  allItems.sort((a,b)=>new Date(a.start.dateTime||a.start.date)-new Date(b.start.dateTime||b.start.date));
+  const calLabel={meeting:'미팅',deadline:'서류마감',event:'전시/이벤트',timeline:'타임라인'};
+  const calColor={meeting:'#185fa5',deadline:'#854f0b',event:'#3c3489',timeline:'#27ae60'};
+  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:6px">${allItems.slice(0,8).map(ev=>{
     const dt=ev.start.dateTime||ev.start.date;
     const d=new Date(dt);
     const label=d.toLocaleDateString('ko-KR',{month:'short',day:'numeric',weekday:'short'})+(ev.start.dateTime?' '+d.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}):'');
+    const col=calColor[ev._calName]||'#378ADD';
     return`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface2);border-radius:var(--rsm)">
-      <div style="width:10px;height:10px;border-radius:2px;background:#378ADD;flex-shrink:0"></div>
-      <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--text)">${ev.summary||'(제목 없음)'}</div><div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:1px">${label}</div></div>
+      <div style="width:10px;height:10px;border-radius:2px;background:${col};flex-shrink:0"></div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--text)">${ev.summary||'(제목 없음)'}</div><div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:1px">${label} · ${calLabel[ev._calName]||''}</div></div>
     </div>`;
   }).join('')}</div>`;
 }
 
-// ─── 태스크 마감일 → Google Calendar ────────────────────────
+// ─── Spextrum 공유 캘린더 ID ──────────────────────────────────
+const GCAL = {
+  meeting:  '21bca1562e68ec927715dc44b8babaa8cab07e96897ffa5ce0147470ef5147f0@group.calendar.google.com',
+  deadline: 'df4c90b5569dc42eccd7c2194df779ed3812894b0cfa7eda07ebb7172755287e@group.calendar.google.com',
+  event:    'e0888f7449831f030e557735b520f01ae0bc5b363a1c09c1874ea064a6ce457e@group.calendar.google.com',
+  timeline: '47ed96526bca24deecd3550ee0b1c042889fda0e0220536fe7de9394e5e47597@group.calendar.google.com',
+};
+
+// 프로젝트 태그 기준으로 캘린더 ID 결정
+function getCalIdForTask(t, p){
+  const name=(t.name||'').toLowerCase();
+  const tag=(p?.tag||'').toLowerCase();
+  // 서류 마감 — 지원사업 프로젝트에서 특정 키워드만
+  const isDeadlineProject=tag.includes('지원사업')||tag.includes('grant');
+  const isDeadlineKeyword=name.includes('제출')||name.includes('신청')||name.includes('발표')||name.includes('마감')||name.includes('계약서');
+  if(isDeadlineProject && isDeadlineKeyword) return GCAL.deadline;
+  // 기본 — 프로젝트 타임라인
+  return GCAL.timeline;
+}
+
+// 캠페인 → 전시 및 이벤트 캘린더
+async function syncCampaignToCalendar(cid){
+  if(!gcConnected){toast('캘린더 연동 후 사용할 수 있습니다');return;}
+  const c=campaigns.find(x=>x.id===cid);if(!c)return;
+  const calId=GCAL.event;
+
+  // 시작일 이벤트
+  if(c.start){
+    const startEvent={
+      summary:`[캠페인] ${c.name} 시작`,
+      description:`채널: ${c.channel||''}\n담당: ${c.manager||''}\n예산: ${c.budget||''}`,
+      start:{date:c.start.replace(/\./g,'-')},
+      end:{date:c.start.replace(/\./g,'-')},
+    };
+    if(c.calStartId){
+      await calFetch('PATCH',`/calendars/${calId}/events/${c.calStartId}`,startEvent);
+    } else {
+      const res=await calFetch('POST',`/calendars/${calId}/events`,startEvent);
+      if(res?.id) c.calStartId=res.id;
+    }
+  }
+  // 종료일 이벤트
+  if(c.end){
+    const endEvent={
+      summary:`[캠페인] ${c.name} 마감`,
+      description:`채널: ${c.channel||''}\n담당: ${c.manager||''}`,
+      start:{date:c.end.replace(/\./g,'-')},
+      end:{date:c.end.replace(/\./g,'-')},
+    };
+    if(c.calEndId){
+      await calFetch('PATCH',`/calendars/${calId}/events/${c.calEndId}`,endEvent);
+    } else {
+      const res=await calFetch('POST',`/calendars/${calId}/events`,endEvent);
+      if(res?.id) c.calEndId=res.id;
+    }
+  }
+  saveToLS();
+  toast(`"${c.name}" 캘린더에 등록됐습니다`);
+}
+
+async function syncAllCampaignsToCalendar(){
+  if(!gcConnected){toast('캘린더 연동 후 사용할 수 있습니다');return;}
+  let count=0;
+  for(const c of campaigns){
+    if(c.status!=='완료'){
+      await syncCampaignToCalendar(c.id);
+      count++;
+    }
+  }
+  toast(`✅ ${count}개 캠페인을 전시/이벤트 캘린더에 등록했습니다`);
+}
 async function syncTaskToCalendar(pid,sid,tid){
   if(!gcConnected){toast('캘린더 연동 후 사용할 수 있습니다');return;}
   const p=projects.find(x=>x.id===pid);
@@ -4451,21 +4539,22 @@ async function syncTaskToCalendar(pid,sid,tid){
   const t=s?.tasks.find(x=>x.id===tid);
   if(!t||!t.dueDate)return;
 
+  const calId=getCalIdForTask(t,p);
   const event={
     summary:`[${p.name}] ${t.name}`,
     description:`스케줄: ${s.name}\n담당자: ${t.meta||'미지정'}\n프로젝트: ${p.name}`,
     start:{date:t.dueDate},
     end:{date:t.dueDate},
-    colorId:'6' // 토마토 색
+    colorId:'6'
   };
 
   let res;
   if(t.calEventId){
-    res=await calFetch('PATCH',`/calendars/primary/events/${t.calEventId}`,event);
+    res=await calFetch('PATCH',`/calendars/${calId}/events/${t.calEventId}`,event);
     if(res) toast(`"${t.name}" 캘린더 업데이트됨`);
   } else {
-    res=await calFetch('POST','/calendars/primary/events',event);
-    if(res?.id){t.calEventId=res.id;saveToLS();toast(`"${t.name}" 캘린더에 추가됨`);}
+    res=await calFetch('POST',`/calendars/${calId}/events`,event);
+    if(res?.id){t.calEventId=res.id;t.calId=calId;saveToLS();toast(`"${t.name}" 캘린더에 추가됨`);}
   }
 }
 
@@ -4474,8 +4563,9 @@ async function removeTaskFromCalendar(pid,sid,tid){
   const s=p?.schedules.find(x=>x.id===sid);
   const t=s?.tasks.find(x=>x.id===tid);
   if(!t?.calEventId)return;
-  await calFetch('DELETE',`/calendars/primary/events/${t.calEventId}`);
-  delete t.calEventId;saveToLS();
+  const calId=t.calId||getCalIdForTask(t,p);
+  await calFetch('DELETE',`/calendars/${calId}/events/${t.calEventId}`);
+  delete t.calEventId;delete t.calId;saveToLS();
 }
 
 // 프로젝트의 마감일 있는 태스크 전체 캘린더 동기화
