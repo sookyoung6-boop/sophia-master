@@ -4249,7 +4249,11 @@ function updateDriveStatusBar(state){
 }
 
 async function calFetch(method,path,body){
-  const res=await fetch('https://www.googleapis.com/calendar/v3'+path,{
+  // calId에 @ 포함된 경우 자동 인코딩
+  const encodedPath=path.replace(/\/calendars\/([^/]+)\//g,(match,calId)=>{
+    return `/calendars/${encodeURIComponent(calId)}/`;
+  });
+  const res=await fetch('https://www.googleapis.com/calendar/v3'+encodedPath,{
     method,headers:{'Authorization':'Bearer '+gcToken,'Content-Type':'application/json'},
     body:body?JSON.stringify(body):undefined
   });
@@ -4442,7 +4446,7 @@ async function loadUpcomingEvents(){
   // 4개 캘린더에서 모두 가져오기
   const allItems=[];
   for(const [name,calId] of Object.entries(GCAL)){
-    const res=await calFetch('GET',`/calendars/${encodeURIComponent(calId)}/events?timeMin=${now}&maxResults=5&singleEvents=true&orderBy=startTime`);
+    const res=await calFetch('GET',`/calendars/${calId}/events?timeMin=${now}&maxResults=5&singleEvents=true&orderBy=startTime`);
     if(res?.items) res.items.forEach(ev=>allItems.push({...ev,_calName:name}));
   }
   if(!allItems.length){el.innerHTML='<div style="font-size:13px;color:var(--text3);padding:8px 0">다가오는 일정이 없습니다</div>';return;}
@@ -4486,39 +4490,28 @@ async function syncCampaignToCalendar(cid){
   if(!gcConnected){toast('캘린더 연동 후 사용할 수 있습니다');return;}
   const c=campaigns.find(x=>x.id===cid);if(!c)return;
   const calId=GCAL.event;
+  if(!c.start&&!c.end)return;
 
-  // 시작일 이벤트
-  if(c.start){
-    const startEvent={
-      summary:`[캠페인] ${c.name} 시작`,
-      description:`채널: ${c.channel||''}\n담당: ${c.manager||''}\n예산: ${c.budget||''}`,
-      start:{date:c.start.replace(/\./g,'-')},
-      end:{date:c.start.replace(/\./g,'-')},
-    };
-    if(c.calStartId){
-      await calFetch('PATCH',`/calendars/${calId}/events/${c.calStartId}`,startEvent);
-    } else {
-      const res=await calFetch('POST',`/calendars/${calId}/events`,startEvent);
-      if(res?.id) c.calStartId=res.id;
-    }
+  const startDate=(c.start||c.end).replace(/\./g,'-');
+  // 종료일 +1 (exclusive)
+  const endObj=new Date((c.end||c.start).replace(/\./g,'-'));
+  endObj.setDate(endObj.getDate()+1);
+  const endDate=endObj.toISOString().split('T')[0];
+
+  const event={
+    summary:`[캠페인] ${c.name}`,
+    description:`채널: ${c.channel||''}\n담당: ${c.manager||''}\n예산: ${c.budget||''}\n상태: ${c.status||''}`,
+    start:{date:startDate},
+    end:{date:endDate},
+  };
+
+  if(c.calEventId){
+    await calFetch('PATCH',`/calendars/${calId}/events/${c.calEventId}`,event);
+    toast(`"${c.name}" 캘린더 업데이트됨`);
+  } else {
+    const res=await calFetch('POST',`/calendars/${calId}/events`,event);
+    if(res?.id){c.calEventId=res.id;saveToLS();toast(`"${c.name}" 캘린더에 등록됐습니다`);}
   }
-  // 종료일 이벤트
-  if(c.end){
-    const endEvent={
-      summary:`[캠페인] ${c.name} 마감`,
-      description:`채널: ${c.channel||''}\n담당: ${c.manager||''}`,
-      start:{date:c.end.replace(/\./g,'-')},
-      end:{date:c.end.replace(/\./g,'-')},
-    };
-    if(c.calEndId){
-      await calFetch('PATCH',`/calendars/${calId}/events/${c.calEndId}`,endEvent);
-    } else {
-      const res=await calFetch('POST',`/calendars/${calId}/events`,endEvent);
-      if(res?.id) c.calEndId=res.id;
-    }
-  }
-  saveToLS();
-  toast(`"${c.name}" 캘린더에 등록됐습니다`);
 }
 
 async function syncAllCampaignsToCalendar(){
@@ -4540,11 +4533,19 @@ async function syncTaskToCalendar(pid,sid,tid){
   if(!t||!t.dueDate)return;
 
   const calId=getCalIdForTask(t,p);
+
+  // 시작일 없으면 마감일 하루 전을 시작일로
+  const startDate=t.startDate||t.dueDate;
+  // Google Calendar 종료일은 exclusive (마감일 다음날)
+  const endDateObj=new Date(t.dueDate);
+  endDateObj.setDate(endDateObj.getDate()+1);
+  const endDate=endDateObj.toISOString().split('T')[0];
+
   const event={
     summary:`[${p.name}] ${t.name}`,
     description:`스케줄: ${s.name}\n담당자: ${t.meta||'미지정'}\n프로젝트: ${p.name}`,
-    start:{date:t.dueDate},
-    end:{date:t.dueDate},
+    start:{date:startDate},
+    end:{date:endDate},
     colorId:'6'
   };
 
