@@ -165,18 +165,29 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
 .empty{text-align:center;padding:36px 20px;color:var(--text3);font-size:13px}
 ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:10px}
 @media(max-width:768px){
-  /* 뒤로가기 버튼 — 모바일에서 강조 */
-  #back-btn{font-size:14px!important;padding:6px 10px!important;}
+/* 뒤로가기 버튼 — 하단 네비 위에 플로팅 */
+  #back-btn{
+    position:fixed!important;
+    bottom:64px!important;
+    left:16px!important;
+    display:none;
+    background:var(--surface)!important;
+    border:1px solid var(--border2)!important;
+    border-radius:20px!important;
+    box-shadow:0 2px 12px rgba(0,0,0,.12)!important;
+    padding:8px 16px!important;
+    font-size:13px!important;
+    color:var(--text)!important;
+    z-index:99;
+  }
+  #back-btn[style*="display: flex"],
+  #back-btn[style*="display:flex"]{
+    display:flex!important;
+  }
   .mob-back-label{display:inline;}
   /* 브레드크럼 — 모바일에서 현재 페이지명만 */
   .bc-sep{display:none;}
   .bc-seg.lnk{display:none;}
-  /* 캘린더 — 모바일에서 텍스트 대신 dot */
-  .cal-ev-chip{display:none!important;}
-  .cal-ev-dot{display:block!important;}
-  [style*="min-height:90px"]{min-height:52px!important;}
-  /* 캘린더 셀 패딩 축소 */
-  [style*="min-height:52px"]{padding:3px!important;}
 
   /* 사이드바 — 오버레이 방식 */
   .sidebar{
@@ -247,6 +258,8 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
   .mob-nav{display:none!important;}
   .mob-overlay{display:none!important;}
   .mob-hamburger{display:none!important;}
+  /* PC에서 back 버튼은 topbar 인라인으로 */
+  #back-btn{position:static!important;box-shadow:none!important;border-radius:var(--rsm)!important;background:none!important;border:none!important;padding:5px 8px!important;font-size:13px!important;bottom:auto!important;left:auto!important;}
 }
 
 /* AUTOMATION */
@@ -781,7 +794,10 @@ function setBc(segs){
   document.getElementById('topbar-bc').innerHTML=segs.map((s,i)=>i===segs.length-1?`<span class="bc-seg cur">${s.label}</span>`:`<span class="bc-seg lnk" onclick="${s.fn}">${s.label}</span><span class="bc-sep">›</span>`).join('');
   // 뒤로가기 버튼 표시/숨김
   const backBtn=document.getElementById('back-btn');
-  if(backBtn) backBtn.style.display=segs.length>1?'flex':'none';
+  if(backBtn){
+    const show=segs.length>1;
+    backBtn.style.display=show?'flex':'none';
+  }
   // 히스토리 기록
   if(segs.length>1){
     const label=segs[segs.length-2].label;
@@ -3572,11 +3588,10 @@ function renderHomeCal(){
     const numBg=isToday?'#E24B4A':'transparent';
 
     const evChips=evs.slice(0,3).map(ev=>`
-      <div class="cal-ev-chip" style="font-size:10px;padding:2px 6px;border-radius:4px;background:${ev.bg};color:${ev.color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;margin-bottom:2px;line-height:1.4"
+      <div style="font-size:10px;padding:2px 6px;border-radius:4px;background:${ev.bg};color:${ev.color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;margin-bottom:2px;line-height:1.4"
         title="${ev.label}${ev.proj?' ('+ev.proj+')':''}"
-        onclick="${ev.pid?`openProj('${ev.pid}')`:ev.type==='meet'?'goHome()':''}">${ev.label}</div>
-      <div class="cal-ev-dot" style="width:6px;height:6px;border-radius:50%;background:${ev.color};display:none;margin:1px auto"></div>`).join('');
-    const moreChip=evs.length>3?`<div onclick="openCalDay(${yr},${mo},${d})" class="cal-ev-chip" style="font-size:10px;color:#185fa5;padding:1px 6px;cursor:pointer;font-weight:600;background:#e6f1fb;border-radius:4px;display:inline-block" onmouseenter="this.style.opacity='.7'" onmouseleave="this.style.opacity='1'">+${evs.length-3}개</div><div class="cal-ev-dot" style="display:none"></div>`:'';
+        onclick="${ev.pid?`openProj('${ev.pid}')`:ev.type==='meet'?'goHome()':''}">${ev.label}</div>`).join('');
+    const moreChip=evs.length>3?`<div onclick="openCalDay(${yr},${mo},${d})" style="font-size:10px;color:#185fa5;padding:1px 6px;cursor:pointer;font-weight:600;background:#e6f1fb;border-radius:4px;display:inline-block" onmouseenter="this.style.opacity='.7'" onmouseleave="this.style.opacity='1'">+${evs.length-3}개 더보기</div>`:'';
 
     cells+=`<div style="background:var(--surface);min-height:90px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px;cursor:${evs.length?'pointer':'default'};${isToday?'box-shadow:inset 0 0 0 2px #E24B4A':''}">
       <div style="display:flex;justify-content:flex-end;margin-bottom:4px">
@@ -3788,8 +3803,7 @@ function weeklyGanttHTML(){
       </div>`;
 
       return `<div style="position:relative;display:flex;align-items:center;border-bottom:1px solid var(--border);min-height:36px" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
-        <div style="width:${LABEL_W}px;flex-shrink:0;padding:0 8px 0 12px;display:flex;align-items:center;gap:7px;position:sticky;left:0;background:var(--surface);z-index:2;border-right:1px solid var(--border2)"
-          onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background='var(--surface)'">
+        <div style="width:${LABEL_W}px;flex-shrink:0;padding:0 8px 0 24px;display:flex;align-items:center;gap:7px">>
           <div class="chk${t.done?' on':''}" onclick="pkToggleTask('${p.id}','${t.schedId}','${t.id}')" style="flex-shrink:0">${t.done?'✓':''}</div>
           <div style="flex:1;min-width:0">
             <div style="font-size:11px;color:var(--text);${t.done?'text-decoration:line-through;color:var(--text3)':''}overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.name}</div>
@@ -3812,19 +3826,15 @@ function weeklyGanttHTML(){
   const prevStr=`${prevMon.getFullYear()}-${String(prevMon.getMonth()+1).padStart(2,'0')}-${String(prevMon.getDate()).padStart(2,'0')}`;
   const nextStr=`${nextMon.getFullYear()}-${String(nextMon.getMonth()+1).padStart(2,'0')}-${String(nextMon.getDate()).padStart(2,'0')}`;
 
-  return `<div>
-    <div style="display:flex;align-items:center;gap:8px;padding:8px 0 4px;flex-wrap:wrap">
+  return `<div style="min-width:${TOTAL_W}px">
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0 4px">
       <button class="btn xs ghost" onclick="shiftWeeklyGantt('${prevStr}')">‹ 이전 주</button>
       <button class="btn xs ghost" onclick="setHomeTimeline('week')">오늘</button>
       <button class="btn xs ghost" onclick="shiftWeeklyGantt('${nextStr}')">다음 주 ›</button>
-      <span style="font-size:11px;color:var(--text3);margin-left:6px">${mon.getMonth()+1}/${mon.getDate()} – ${sun.getMonth()+1}/${sun.getDate()}</span>
+      <span style="font-size:11px;color:var(--text3);margin-left:6px">${mon.getMonth()+1}/${mon.getDate()} – ${sun.getMonth()+1}/${sun.getDate()} · 이번 주 마감 태스크 표시</span>
     </div>
-    <div style="overflow-x:auto;border:1px solid var(--border);border-radius:var(--rsm)">
-      <div style="min-width:${TOTAL_W}px">
-        ${header}
-        ${rows||'<div class="empty" style="padding:20px">이번 주 마감 태스크가 없습니다</div>'}
-      </div>
-    </div>
+    ${header}
+    ${rows||'<div class="empty" style="padding:20px">이번 주 마감 태스크가 없습니다</div>'}
   </div>`;
 }
 
