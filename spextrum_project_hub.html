@@ -4313,13 +4313,7 @@ function initFirebase(){
       const d=snap.val();
       if(!d) return;
       try{
-        if(d.projects&&Array.isArray(d.projects))   projects  =d.projects;
-        if(d.notices&&Array.isArray(d.notices))     notices   =d.notices;
-        if(d.campaigns&&Array.isArray(d.campaigns)) campaigns =d.campaigns;
-        if(d.meetings&&Array.isArray(d.meetings))   meetings  =d.meetings;
-        if(d.teamMembers&&Array.isArray(d.teamMembers)) teamMembers=d.teamMembers;
-        if(d.gcClientId) gcClientId=d.gcClientId;
-        try{localStorage.setItem(LS_KEY,JSON.stringify({projects,notices,campaigns,meetings,gcClientId,teamMembers}));}catch(e){}
+        applyFirebaseData(d);
         refreshCurrentView();
       }catch(e){console.warn('Firebase sync error:',e);}
     });
@@ -4328,6 +4322,60 @@ function initFirebase(){
     fbConnected=false;
     updateFbStatus('Firebase 미연결');
   }
+}
+
+// Firebase 배열↔객체 변환 처리 (Firebase는 배열을 객체로 저장)
+function toArr(v){
+  if(v==null) return [];
+  if(Array.isArray(v)) return v.filter(x=>x!=null);
+  return Object.values(v).filter(x=>x!=null);
+}
+
+function sanitizeFirebaseData(d){
+  if(!d) return d;
+  if(d.projects){
+    d.projects=toArr(d.projects).map(p=>{
+      if(!p) return null;
+      return {...p,
+        schedules:toArr(p.schedules).map(s=>{
+          if(!s) return null;
+          return {...s, tasks:toArr(s.tasks)};
+        }).filter(Boolean),
+        workAreas:toArr(p.workAreas).map(wa=>{
+          if(!wa) return null;
+          return {...wa, deliverables:toArr(wa.deliverables)};
+        }).filter(Boolean),
+        blocks:toArr(p.blocks),
+        weeklyGoals:toArr(p.weeklyGoals).map(w=>{
+          if(!w) return null;
+          return {...w, goals:toArr(w.goals)};
+        }).filter(Boolean),
+        departments:toArr(p.departments),
+        links:toArr(p.links),
+        relatedProjects:toArr(p.relatedProjects),
+        images:toArr(p.images),
+        figmas:toArr(p.figmas),
+        refFiles:toArr(p.refFiles),
+      };
+    }).filter(Boolean);
+  }
+  if(d.notices)     d.notices    =toArr(d.notices);
+  if(d.campaigns)   d.campaigns  =toArr(d.campaigns);
+  if(d.meetings)    d.meetings   =toArr(d.meetings);
+  if(d.teamMembers) d.teamMembers=toArr(d.teamMembers);
+  return d;
+}
+
+function applyFirebaseData(d){
+  if(!d) return;
+  d=sanitizeFirebaseData(d);
+  if(d.projects&&d.projects.length)       projects  =d.projects;
+  if(d.notices)                           notices   =d.notices;
+  if(d.campaigns)                         campaigns =d.campaigns;
+  if(d.meetings)                          meetings  =d.meetings;
+  if(d.teamMembers&&d.teamMembers.length) teamMembers=d.teamMembers;
+  if(d.gcClientId)                        gcClientId=d.gcClientId;
+  try{localStorage.setItem(LS_KEY,JSON.stringify({projects,notices,campaigns,meetings,gcClientId,teamMembers}));}catch(e){}
 }
 
 function fbSaveData(){
@@ -4349,18 +4397,11 @@ function fbLoadData(){
       fbDB.ref('spextrum').set({projects,notices,campaigns,meetings,gcClientId,teamMembers})
         .then(()=>{ fbInitDone=true; toast('✅ 데이터를 Firebase에 업로드했습니다'); });
     } else {
-      // Firebase 데이터 불러오기
+      // Firebase 데이터 불러오기 (배열 변환 포함)
       try{
-        if(d.projects&&Array.isArray(d.projects))   projects  =d.projects;
-        if(d.notices&&Array.isArray(d.notices))     notices   =d.notices;
-        if(d.campaigns&&Array.isArray(d.campaigns)) campaigns =d.campaigns;
-        if(d.meetings&&Array.isArray(d.meetings))   meetings  =d.meetings;
-        if(d.teamMembers&&Array.isArray(d.teamMembers)) teamMembers=d.teamMembers;
-        if(d.gcClientId) gcClientId=d.gcClientId;
-        try{localStorage.setItem(LS_KEY,JSON.stringify({projects,notices,campaigns,meetings,gcClientId,teamMembers}));}catch(e){}
-        // UI 새로고침
+        applyFirebaseData(d);
         goHome(); renderList(); updateSb();
-        toast('✅ Firebase에서 최신 데이터를 불러왔습니다');
+        toast('✅ Firebase 데이터 로드 완료');
       }catch(e){console.warn('FB load error:',e);}
       fbInitDone=true;
     }
