@@ -816,9 +816,12 @@ let formDepts=[],formColor='teal',formScheds=[],formWAs=[];
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
 
-function cfm(title,msg,onYes){
+function cfm(title,msg,onYes,yesLabel,noLabel){
   const ov=document.createElement('div');ov.className='c-overlay';
-  ov.innerHTML=`<div class="c-box"><div class="c-title">${title}</div><div class="c-msg">${msg}</div><div class="btn-row"><button class="btn danger-full sm" id="cyes">삭제</button><button class="btn sm" id="cno">취소</button></div></div>`;
+  const yLbl=yesLabel||'삭제';
+  const nLbl=noLabel||'취소';
+  const yClass=yesLabel?'btn pri sm':'btn danger-full sm';
+  ov.innerHTML=`<div class="c-box"><div class="c-title">${title}</div><div class="c-msg" style="white-space:pre-line">${msg}</div><div class="btn-row"><button class="${yClass}" id="cyes">${yLbl}</button><button class="btn sm" id="cno">${nLbl}</button></div></div>`;
   document.body.appendChild(ov);
   ov.querySelector('#cyes').onclick=()=>{document.body.removeChild(ov);onYes()};
   ov.querySelector('#cno').onclick=()=>document.body.removeChild(ov);
@@ -5003,8 +5006,23 @@ function initTokenClient(){
       if(resp.error){toast('연동 실패: '+resp.error);return}
       gcToken=resp.access_token;gcConnected=true;
       updateCalNavDot();
-      toast('Google 연동 완료! Drive에서 데이터 불러오는 중...');
-      await driveLoadData();
+      toast('✅ Google 연동 완료');
+      // Drive 자동 불러오기 제거 — 사용자가 명시적으로 선택해야 함
+      // 대신 Drive에 현재 데이터 저장만 시도
+      const file=await driveFindFile().catch(()=>null);
+      if(file){
+        cfm(
+          '📂 Drive 데이터 발견',
+          'Drive에 저장된 데이터가 있습니다.\n\n⚠️ "불러오기"를 누르면 현재 데이터가 Drive 데이터로 교체됩니다.\n현재 데이터를 유지하려면 "현재 데이터 유지"를 누르세요.',
+          ()=>driveLoadData().then(()=>renderCalSettings()),
+          '불러오기',
+          '현재 데이터 유지'
+        );
+      } else {
+        // Drive에 파일 없음 → 현재 데이터 업로드
+        await driveSaveData(true);
+        toast('현재 데이터를 Drive에 저장했습니다');
+      }
       renderCalSettings();
     }
   });
@@ -5654,6 +5672,33 @@ function setSaveStatus(state){
   if(state==='saved') setTimeout(()=>{if(el.textContent==='✓ 저장됨')el.textContent='';},3000);
 }
 
+// 마지막 스냅샷 저장 시각 (30분마다 1회)
+let _lastSnapshotTs=0;
+const SNAPSHOT_INTERVAL=30*60*1000; // 30분
+const MAX_SNAPSHOTS=20;
+
+function fbSaveSnapshot(){
+  if(!fbConnected||!fbDB) return;
+  const now=Date.now();
+  if(now-_lastSnapshotTs < SNAPSHOT_INTERVAL) return;
+  _lastSnapshotTs=now;
+
+  const ts=new Date().toISOString().slice(0,16).replace('T','_').replace(':','-'); // 2026-04-23_14-30
+  const payload={projects,notices,campaigns,meetings,gcClientId,teamMembers,_savedAt:new Date().toLocaleString('ko-KR')};
+  fbDB.ref('spextrum_backup/'+ts).set(payload)
+    .then(()=>{
+      // 오래된 스냅샷 정리 (MAX_SNAPSHOTS 초과분 삭제)
+      fbDB.ref('spextrum_backup').once('value').then(snap=>{
+        const keys=Object.keys(snap.val()||{}).sort();
+        if(keys.length>MAX_SNAPSHOTS){
+          const toDelete=keys.slice(0,keys.length-MAX_SNAPSHOTS);
+          toDelete.forEach(k=>fbDB.ref('spextrum_backup/'+k).remove());
+        }
+      });
+    })
+    .catch(e=>console.warn('스냅샷 저장 실패:',e));
+}
+
 function fbSaveData(){
   if(!fbConnected||!fbDB) return;
   clearTimeout(fbSaveTimer);
@@ -5667,12 +5712,12 @@ function fbSaveData(){
         _fbSaving=false;
         updateFbStatus('✅ '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}));
         setSaveStatus('saved');
+        fbSaveSnapshot(); // 스냅샷 백업 (30분마다)
       })
       .catch(e=>{
         _fbSaving=false;
         _fbRetryCount++;
         if(_fbRetryCount<=MAX_FB_RETRY){
-          // 자동 재시도
           setTimeout(fbSaveData, 2000*_fbRetryCount);
           setSaveStatus('saving');
         } else {
@@ -7531,9 +7576,55 @@ function openDataPanel(){
     +'</div>'
     +'<div class="btn-row">'
       +'<button class="btn sm danger-full" onclick="cfm(\'데이터 초기화\',\'모든 데이터가 삭제됩니다.\',()=>{localStorage.removeItem(\''+LS_KEY+'\');location.reload()})">초기화</button>'
+      +'<button class="btn sm pri" onclick="openSnapshotPanel()">🕐 백업 복구</button>'
       +'<button class="btn sm" onclick="closeModal()">닫기</button>'
     +'</div>'
   );
+}
+
+function openSnapshotPanel(){
+  if(!fbConnected||!fbDB){
+    toast('Firebase 연결 후 사용 가능합니다');return;
+  }
+  modal('<div class="m-title">🕐 백업 복구</div><div style="font-size:14px;color:var(--text3);margin-bottom:14px">30분마다 자동 저장된 스냅샷입니다. 복구하면 현재 데이터가 교체됩니다.</div><div id="snap-list" style="max-height:360px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--rsm)"><div style="padding:20px;text-align:center;color:var(--text3)">로딩 중...</div></div><div class="btn-row" style="margin-top:14px"><button class="btn sm" onclick="closeModal()">닫기</button></div>');
+  fbDB.ref('spextrum_backup').once('value').then(snap=>{
+    const data=snap.val();
+    if(!data||!Object.keys(data).length){
+      document.getElementById('snap-list').innerHTML='<div style="padding:20px;text-align:center;color:var(--text3)">저장된 스냅샷이 없습니다.<br>앞으로 30분마다 자동 저장됩니다.</div>';
+      return;
+    }
+    const keys=Object.keys(data).sort().reverse(); // 최신순
+    document.getElementById('snap-list').innerHTML=keys.map(k=>{
+      const d=data[k];
+      const projCount=Array.isArray(d.projects)?d.projects.length:0;
+      const taskCount=Array.isArray(d.projects)?d.projects.reduce((s,p)=>s+(p.schedules||[]).reduce((ss,sc)=>ss+(sc.tasks||[]).length,0),0):0;
+      const label=k.replace('_',' ').replace('-',':');
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--text)">${d._savedAt||label}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px">프로젝트 ${projCount}개 · 태스크 ${taskCount}개</div>
+        </div>
+        <button class="btn sm" onclick="restoreSnapshot('${k}')">복구</button>
+      </div>`;
+    }).join('');
+  }).catch(()=>{
+    document.getElementById('snap-list').innerHTML='<div style="padding:20px;text-align:center;color:var(--text3)">불러오기 실패</div>';
+  });
+}
+
+function restoreSnapshot(key){
+  cfm('스냅샷 복구',`"${key}" 시점으로 복구합니다.\n현재 데이터는 덮어써집니다.`,()=>{
+    fbDB.ref('spextrum_backup/'+key).once('value').then(snap=>{
+      const d=snap.val();
+      if(!d){toast('스냅샷 데이터 없음');return;}
+      applyFirebaseData(d);
+      saveToLS();
+      refreshCurrentView();
+      updateSb();
+      closeModal();
+      toast('✅ 복구 완료');
+    });
+  },'복구','취소');
 }
 
 
