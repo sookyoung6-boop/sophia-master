@@ -3479,7 +3479,24 @@ function renderHome(){
     <div id="meet-list">${meetListHTML()}</div>
   </div>
   </div>`;
-  setTimeout(()=>renderHomeCal(), 0);
+  setTimeout(()=>{
+    renderHomeCal();
+    applyHomeSectionOrder();
+  }, 0);
+}
+
+function applyHomeSectionOrder(){
+  const saved=localStorage.getItem('spextrum_home_order');
+  if(!saved) return;
+  try{
+    const order=JSON.parse(saved);
+    const container=document.getElementById('home-sections');
+    if(!container) return;
+    order.forEach(secId=>{
+      const el=container.querySelector(`[data-section="${secId}"]`);
+      if(el) container.appendChild(el);
+    });
+  }catch(e){}
 }
 
 // ⑤ 홈 섹션 드래그 순서 변경 (핸들 span에서 드래그)
@@ -3494,6 +3511,12 @@ function homeSectionDragStart(e){
 function homeSectionDragEnd(e){
   if(_hsDragging){_hsDragging.style.opacity='1';_hsDragging.style.pointerEvents='';}
   _hsDragging=null;
+  // 순서 저장
+  const container=document.getElementById('home-sections');
+  if(container){
+    const order=[...container.querySelectorAll('.h-section')].map(s=>s.dataset.section).filter(Boolean);
+    if(order.length) localStorage.setItem('spextrum_home_order', JSON.stringify(order));
+  }
 }
 function homeSectionDragOver(e){
   e.preventDefault();
@@ -4806,16 +4829,25 @@ function initFirebase(){
         updateFbStatus('⚠️ 오프라인');
       }
     });
-    // 실시간 변경 감지 — 데이터만 업데이트, UI 강제 갱신 안 함
+    // 실시간 변경 감지 — 데이터만 조용히 업데이트, UI 일절 건드리지 않음
     fbDB.ref('spextrum').on('value',snap=>{
       if(!fbInitDone) return;
-      if(_fbSaving) return; // 내가 저장 중일 때는 무시
+      if(_fbSaving) return;
       const d=snap.val();
       if(!d) return;
       try{
         applyFirebaseData(d);
-        // UI는 건드리지 않음 — 화면 튀는 현상 방지
-        updateSb();
+        // UI 갱신 없음 — 화면 튀는 현상 완전 방지
+        // 사이드바 카운트만 조용히 업데이트
+        const active=projects.filter(p=>!p.archived);
+        const el1=document.getElementById('nav-total');
+        const el2=document.getElementById('nav-c1');
+        const el3=document.getElementById('nav-c2');
+        const el4=document.getElementById('nav-c3');
+        if(el1) el1.textContent=active.length;
+        if(el2) el2.textContent=active.filter(p=>p.schedules.some(s=>s.status==='진행중')).length||'';
+        if(el3) el3.textContent=active.filter(p=>p.schedules.some(s=>s.status==='예정')).length||'';
+        if(el4) el4.textContent=active.filter(p=>p.schedules.every(s=>s.status==='완료')).length||'';
       }catch(e){console.warn('Firebase sync error:',e);}
     });
   }catch(e){
@@ -4888,7 +4920,7 @@ function fbSaveData(){
     fbDB.ref('spextrum').set({projects,notices,campaigns,meetings,gcClientId,teamMembers})
       .then(()=>{
         updateFbStatus('✅ 저장됨 '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}));
-        setTimeout(()=>{_fbSaving=false;},500); // 0.5초 후 해제
+        setTimeout(()=>{_fbSaving=false;},3000); // 3초 후 해제 (Firebase 응답 여유)
       })
       .catch(e=>{updateFbStatus('❌ 저장 실패');_fbSaving=false;});
   },1500);
