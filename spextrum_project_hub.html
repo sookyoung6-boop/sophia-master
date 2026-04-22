@@ -4357,13 +4357,23 @@ async function driveLoadData(){
   try{
     const file = await driveFindFile();
     if(!file){
-      // No file yet — this is the first time. Upload current local data.
+      // Drive에 파일 없음 — 현재 로컬 데이터 업로드
       toast('Drive에 기존 파일이 없습니다. 현재 데이터를 업로드합니다.');
       await driveSaveData(true);
       return;
     }
     driveFileId = file.id;
-    // Download file content
+    const driveModified = new Date(file.modifiedTime);
+
+    // Firebase/로컬 데이터가 Drive보다 최신이면 Drive에 덮어쓰기
+    const localSaved = driveLastSaved || new Date(0);
+    if(localSaved > driveModified){
+      toast('로컬 데이터가 더 최신입니다. Drive에 업로드합니다...');
+      await driveSaveData(true);
+      return;
+    }
+
+    // Drive 데이터가 더 최신인 경우만 불러오기
     const res = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`,{
       headers:{'Authorization':'Bearer '+gcToken}
     });
@@ -4371,16 +4381,22 @@ async function driveLoadData(){
     const text = await res.text();
     const d = JSON.parse(text);
     if(!d.projects){toast('Drive 파일 형식이 올바르지 않습니다');return;}
-    // Merge: Drive data wins
+
+    // 프로젝트 수가 Drive보다 로컬이 더 많으면 로컬 우선
+    if(projects.length > d.projects.length){
+      toast('로컬 데이터가 더 많습니다. Drive에 업로드합니다...');
+      await driveSaveData(true);
+      return;
+    }
+
     if(d.projects)  projects  = d.projects;
     if(d.notices)   notices   = d.notices;
     if(d.campaigns) campaigns = d.campaigns;
     if(d.meetings)  meetings  = d.meetings;
-    saveToLS(); // sync to localStorage too
-    driveLastSaved = new Date(file.modifiedTime);
+    saveToLS();
+    driveLastSaved = driveModified;
     updateDriveStatus('synced');
     toast(`✅ Drive에서 불러왔습니다 (${driveLastSaved.toLocaleString('ko-KR')})`);
-    // 현재 뷰만 새로고침 (홈으로 강제 이동 안 함)
     refreshCurrentView();
   }catch(e){
     updateDriveStatus('error');
