@@ -4119,6 +4119,35 @@ function homeSectionDragOver(e){
   if(target){if(insertBefore)container.insertBefore(_hsDragging,target);else target.after(_hsDragging);}
 }
 
+function calUpdateSchedSelect(pid){
+  const sel=document.getElementById('cal-add-sched');
+  if(!sel)return;
+  const p=projects.find(x=>x.id===pid);
+  if(!p){sel.innerHTML='<option value="">스케줄 선택</option>';return;}
+  sel.innerHTML='<option value="">스케줄 선택</option>'+
+    p.schedules.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+}
+
+function calAddTask(dateStr){
+  const pid=document.getElementById('cal-add-proj')?.value;
+  const sid=document.getElementById('cal-add-sched')?.value;
+  const name=document.getElementById('cal-add-name')?.value?.trim();
+  const metaSel=document.getElementById('cal-add-meta')?.value;
+  const metaCustom=document.getElementById('cal-add-meta-custom')?.value?.trim();
+  const meta=metaSel==='__custom__'?metaCustom:(metaSel||'');
+  if(!pid){toast('프로젝트를 선택해주세요');return;}
+  if(!sid){toast('스케줄을 선택해주세요');return;}
+  if(!name){toast('태스크명을 입력해주세요');return;}
+  const p=projects.find(x=>x.id===pid);
+  const s=p?.schedules.find(x=>x.id===sid);
+  if(!s)return;
+  s.tasks.push({id:uid(),name,done:false,meta,dueDate:dateStr,startDate:'',taskStatus:'예정'});
+  saveToLS();
+  renderHomeCal();
+  closeModal();
+  toast(`"${name}" 태스크가 추가됐습니다`);
+}
+
 function openCalDay(yr,mo,d){
   const evs=[];
   const monthNames=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
@@ -4151,8 +4180,11 @@ function openCalDay(yr,mo,d){
     });
   });
 
-  if(!evs.length) return;
+  if(!evs.length){
+    // 일정 없어도 팝업 열어서 태스크 추가 가능하게
+  }
 
+  const dateStr=`${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
   const items=evs.map(ev=>`
     <div onclick="${ev.action}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
       <div style="width:8px;height:8px;border-radius:50%;background:${ev.color};flex-shrink:0"></div>
@@ -4163,15 +4195,41 @@ function openCalDay(yr,mo,d){
       <span style="font-size:14px;padding:2px 7px;border-radius:6px;background:${ev.bg};color:${ev.color}">${ev.type==='meet'?'회의':ev.type==='camp'?'캠페인':'태스크'}</span>
     </div>`).join('');
 
+  // 프로젝트/스케줄 옵션
+  const projOptions=projects.filter(p=>!p.archived).map(p=>
+    `<option value="${p.id}">${p.name}</option>`
+  ).join('');
+
   modal(`
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
       <div style="width:38px;height:38px;border-radius:50%;background:#E24B4A;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff">${d}</div>
       <div>
         <div style="font-size:15px;font-weight:700;color:var(--text)">${yr}년 ${monthNames[mo]} ${d}일</div>
-        <div style="font-size:14px;color:var(--text3)">${dow}요일 · ${evs.length}개 일정</div>
+        <div style="font-size:14px;color:var(--text3)">${dow}요일${evs.length?` · ${evs.length}개 일정`:''}</div>
       </div>
     </div>
-    <div style="margin:0 -20px;border-top:1px solid var(--border)">${items}</div>
+    ${evs.length?`<div style="margin:0 -20px;border-top:1px solid var(--border);margin-bottom:16px">${items}</div>`:''}
+    <div style="border:1px solid var(--border);border-radius:var(--rsm);padding:14px;background:var(--surface2)">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px">+ 태스크 추가</div>
+      <select id="cal-add-proj" style="width:100%;font-size:13px;border:1px solid var(--border);border-radius:var(--rsm);padding:6px 8px;background:var(--surface);color:var(--text);margin-bottom:8px;outline:none"
+        onchange="calUpdateSchedSelect(this.value)">
+        <option value="">프로젝트 선택</option>
+        ${projOptions}
+      </select>
+      <select id="cal-add-sched" style="width:100%;font-size:13px;border:1px solid var(--border);border-radius:var(--rsm);padding:6px 8px;background:var(--surface);color:var(--text);margin-bottom:8px;outline:none">
+        <option value="">스케줄 선택</option>
+      </select>
+      <input id="cal-add-name" class="fi" placeholder="태스크명 입력..." style="width:100%;box-sizing:border-box;margin-bottom:8px"
+        onkeydown="if(event.key==='Enter') calAddTask('${dateStr}')">
+      <select id="cal-add-meta" style="width:100%;font-size:13px;border:1px solid var(--border);border-radius:var(--rsm);padding:6px 8px;background:var(--surface);color:var(--text);margin-bottom:8px;outline:none"
+        onchange="if(this.value==='__custom__') document.getElementById('cal-add-meta-custom').style.display='block'; else document.getElementById('cal-add-meta-custom').style.display='none'">
+        <option value="">담당자 선택 (선택사항)</option>
+        ${Object.keys(MEMBER_DEPT).map(m=>`<option value="${m}">${m} (${MEMBER_DEPT[m]})</option>`).join('')}
+        <option value="__custom__">직접 입력...</option>
+      </select>
+      <input id="cal-add-meta-custom" class="fi" placeholder="직접 입력 (외주 등)" style="width:100%;box-sizing:border-box;margin-bottom:8px;display:none">
+      <button class="btn sm pri" style="width:100%" onclick="calAddTask('${dateStr}')">추가</button>
+    </div>
     <div class="btn-row" style="margin-top:14px"><button class="btn sm" onclick="closeModal()">닫기</button></div>
   `);
 }
@@ -4273,7 +4331,7 @@ function renderHomeCal(){
 
     cells+=`<div style="background:var(--surface);min-height:90px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px;cursor:${evs.length?'pointer':'default'};${isToday?'box-shadow:inset 0 0 0 2px #E24B4A':''}">
       <div style="display:flex;justify-content:flex-end;margin-bottom:4px">
-        <span onclick="${evs.length?`openCalDay(${yr},${mo},${d})`:''}" style="width:22px;height:22px;border-radius:50%;background:${numBg};color:${numColor};font-size:14px;font-weight:${isToday?700:500};display:flex;align-items:center;justify-content:center;cursor:${evs.length?'pointer':'default'}">${d}</span>
+        <span onclick="openCalDay(${yr},${mo},${d})" style="width:22px;height:22px;border-radius:50%;background:${numBg};color:${numColor};font-size:14px;font-weight:${isToday?700:500};display:flex;align-items:center;justify-content:center;cursor:pointer">${d}</span>
       </div>
       ${evChips}${moreChip}
     </div>`;
