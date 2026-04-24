@@ -4224,7 +4224,7 @@ function openCalDay(yr,mo,d){
       <select id="cal-add-meta" style="width:100%;font-size:13px;border:1px solid var(--border);border-radius:var(--rsm);padding:6px 8px;background:var(--surface);color:var(--text);margin-bottom:8px;outline:none"
         onchange="if(this.value==='__custom__') document.getElementById('cal-add-meta-custom').style.display='block'; else document.getElementById('cal-add-meta-custom').style.display='none'">
         <option value="">담당자 선택 (선택사항)</option>
-        ${Object.keys(MEMBER_DEPT).map(m=>`<option value="${m}">${m} (${MEMBER_DEPT[m]})</option>`).join('')}
+        ${(teamMembers||Object.keys(MEMBER_DEPT)).map(m=>`<option value="${m}">${m}${MEMBER_DEPT[m]?' ('+MEMBER_DEPT[m]+')':''}</option>`).join('')}
         <option value="__custom__">직접 입력...</option>
       </select>
       <input id="cal-add-meta-custom" class="fi" placeholder="직접 입력 (외주 등)" style="width:100%;box-sizing:border-box;margin-bottom:8px;display:none">
@@ -7950,8 +7950,8 @@ function openWeeklyReport(){
   toast('주간 리포트 생성 완료! Ctrl+P로 PDF 저장 가능');
 }
 
-goHome();
 renderList();
+goHome();
 
 // ─── 태스크 사이드 패널 ──────────────────────────────────────
 let _tspPid=null,_tspSid=null,_tspTid=null;
@@ -8005,12 +8005,12 @@ function openSidePanel(pid,sid,tid){
           <select id="tsp-meta-sel" style="font-size:14px;border:1px solid var(--border);border-radius:var(--rsm);padding:4px 8px;background:var(--surface);color:var(--text);outline:none;width:100%"
             onchange="tspHandleMetaSel(this.value)">
             <option value="">-- 선택 --</option>
-            ${Object.keys(MEMBER_DEPT).map(m=>`<option value="${m}"${t.meta===m?' selected':''}>${m} (${MEMBER_DEPT[m]})</option>`).join('')}
-            <option value="__custom__"${!Object.keys(MEMBER_DEPT).includes(t.meta)&&t.meta?' selected':''}>직접 입력...</option>
+            ${(teamMembers||Object.keys(MEMBER_DEPT)).map(m=>`<option value="${m}"${t.meta===m?' selected':''}>${m}${MEMBER_DEPT[m]?' ('+MEMBER_DEPT[m]+')':''}</option>`).join('')}
+            <option value="__custom__"${!(teamMembers||Object.keys(MEMBER_DEPT)).includes(t.meta)&&t.meta?' selected':''}>직접 입력...</option>
           </select>
           <input id="tsp-meta-custom" type="text"
             placeholder="직접 입력 (외주, 복수 담당자 등)"
-            value="${!Object.keys(MEMBER_DEPT).includes(t.meta)?t.meta||'':''}"
+            value="${!(teamMembers||Object.keys(MEMBER_DEPT)).includes(t.meta)?t.meta||'':''}"
             style="font-size:14px;border:1px solid var(--border);border-radius:var(--rsm);padding:4px 8px;background:var(--surface);color:var(--text);outline:none;width:100%;box-sizing:border-box;display:${!Object.keys(MEMBER_DEPT).includes(t.meta)&&t.meta?'block':'none'}"
             onblur="tspSaveField('meta',this.value)">
         </div>
