@@ -5976,7 +5976,7 @@ function applyFirebaseData(d){
 
 let _fbSaving=false;
 let _fbRetryCount=0;
-let _localSavedAt=Date.now();
+let _localSavedAt=(()=>{try{const d=JSON.parse(localStorage.getItem('spextrum_v1'));return d?._savedAt||0;}catch{return 0;}})();
 // 기기 고유 ID — 자기 자신이 저장한 에코를 무시하기 위해 사용
 const _deviceId=(()=>{
   let id=localStorage.getItem('_spx_device_id');
@@ -6062,20 +6062,33 @@ function fbSaveData(){
 
 function fbLoadData(){
   if(!fbConnected||!fbDB) return;
-  // ★ 핵심 원칙: 연결 시 로컬 데이터를 Firebase에 업로드. 절대 자동 다운로드 안 함.
-  // 로컬이 항상 source of truth. Firebase는 팀원 간 공유 채널일 뿐.
-  const now=Date.now();
-  _localSavedAt=now;
-  fbDB.ref('spextrum').set({projects,notices,campaigns,meetings,gcClientId,teamMembers,_savedAt:now,_deviceId})
-    .then(()=>{
+  fbDB.ref('spextrum').once('value').then(snap=>{
+    const d=snap.val();
+    const localTs=_localSavedAt||0;
+    const remoteTs=d?._savedAt||0;
+    if(!d||localTs>=remoteTs){
+      // 로컬이 최신이거나 Firebase 비어있음 → 로컬을 Firebase에 업로드
+      const now=Date.now();
+      _localSavedAt=now;
+      fbDB.ref('spextrum').set({projects,notices,campaigns,meetings,gcClientId,teamMembers,_savedAt:now,_deviceId})
+        .then(()=>{fbInitDone=true;setSaveStatus('saved');})
+        .catch(e=>{console.warn('[FB] 업로드 실패:',e);fbInitDone=true;});
+    } else {
+      // Firebase가 더 최신 → Firebase 데이터 적용
+      try{
+        applyFirebaseData(d);
+        _localSavedAt=remoteTs;
+        refreshCurrentView();
+        updateSb();
+        setSaveStatus('saved');
+      }catch(e){console.warn('FB load error:',e);}
       fbInitDone=true;
-      setSaveStatus('saved');
-      console.log('[FB] 로컬 데이터 업로드 완료 → 실시간 리슨 시작');
-    })
-    .catch(e=>{
-      console.warn('[FB] 업로드 실패:', e);
-      fbInitDone=true;
-    });
+    }
+  }).catch(e=>{
+    console.warn('FB load failed:',e);
+    // Firebase 접근 실패 시 로컬 데이터로 계속
+    fbInitDone=true;
+  });
 }
 
 function updateFbStatus(msg){
@@ -6096,7 +6109,7 @@ function refreshCurrentView(){
 
 function saveToLS(){
   try{
-    const data={projects,notices,campaigns,meetings,gcClientId,teamMembers};
+    const now2=Date.now();_localSavedAt=now2;const data={projects,notices,campaigns,meetings,gcClientId,teamMembers,_savedAt:now2};
     localStorage.setItem(LS_KEY,JSON.stringify(data));
     // Drive 자동 동기화 예약
     scheduleDriveSync();
