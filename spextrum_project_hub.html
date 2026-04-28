@@ -734,7 +734,7 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
   <div class="view" id="v-home"><div class="home-content" id="home-content"></div></div>
   <div class="view active" id="v-list">
     <div class="content">
-      <div style="margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
         <div>
           <h1 style="font-size:19px;font-weight:700">프로젝트</h1>
           <p id="list-sub" style="font-size:14px;color:var(--text3);margin-top:3px"></p>
@@ -750,6 +750,8 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
           </button>
         </div>
       </div>
+      <!-- 카테고리 필터 -->
+      <div id="cat-filter-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px"></div>
       <div id="proj-grid"></div>
     </div>
   </div>
@@ -901,20 +903,46 @@ function renderList(){
   renderProjectGrid();
 }
 
+let filterCat=null; // 카테고리 필터
+
+const PROJ_CATS=['SPEXTRUM','쓰리포','Lapalette','B2B','Commercial','지원사업/공모','회사운영','전시'];
+
+function renderCatFilterBar(){
+  const bar=document.getElementById('cat-filter-bar');
+  if(!bar)return;
+  const active=projects.filter(p=>!p.archived);
+  // 실제 사용 중인 카테고리만 표시
+  const usedCats=PROJ_CATS.filter(c=>active.some(p=>p.tag===c));
+  if(!usedCats.length){bar.innerHTML='';return;}
+  bar.innerHTML=`
+    <button class="filt-btn${!filterCat?' on':''}" onclick="filterCat=null;renderProjectGrid()">전체</button>
+    ${usedCats.map(c=>`<button class="filt-btn${filterCat===c?' on':''}" onclick="filterCat='${c}';renderProjectGrid()">${c}</button>`).join('')}`;
+}
+
 function renderProjectGrid(){
   if(!projects) return;
   setBc([{label:'전체 프로젝트'}]);
   if(!document.getElementById('proj-grid')){const kb=document.getElementById('kanban-board');if(kb){const d=document.createElement('div');d.id='proj-grid';d.className='proj-grid';kb.replaceWith(d);}}
-  // 아카이브된 프로젝트 제외
+
   let list=(filterStatus
     ?projects.filter(p=>!p.archived&&p.schedules.some(s=>s.status===filterStatus))
     :projects.filter(p=>!p.archived));
-  document.getElementById('list-sub').textContent=filterStatus?`'${filterStatus}' 포함 · ${list.length}개`:`총 ${list.length}개 프로젝트`;
+
+  // 카테고리 필터 적용
+  if(filterCat) list=list.filter(p=>p.tag===filterCat);
+
+  document.getElementById('list-sub').textContent=
+    filterCat?`${filterCat} · ${list.length}개`:
+    filterStatus?`'${filterStatus}' 포함 · ${list.length}개`:
+    `총 ${list.length}개 프로젝트`;
+
+  renderCatFilterBar();
+
   const grid=document.getElementById('proj-grid');
-  grid.className='proj-grid';
   grid.setAttribute('ondragover','projGridDragOver(event)');
   grid.setAttribute('ondrop','event.preventDefault()');
-  grid.innerHTML=list.map(p=>{
+
+  function cardHTML(p){
     const c=COLORS[p.color],pr=prog(p);
     const allT=p.schedules.flatMap(s=>s.tasks);
     return `<div class="proj-card" data-pid="${p.id}" draggable="true"
@@ -931,7 +959,39 @@ function renderProjectGrid(){
       <div class="pb"><div class="pbf" style="width:${pr}%;background:${c.dot}"></div></div>
       <div class="pb-pct">${pr}% · ${allT.filter(t=>t.done).length}/${allT.length}</div>
     </div>`;
-  }).join('')+`<div class="proj-card add-card" onclick="openNew()"><div class="add-icon">+</div><div style="font-size:14px;font-weight:500">새 프로젝트 추가</div><div style="font-size:14px">템플릿 입력 후 자동 생성</div></div>`;
+  }
+
+  if(filterCat){
+    // 카테고리 선택 시 — 그냥 그리드
+    grid.className='proj-grid';
+    grid.innerHTML=list.map(cardHTML).join('')+
+      `<div class="proj-card add-card" onclick="openNew()"><div class="add-icon">+</div><div style="font-size:14px;font-weight:500">새 프로젝트 추가</div><div style="font-size:14px">템플릿 입력 후 자동 생성</div></div>`;
+  } else {
+    // 전체 보기 — 카테고리별 그룹
+    const usedCats=PROJ_CATS.filter(c=>list.some(p=>p.tag===c));
+    const uncategorized=list.filter(p=>!p.tag||!PROJ_CATS.includes(p.tag));
+
+    grid.className=''; // 그리드 해제, 섹션으로 구성
+    grid.innerHTML=[
+      ...usedCats.map(cat=>{
+        const catProjs=list.filter(p=>p.tag===cat);
+        return `<div style="margin-bottom:28px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;cursor:pointer" onclick="filterCat='${cat}';renderProjectGrid()">
+            <span style="font-size:13px;font-weight:700;color:var(--text)">${cat}</span>
+            <span style="font-size:12px;color:var(--text3)">${catProjs.length}개</span>
+            <span style="font-size:12px;color:var(--text3);margin-left:auto">전체 보기 →</span>
+          </div>
+          <div class="proj-grid">${catProjs.map(cardHTML).join('')}</div>
+        </div>`;
+      }),
+      uncategorized.length?`<div style="margin-bottom:28px">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">미분류 · ${uncategorized.length}개</div>
+        <div class="proj-grid">${uncategorized.map(cardHTML).join('')}</div>
+      </div>`:'',
+      `<div style="margin-top:8px"><div class="proj-grid"><div class="proj-card add-card" onclick="openNew()"><div class="add-icon">+</div><div style="font-size:14px;font-weight:500">새 프로젝트 추가</div><div style="font-size:14px">템플릿 입력 후 자동 생성</div></div></div></div>`
+    ].join('');
+  }
+
   showView('v-list');updateSb();
 }
 let _projDragId=null;
