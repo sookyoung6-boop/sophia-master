@@ -1126,7 +1126,11 @@ function renderProj(){
   <div style="margin-bottom:32px">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
       <div style="flex:1;min-width:220px">
-        <span class="ptag" style="background:${c.tag};color:${c.tagT};margin-bottom:12px;display:inline-block;font-size:14px;padding:3px 10px;border-radius:20px;font-weight:600">${p.tag}</span>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <span class="ptag" style="background:${c.tag};color:${c.tagT};display:inline-block;font-size:14px;padding:3px 10px;border-radius:20px;font-weight:600;cursor:pointer"
+            onclick="openEditProjMeta('${p.id}')" title="카테고리/색상 수정">${p.tag}</span>
+          <button class="btn xs ghost" onclick="openEditProjMeta('${p.id}')" title="카테고리/색상 수정" style="font-size:12px;padding:2px 7px">✎ 설정</button>
+        </div>
         <div contenteditable="true" spellcheck="false"
           style="font-size:26px;font-weight:700;color:var(--text);line-height:1.2;outline:none;border-bottom:2px solid transparent;transition:border-color .15s;padding:2px 3px;border-radius:3px"
           onfocus="this.style.borderBottomColor='var(--text)';this.style.background='var(--surface2)'"
@@ -1312,7 +1316,25 @@ function projMainHTML(p,c,pr,allT,doneT){
         </div>
         ${fieldRow('담당자','manager','예: 김수경','fi-1')}
         ${fieldRow('참여자','members','예: 김수경, 이은주','fi-2')}
-        ${fieldRow('출시 예정일','launchDate','예: 2026년 7월 말','fi-3')}
+        <div style="display:grid;grid-template-columns:90px 1fr;border-bottom:1px solid var(--border)">
+          <div style="padding:9px 12px;font-size:14px;color:var(--text3);background:var(--surface2);display:flex;align-items:center;font-weight:500">오픈일자</div>
+          <div style="padding:7px 12px;display:flex;align-items:center;gap:10px">
+            <input type="date" id="fi-launch"
+              value="${p.launchDate||''}"
+              style="font-size:14px;border:none;outline:none;background:transparent;color:var(--text);padding:2px 4px"
+              onchange="saveProjField('${p.id}','launchDate',this.value);renderHomeCal()">
+            ${p.launchDate?`<span style="font-size:12px;color:${
+              Math.round((parseLocalDate(p.launchDate)-new Date())/864e5)<=0?'#E24B4A':
+              Math.round((parseLocalDate(p.launchDate)-new Date())/864e5)<=7?'#EF9F27':'#378ADD'
+            };font-weight:600">${
+              Math.round((parseLocalDate(p.launchDate)-new Date())/864e5)<0?
+                `D+${-Math.round((parseLocalDate(p.launchDate)-new Date())/864e5)}`:
+              Math.round((parseLocalDate(p.launchDate)-new Date())/864e5)===0?
+                'D-DAY':
+                `D-${Math.round((parseLocalDate(p.launchDate)-new Date())/864e5)}`
+            }</span>`:''}
+          </div>
+        </div>
         ${fieldRow('카테고리','tag','예: 제품개발','fi-4')}
         ${noteField('프로젝트 목적','purpose','브랜드·고객·수익 관점에서 이 프로젝트가 왜 필요한가...')}
         ${noteField('목표 결과물','delivItems','예: 제품 패키지 3종, 브랜드 가이드, SNS 런칭 콘텐츠 10개',true)}
@@ -1730,6 +1752,8 @@ function pkToggleTask(pid,sid,tid){
   if(!t)return;
   t.done=!t.done;
   t.taskStatus=t.done?'완료':(t.taskStatus==='완료'?'예정':t.taskStatus||'예정');
+  if(t.done) t.completedAt=new Date().toISOString();
+  else delete t.completedAt;
   logHistory(pid, t.done?'✅':'↩️', `"${t.name}" ${t.done?'완료':'완료 취소'}`);
 
   // ① 즉시 체크박스 UI만 업데이트 (빠른 반응)
@@ -3887,6 +3911,164 @@ function delRef(pid,fid){
 }
 
 // NEW PROJECT FORM
+function openEditProjMeta(pid){
+  const p=projects.find(x=>x.id===pid);if(!p)return;
+  modal(`<div class="m-title">✎ 프로젝트 설정</div>
+  <div class="frow"><label class="fl">카테고리</label>
+    <input id="em-tag" class="fi" value="${p.tag||''}" placeholder="예: 제품개발, B2B">
+  </div>
+  <div class="frow"><label class="fl">컬러</label>
+    <div class="color-row" id="em-colors">
+      ${Object.entries(COLORS).map(([k,v])=>`<div class="col-opt${p.color===k?' on':''}" style="background:${v.dot}" onclick="this.parentNode.querySelectorAll('.col-opt').forEach(x=>x.classList.remove('on'));this.classList.add('on');_emColor='${k}'"></div>`).join('')}
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn pri sm" onclick="saveEditProjMeta('${pid}')">저장</button>
+    <button class="btn sm" onclick="closeModal()">취소</button>
+  </div>`);
+  window._emColor=p.color;
+}
+
+function saveEditProjMeta(pid){
+  const p=projects.find(x=>x.id===pid);if(!p)return;
+  const tag=document.getElementById('em-tag').value.trim();
+  if(tag) p.tag=tag;
+  if(window._emColor) p.color=window._emColor;
+  saveToLS();closeModal();openProj(pid);
+}
+
+// ── 반복 태스크 ────────────────────────────────────────────────
+function openRecurringTaskModal(pid,sid){
+  const p=projects.find(x=>x.id===pid);
+  const s=p?.schedules.find(x=>x.id===sid);
+  if(!s)return;
+  modal(`<div class="m-title">🔁 반복 태스크 추가</div>
+  <div class="frow"><label class="fl">태스크명</label><input id="rt-name" class="fi" placeholder="예: 주간 회의 준비"></div>
+  <div class="frow"><label class="fl">담당자</label>
+    <select id="rt-meta" class="fi">
+      <option value="">선택 안 함</option>
+      ${(teamMembers||Object.keys(MEMBER_DEPT)).map(m=>`<option value="${m}">${m}</option>`).join('')}
+    </select>
+  </div>
+  <div class="frow"><label class="fl">반복 주기</label>
+    <select id="rt-freq" class="fi" onchange="updateRtPreview()">
+      <option value="weekly">매주</option>
+      <option value="biweekly">2주마다</option>
+      <option value="monthly">매월</option>
+    </select>
+  </div>
+  <div class="frow" id="rt-day-row"><label class="fl">반복 요일</label>
+    <select id="rt-day" class="fi" onchange="updateRtPreview()">
+      ${['월','화','수','목','금','토','일'].map((d,i)=>`<option value="${i+1}">${d}요일</option>`).join('')}
+    </select>
+  </div>
+  <div class="frow"><label class="fl">시작일</label><input type="date" id="rt-start" class="fi" value="${new Date().toISOString().slice(0,10)}"></div>
+  <div class="frow"><label class="fl">몇 회</label><input id="rt-count" class="fi" type="number" min="1" max="52" value="4" placeholder="생성 횟수"></div>
+  <div id="rt-preview" style="font-size:13px;color:var(--text3);margin:8px 0 14px;padding:8px;background:var(--surface2);border-radius:var(--rsm)"></div>
+  <div class="btn-row">
+    <button class="btn pri sm" onclick="createRecurringTasks('${pid}','${sid}')">생성</button>
+    <button class="btn sm" onclick="closeModal()">취소</button>
+  </div>`);
+  updateRtPreview();
+}
+
+function updateRtPreview(){
+  const freq=document.getElementById('rt-freq')?.value;
+  const el=document.getElementById('rt-preview');
+  if(!el)return;
+  if(freq==='monthly') {
+    document.getElementById('rt-day-row').style.display='none';
+    el.textContent='매월 같은 날짜에 태스크가 생성됩니다';
+  } else {
+    document.getElementById('rt-day-row').style.display='';
+    const days=['월','화','수','목','금','토','일'];
+    const day=document.getElementById('rt-day')?.value;
+    const interval=freq==='biweekly'?'2주':'1주';
+    el.textContent=`매 ${interval} ${days[day-1]}요일에 태스크가 생성됩니다`;
+  }
+}
+
+function createRecurringTasks(pid,sid){
+  const p=projects.find(x=>x.id===pid),s=p?.schedules.find(x=>x.id===sid);
+  if(!s)return;
+  const name=document.getElementById('rt-name').value.trim();
+  const meta=document.getElementById('rt-meta').value;
+  const freq=document.getElementById('rt-freq').value;
+  const day=parseInt(document.getElementById('rt-day').value)||1;
+  const start=document.getElementById('rt-start').value;
+  const count=parseInt(document.getElementById('rt-count').value)||4;
+  if(!name){toast('태스크명을 입력해주세요');return;}
+
+  const startDate=new Date(start);
+  let created=0;
+  for(let i=0;i<count;i++){
+    const d=new Date(startDate);
+    if(freq==='monthly'){
+      d.setMonth(d.getMonth()+i);
+    } else {
+      const interval=freq==='biweekly'?14:7;
+      // 첫 번째 반복일 찾기
+      if(i===0){
+        const dow=d.getDay()||7;
+        const diff=(day-dow+7)%7;
+        d.setDate(d.getDate()+diff);
+      } else {
+        const base=new Date(startDate);
+        const dow=base.getDay()||7;
+        const diff=(day-dow+7)%7;
+        base.setDate(base.getDate()+diff);
+        d.setTime(base.getTime()+i*interval*864e5);
+      }
+    }
+    const dueStr=d.toISOString().slice(0,10);
+    s.tasks.push({id:uid(),name:`[반복] ${name}`,done:false,meta,dueDate:dueStr,startDate:'',taskStatus:'예정',recurring:true});
+    created++;
+  }
+  saveToLS();closeModal();
+  reRenderBlocks(pid);
+  toast(`반복 태스크 ${created}개 생성됐습니다`);
+}
+
+// ── 프로젝트 템플릿 ────────────────────────────────────────────
+const PROJECT_TEMPLATES={
+  '제품개발':{
+    color:'amber',tag:'제품개발',
+    schedules:[
+      {name:'기획',tasks:['컨셉 기획','타겟 정의','레퍼런스 수집','예산 수립']},
+      {name:'디자인',tasks:['시안 제작','내부 컨펌 요청','수정 반영']},
+      {name:'생산',tasks:['도면 작성','작업지시서 발행','샘플 감리 1차','샘플 감리 2차','샘플 감리 3차','불량 발생 시 보고서 작성']},
+      {name:'출시',tasks:['제품 촬영','상세페이지 제작','판매 채널 등록','프로모션 기획']},
+    ]
+  },
+  '지원사업':{
+    color:'teal',tag:'지원사업',
+    schedules:[
+      {name:'사전조사',tasks:['공고 분석','자격요건 확인','제출 서류 목록 작성']},
+      {name:'서류 준비',tasks:['사업계획서 작성','외부발송 전 체크리스트 확인','증빙서류 수집']},
+      {name:'제출',tasks:['최종 검토','제출 완료','접수 확인']},
+      {name:'사후',tasks:['결과 확인','선정 시 계약 및 협약 진행','정산 준비']},
+    ]
+  },
+  'B2B':{
+    color:'blue',tag:'B2B',
+    schedules:[
+      {name:'준비',tasks:['바이어 온보딩','견적서(내부용) 작성','견적서(외부용) 발송']},
+      {name:'미팅',tasks:['미팅 일정 조율','제안 자료 준비','미팅 진행']},
+      {name:'계약',tasks:['계약서 검토','계약 체결','내부 공유']},
+      {name:'납품',tasks:['작업지시서 발행','감리','인보이스/패킹리스트 작성','납품','정산']},
+    ]
+  },
+  '전시':{
+    color:'purple',tag:'전시',
+    schedules:[
+      {name:'기획',tasks:['컨셉 기획','예산 수립','공간 섭외']},
+      {name:'준비',tasks:['전시 준비 체크리스트 확인','전시물 제작','홍보물 제작','사전 홍보 시작']},
+      {name:'현장',tasks:['설치 및 세팅','전시 일일 보고서 작성','바이어 상담 기록']},
+      {name:'사후',tasks:['철수','바이어 팔로업 이메일 발송','결과 보고','프로젝트 정리서 작성']},
+    ]
+  },
+};
+
 function openNew(){
   formDepts=[];formColor='teal';formScheds=[];formWAs=[];
   setBc([{label:'전체 프로젝트',fn:'goList()'},{label:'새 프로젝트'}]);
@@ -3894,6 +4076,12 @@ function openNew(){
 }
 function renderNewForm(){
   document.getElementById('new-form-body').innerHTML=`
+  <div class="frow"><label class="fl">템플릿으로 시작</label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn sm ghost" onclick="applyProjTemplate('')" id="tpl-none" style="border:2px solid var(--text)">비어있는 프로젝트</button>
+      ${Object.keys(PROJECT_TEMPLATES).map(k=>`<button class="btn sm ghost" onclick="applyProjTemplate('${k}')" id="tpl-${k}">${k}</button>`).join('')}
+    </div>
+  </div>
   <div class="frow"><label class="fl">프로젝트명 <span>*</span></label><input class="fi" id="f-name" placeholder="예: 전향 2차 컬렉션 런칭"></div>
   <div class="two-col">
     <div class="frow"><label class="fl">카테고리</label><input class="fi" id="f-tag" placeholder="예: 제품개발"></div>
@@ -3944,6 +4132,34 @@ function fWAsHTML(){
     <div style="margin-top:9px"><label class="fl">주요 결과물 <span>줄바꿈으로 구분</span></label><textarea class="fi" rows="3" placeholder="결과물 A&#10;결과물 B" oninput="updateFW('${wa.id}','dels',this.value)" style="font-size:14px">${wa.dels}</textarea></div>
   </div>`).join('');
 }
+function applyProjTemplate(key){
+  // 버튼 선택 표시
+  document.querySelectorAll('[id^="tpl-"]').forEach(b=>b.style.border='1px solid var(--border2)');
+  const btn=document.getElementById(`tpl-${key||'none'}`);
+  if(btn) btn.style.border='2px solid var(--text)';
+
+  if(!key||!PROJECT_TEMPLATES[key]){
+    formScheds=[];formColor='teal';
+    document.getElementById('form-scheds').innerHTML=fSchedsHTML();
+    return;
+  }
+  const tpl=PROJECT_TEMPLATES[key];
+  formColor=tpl.color||'teal';
+  document.querySelectorAll('.col-opt').forEach((el,i)=>el.classList.toggle('on',Object.keys(COLORS)[i]===formColor));
+
+  formScheds=tpl.schedules.map(s=>({
+    id:uid(),name:s.name,date:'',status:'예정',
+    tasks:s.tasks.map(t=>({id:uid(),name:t,done:false,meta:'',dueDate:'',startDate:'',taskStatus:'예정'}))
+  }));
+  document.getElementById('form-scheds').innerHTML=fSchedsHTML();
+
+  // 카테고리 자동 입력
+  const tagEl=document.getElementById('f-tag');
+  if(tagEl&&!tagEl.value) tagEl.value=tpl.tag||key;
+
+  toast(`"${key}" 템플릿이 적용됐습니다`);
+}
+
 function setFC(k){formColor=k;document.querySelectorAll('.col-opt').forEach((el,i)=>el.classList.toggle('on',Object.keys(COLORS)[i]===k))}
 function toggleFD(d){formDepts.includes(d)?formDepts=formDepts.filter(x=>x!==d):formDepts.push(d);document.querySelectorAll('.dept-opt').forEach(el=>el.classList.toggle('on',formDepts.includes(el.textContent)))}
 function addFSched(){formScheds.push({id:uid(),name:'',date:'',status:'예정'});document.getElementById('form-scheds').innerHTML=fSchedsHTML()}
@@ -3960,7 +4176,13 @@ function createProj(){
   const start=document.getElementById('f-start').value.trim()||'2026';
   const end=document.getElementById('f-end').value.trim()||'2026';
   const overview=document.getElementById('f-overview').value.trim();
-  const scheds=formScheds.map(s=>({id:uid(),name:s.name||'단계',date:s.date,status:s.status,tasks:[]}));
+  const scheds=formScheds.map(s=>({
+    id:uid(),name:s.name||'단계',date:s.date||'',status:s.status||'예정',
+    tasks:(s.tasks||[]).map(t=>typeof t==='string'
+      ?{id:uid(),name:t,done:false,meta:'',dueDate:'',startDate:'',taskStatus:'예정'}
+      :{...t,id:uid(),done:false,completedAt:undefined}
+    )
+  }));
   const was=formWAs.map(wa=>({id:uid(),name:wa.name||'카테고리',deliverables:(wa.dels||'').split('\n').filter(l=>l.trim()).map(l=>({id:uid(),name:l.trim(),done:false,file:null}))}));
   projects.push({id:uid(),color:formColor,name,tag,desc:overview.slice(0,70)||(name+' 프로젝트'),start,end,overview,departments:formDepts.length?formDepts:['미정'],schedules:scheds,workAreas:was,refFiles:[]});
   saveToLS();toast('프로젝트가 생성됐습니다');navAll();
@@ -4162,6 +4384,14 @@ function openCalDay(yr,mo,d){
     const my=parseInt(pts[0]),mm=parseInt(pts[1])-1,md=parseInt(pts[2]);
     if(my===yr&&mm===mo&&md===d) evs.push({type:'meet',label:m.title,color:'#185fa5',bg:'#e6f1fb',action:`closeModal();goHome()`});
   });
+  // 오픈일자 이벤트
+  projects.filter(p=>p.launchDate&&!p.archived).forEach(p=>{
+    const ld=parseLocalDate(p.launchDate);
+    if(ld&&ld.getFullYear()===yr&&ld.getMonth()===mo&&ld.getDate()===d){
+      const c=COLORS[p.color];
+      evs.push({type:'launch',label:`🚀 ${p.name} 오픈`,color:c.dot,bg:c.tag,proj:p.name,pid:p.id,action:`closeModal();openProj('${p.id}')`});
+    }
+  });
   projects.forEach(p=>{
     const c=COLORS[p.color];
     p.schedules.forEach(s=>s.tasks.forEach(t=>{
@@ -4277,6 +4507,15 @@ function renderHomeCal(){
     if(my===yr&&mm===mo) addEv(md,{type:'meet',label:m.title||'',color:'#185fa5',bg:'#e6f1fb'});
   });
 
+  // 1.5 오픈일자
+  (projects||[]).filter(p=>p&&p.launchDate&&!p.archived).forEach(p=>{
+    const d=parseLocalDate(p.launchDate);
+    if(d&&d.getFullYear()===yr&&d.getMonth()===mo){
+      const c=COLORS[p.color]||COLORS['teal'];
+      addEv(d.getDate(),{type:'launch',label:`🚀 ${p.name}`,color:c.dot,bg:c.tag,proj:p.name,pid:p.id});
+    }
+  });
+
   // 2. Task due dates (all projects)
   (projects||[]).forEach(p=>{
     if(!p||!p.schedules)return;
@@ -4327,7 +4566,7 @@ function renderHomeCal(){
     const evChips=evs.slice(0,3).map(ev=>`
       <div style="font-size:14px;padding:2px 6px;border-radius:4px;background:${ev.bg};color:${ev.color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;margin-bottom:2px;line-height:1.4"
         title="${ev.label}${ev.proj?' ('+ev.proj+')':''}"
-        onclick="${ev.type==='task'&&ev.tid?`openSidePanel('${ev.pid}','${ev.sid}','${ev.tid}')`:ev.type==='meet'?'goHome()':ev.pid?`openProj('${ev.pid}')`:'goHome()'}">${ev.label}</div>`).join('');
+        onclick="${ev.type==='task'&&ev.tid?`openSidePanel('${ev.pid}','${ev.sid}','${ev.tid}')`:ev.type==='launch'&&ev.pid?`openProj('${ev.pid}')`:ev.type==='meet'?'goHome()':ev.pid?`openProj('${ev.pid}')`:'goHome()'}">${ev.label}</div>`).join('');
     const moreChip=evs.length>3?`<div onclick="openCalDay(${yr},${mo},${d})" style="font-size:14px;color:#185fa5;padding:1px 6px;cursor:pointer;font-weight:600;background:#e6f1fb;border-radius:4px;display:inline-block" onmouseenter="this.style.opacity='.7'" onmouseleave="this.style.opacity='1'">+${evs.length-3}개 더보기</div>`:'';
 
     cells+=`<div style="background:var(--surface);min-height:90px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px;cursor:${evs.length?'pointer':'default'};${isToday?'box-shadow:inset 0 0 0 2px #E24B4A':''}">
@@ -4951,7 +5190,7 @@ function renderCalSettings(){
       <div style="font-size:14px;font-weight:700;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">Drive 동기화</div>
       <div style="font-size:14px;color:var(--text2);margin-bottom:12px;line-height:1.5">${driveStatusText}</div>
       ${gcConnected?`<div style="display:flex;gap:6px">
-        <button class="btn sm" onclick="driveLoadData().then(()=>renderCalSettings())" style="flex:1">⬇ 불러오기</button>
+        
         <button class="btn sm pri" onclick="driveSaveData(false)" style="flex:1">⬆ 저장</button>
       </div>`:`<div style="font-size:14px;color:var(--text3)">연결 후 사용 가능</div>`}
     </div>
@@ -5066,22 +5305,9 @@ function initTokenClient(){
       gcToken=resp.access_token;gcConnected=true;
       updateCalNavDot();
       toast('✅ Google 연동 완료');
-      // Drive 자동 불러오기 제거 — 사용자가 명시적으로 선택해야 함
-      // 대신 Drive에 현재 데이터 저장만 시도
-      const file=await driveFindFile().catch(()=>null);
-      if(file){
-        cfm(
-          '📂 Drive 데이터 발견',
-          'Drive에 저장된 데이터가 있습니다.\n\n⚠️ "불러오기"를 누르면 현재 데이터가 Drive 데이터로 교체됩니다.\n현재 데이터를 유지하려면 "현재 데이터 유지"를 누르세요.',
-          ()=>driveLoadData().then(()=>renderCalSettings()),
-          '불러오기',
-          '현재 데이터 유지'
-        );
-      } else {
-        // Drive에 파일 없음 → 현재 데이터 업로드
-        await driveSaveData(true);
-        toast('현재 데이터를 Drive에 저장했습니다');
-      }
+      // Hub → Google 단방향. Drive에서 가져오지 않음.
+      // 현재 데이터를 Drive에 백업만 저장
+      driveSaveData(true).catch(()=>{});
       renderCalSettings();
     }
   });
@@ -5630,16 +5856,18 @@ function initFirebase(){
         updateFbStatus('⚠️ 오프라인');
       }
     });
-    // 실시간 변경 감지 — 데이터만 조용히 업데이트, UI 일절 건드리지 않음
+    // 실시간 변경 감지 — 다른 기기에서 저장한 것만 적용
     fbDB.ref('spextrum').on('value',snap=>{
-      if(!fbInitDone) return;
-      if(_fbSaving) return;
+      if(!fbInitDone) return; // 초기 업로드 완료 전엔 무시
+      if(_fbSaving) return;   // 내가 저장 중일 때 에코 무시
       const d=snap.val();
       if(!d) return;
+      // 내 기기에서 온 변경이면 무시 (에코 방지)
+      if(d._deviceId&&d._deviceId===_deviceId) return;
+      // 다른 기기의 변경 → 적용
       try{
         applyFirebaseData(d);
-        // UI 갱신 없음 — 화면 튀는 현상 완전 방지
-        // 사이드바 카운트만 조용히 업데이트
+        _localSavedAt=d._savedAt||Date.now();
         const active=projects.filter(p=>!p.archived);
         const el1=document.getElementById('nav-total');
         const el2=document.getElementById('nav-c1');
@@ -5714,6 +5942,13 @@ function applyFirebaseData(d){
 
 let _fbSaving=false;
 let _fbRetryCount=0;
+let _localSavedAt=Date.now();
+// 기기 고유 ID — 자기 자신이 저장한 에코를 무시하기 위해 사용
+const _deviceId=(()=>{
+  let id=localStorage.getItem('_spx_device_id');
+  if(!id){id='dev_'+Math.random().toString(36).slice(2);localStorage.setItem('_spx_device_id',id);}
+  return id;
+})();
 const MAX_FB_RETRY=3;
 
 function setSaveStatus(state){
@@ -5764,7 +5999,9 @@ function fbSaveData(){
   setSaveStatus('saving');
   fbSaveTimer=setTimeout(()=>{
     _fbSaving=true;
-    const payload={projects,notices,campaigns,meetings,gcClientId,teamMembers};
+    const now=Date.now();
+    _localSavedAt=now;
+    const payload={projects,notices,campaigns,meetings,gcClientId,teamMembers,_savedAt:now,_deviceId};
     fbDB.ref('spextrum').set(payload)
       .then(()=>{
         _fbRetryCount=0;
@@ -5791,23 +6028,20 @@ function fbSaveData(){
 
 function fbLoadData(){
   if(!fbConnected||!fbDB) return;
-  fbDB.ref('spextrum').once('value').then(snap=>{
-    const d=snap.val();
-    if(!d){
-      // 첫 실행 — 로컬 데이터 Firebase에 업로드
-      fbDB.ref('spextrum').set({projects,notices,campaigns,meetings,gcClientId,teamMembers})
-        .then(()=>{ fbInitDone=true; toast('✅ 데이터를 Firebase에 업로드했습니다'); });
-    } else {
-      // Firebase 데이터 불러오기 (배열 변환 포함)
-      try{
-        applyFirebaseData(d);
-        if(!fbInitDone) refreshCurrentView(); // 초기 로드 시에만 뷰 갱신
-        updateSb();
-        toast('✅ Firebase 데이터 로드 완료');
-      }catch(e){console.warn('FB load error:',e);}
+  // ★ 핵심 원칙: 연결 시 로컬 데이터를 Firebase에 업로드. 절대 자동 다운로드 안 함.
+  // 로컬이 항상 source of truth. Firebase는 팀원 간 공유 채널일 뿐.
+  const now=Date.now();
+  _localSavedAt=now;
+  fbDB.ref('spextrum').set({projects,notices,campaigns,meetings,gcClientId,teamMembers,_savedAt:now,_deviceId})
+    .then(()=>{
       fbInitDone=true;
-    }
-  }).catch(e=>{ fbInitDone=true; console.warn('FB load failed:',e); });
+      setSaveStatus('saved');
+      console.log('[FB] 로컬 데이터 업로드 완료 → 실시간 리슨 시작');
+    })
+    .catch(e=>{
+      console.warn('[FB] 업로드 실패:', e);
+      fbInitDone=true;
+    });
 }
 
 function updateFbStatus(msg){
@@ -7074,6 +7308,7 @@ function tableViewHTML(){
           <input id="qa-meta-${pid}-${sid}" class="fi" placeholder="담당자" style="width:80px;font-size:14px;padding:5px 8px">
           <input id="qa-due-${pid}-${sid}" type="date" class="fi" style="font-size:14px;padding:5px 8px">
           <button class="btn xs" onclick="tbQuickAdd('${pid}','${sid}')">추가</button>
+          <button class="btn xs ghost" onclick="openRecurringTaskModal('${pid}','${sid}')" title="반복 태스크 추가">🔁 반복</button>
         </div>
       </td>
       <td></td>
@@ -7596,7 +7831,7 @@ function openDataPanel(){
     ?(driveLastSaved?'✅ Drive 동기화됨 · '+driveLastSaved.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}):'○ 이번 세션에서 아직 동기화 안 됨')
     :'○ Drive 미연결 — Google 연동 먼저 설정하세요';
   const driveActions=gcConnected
-    ?'<div style="display:flex;gap:8px"><button class="btn sm pri" onclick="driveLoadData().then(()=>openDataPanel())" style="flex:1">⬇ Drive에서 불러오기</button><button class="btn sm" onclick="driveSaveData(false).then(()=>openDataPanel())" style="flex:1">⬆ Drive에 저장하기</button></div>'
+    ?'<div style="display:flex;gap:8px"><button class="btn sm pri" onclick="driveSaveData(false).then(()=>openDataPanel())" style="flex:1">⬆ Drive에 저장 (백업)</button></div>'
     :'<button class="btn sm" onclick="closeModal();goCalSettings()" style="width:100%">→ Google 연동 설정하기</button>';
 
   modal(
@@ -7631,7 +7866,7 @@ function openDataPanel(){
       +'1. 사이드바 "구글 캘린더 연동"에서 Client ID 설정<br>'
       +'2. Google 로그인 후 Drive 권한 허용<br>'
       +'3. 이후 변경사항 자동 저장됨<br>'
-      +'4. 다른 기기에서 동일하게 설정 → "Drive에서 불러오기"'
+      +'4. Drive 저장은 백업 용도 — 앱 데이터는 자동으로 Firebase에 동기화됩니다'
     +'</div>'
     +'<div class="btn-row">'
       +'<button class="btn sm danger-full" onclick="cfm(\'데이터 초기화\',\'모든 데이터가 삭제됩니다.\',()=>{localStorage.removeItem(\''+LS_KEY+'\');location.reload()})">초기화</button>'
