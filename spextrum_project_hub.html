@@ -6009,7 +6009,7 @@ window.addEventListener('load',()=>{
 });
 
 // ─── LOCALSTORAGE PERSISTENCE ────────────────────────────────
-const LS_KEY='spextrum_v1';
+// localStorage 제거 — Firebase only
 let teamMembers=['대표','김수경','정예진','엘레','김수아','두안','김보강','박수진','김진흥','정보겸','최원선','오경민','발롱탕','강효진'];
 
 // ─── FIREBASE 설정 ───────────────────────────────────────────
@@ -6127,12 +6127,12 @@ function applyFirebaseData(d){
   if(d.meetings)                          meetings  =d.meetings;
   if(d.teamMembers&&d.teamMembers.length) teamMembers=d.teamMembers;
   if(d.gcClientId)                        gcClientId=d.gcClientId;
-  try{localStorage.setItem(LS_KEY,JSON.stringify({projects,notices,campaigns,meetings,gcClientId,teamMembers}));}catch(e){}
+  // Firebase only — localStorage 미사용
 }
 
 let _fbSaving=false;
 let _fbRetryCount=0;
-let _localSavedAt=(()=>{try{const d=JSON.parse(localStorage.getItem('spextrum_v1'));return d?._savedAt||0;}catch{return 0;}})();
+let _localSavedAt=0;
 // 기기 고유 ID — 자기 자신이 저장한 에코를 무시하기 위해 사용
 const _deviceId=(()=>{
   let id=localStorage.getItem('_spx_device_id');
@@ -6148,7 +6148,7 @@ function setSaveStatus(state){
     saving: {text:'저장 중...', color:'var(--text3)'},
     saved:  {text:'✓ 저장됨',   color:'#27ae60'},
     error:  {text:'⚠ 저장 실패', color:'#E24B4A'},
-    offline:{text:'오프라인',    color:'var(--text3)'},
+    offline:{text:'오프라인 모드', color:'var(--text3)'},
   };
   const s=map[state]||map.saved;
   el.textContent=s.text;
@@ -6218,32 +6218,36 @@ function fbSaveData(){
 
 function fbLoadData(){
   if(!fbConnected||!fbDB) return;
+
+  // ★ Firebase = 진짜 source of truth
+  // 항상 Firebase를 먼저 보고, 데이터가 있으면 무조건 Firebase 데이터를 씀
+  // localStorage는 Firebase 접근 실패 시 오프라인 백업용으로만 사용
   fbDB.ref('spextrum').once('value').then(snap=>{
     const d=snap.val();
-    const localTs=_localSavedAt||0;
-    const remoteTs=d?._savedAt||0;
-    if(!d||localTs>=remoteTs){
-      // 로컬이 최신이거나 Firebase 비어있음 → 로컬을 Firebase에 업로드
-      const now=Date.now();
-      _localSavedAt=now;
-      fbDB.ref('spextrum').set({projects,notices,campaigns,meetings,gcClientId,teamMembers,_savedAt:now,_deviceId})
-        .then(()=>{fbInitDone=true;setSaveStatus('saved');})
-        .catch(e=>{console.warn('[FB] 업로드 실패:',e);fbInitDone=true;});
-    } else {
-      // Firebase가 더 최신 → Firebase 데이터 적용
+    if(d&&Object.keys(d).length>0){
+      // Firebase에 데이터 있음 → 무조건 Firebase 데이터 사용
       try{
         applyFirebaseData(d);
-        _localSavedAt=remoteTs;
+        _localSavedAt=d._savedAt||Date.now();
+        // Firebase only — localStorage 미사용
         refreshCurrentView();
         updateSb();
         setSaveStatus('saved');
       }catch(e){console.warn('FB load error:',e);}
-      fbInitDone=true;
+    } else {
+      // Firebase 비어있음 → 로컬 데이터를 Firebase에 업로드
+      const now=Date.now();
+      _localSavedAt=now;
+      fbDB.ref('spextrum').set({projects,notices,campaigns,meetings,gcClientId,teamMembers,_savedAt:now,_deviceId})
+        .then(()=>setSaveStatus('saved'))
+        .catch(e=>console.warn('[FB] 업로드 실패:',e));
     }
-  }).catch(e=>{
-    console.warn('FB load failed:',e);
-    // Firebase 접근 실패 시 로컬 데이터로 계속
     fbInitDone=true;
+  }).catch(e=>{
+    // Firebase 접근 실패 (오프라인) → 로컬 데이터로 계속
+    console.warn('FB load failed (offline mode):', e);
+    fbInitDone=true;
+    setSaveStatus('offline');
   });
 }
 
@@ -6264,22 +6268,17 @@ function refreshCurrentView(){
 }
 
 function saveToLS(){
-  try{
-    const now2=Date.now();_localSavedAt=now2;const data={projects,notices,campaigns,meetings,gcClientId,teamMembers,_savedAt:now2};
-    localStorage.setItem(LS_KEY,JSON.stringify(data));
-    // Drive 자동 동기화 예약
-    scheduleDriveSync();
-  }catch(e){
-    console.error('로컬 저장 실패:',e);
-    setSaveStatus('error');
-    return;
-  }
-  fbSaveData(); // Firebase 백그라운드 저장
+  // localStorage 제거 — Firebase만 사용
+  const now2=Date.now();_localSavedAt=now2;
+  scheduleDriveSync();
+  fbSaveData();
 }
 
 function loadFromLS(){
+  // localStorage 제거 — Firebase에서 로드
+  return false;
   try{
-    const raw=localStorage.getItem(LS_KEY);
+    const raw=null;
     if(!raw)return false;
     const d=JSON.parse(raw);
     if(d.projects)projects=d.projects;
@@ -8051,8 +8050,7 @@ let _autoRunning = false;
 
 // ─── DATA SYNC PANEL ─────────────────────────────────────────
 function openDataPanel(){
-  const saved=localStorage.getItem(LS_KEY);
-  const sizeKB=saved?Math.round(saved.length/1024)+'KB':'0KB';
+  const sizeKB='Firebase 동기화 중';
   const taskCount=projects.flatMap(p=>p.schedules.flatMap(s=>s.tasks)).length;
   const connBadge=gcConnected
     ?'<span style="font-size:14px;padding:4px 10px;border-radius:10px;font-weight:600;background:#eaf3de;color:#3b6d11">연결됨</span>'
@@ -8099,7 +8097,7 @@ function openDataPanel(){
       +'4. Drive 저장은 백업 용도 — 앱 데이터는 자동으로 Firebase에 동기화됩니다'
     +'</div>'
     +'<div class="btn-row">'
-      +'<button class="btn sm danger-full" onclick="cfm(\'데이터 초기화\',\'모든 데이터가 삭제됩니다.\',()=>{localStorage.removeItem(\''+LS_KEY+'\');location.reload()})">초기화</button>'
+      +'<button class="btn sm danger-full" onclick="cfm(\'데이터 초기화\',\'모든 데이터가 삭제됩니다.\',()=>{if(fbDB)fbDB.ref(\'spextrum\').remove().then(()=>location.reload());else location.reload()})">초기화</button>'
       +'<button class="btn sm pri" onclick="openSnapshotPanel()">🕐 백업 복구</button>'
       +'<button class="btn sm" onclick="closeModal()">닫기</button>'
     +'</div>'
@@ -8154,7 +8152,7 @@ function restoreSnapshot(key){
 
 function exportData(){
   saveToLS();
-  const data=localStorage.getItem(LS_KEY)||'{}';
+  const data=JSON.stringify({projects,notices,campaigns,meetings,gcClientId,teamMembers});
   const now=new Date();
   const stamp=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
   const blob=new Blob([data],{type:'application/json'});
@@ -8175,8 +8173,8 @@ function importData(input){
       // validate structure
       if(!parsed.projects) throw new Error('올바른 Spextrum 데이터 파일이 아닙니다');
       cfm('데이터 가져오기',`프로젝트 ${parsed.projects.length}개, 태스크 ${parsed.projects.flatMap(p=>p.schedules?.flatMap(s=>s.tasks)||[]).length}개가 포함되어 있습니다.\n\n현재 데이터를 덮어씁니다. 계속하시겠습니까?`,()=>{
-        localStorage.setItem(LS_KEY,e.target.result);
-        toast('✅ 가져오기 완료! 새로고침합니다...');
+        try{const d=JSON.parse(e.target.result);applyFirebaseData(d);saveToLS();}catch(e2){toast('가져오기 실패');return;}
+        toast('✅ 가져오기 완료!');
         setTimeout(()=>location.reload(),900);
       });
     }catch(err){
@@ -8188,7 +8186,7 @@ function importData(input){
 
 function copyDataToClipboard(){
   saveToLS();
-  const data=localStorage.getItem(LS_KEY)||'{}';
+  const data=JSON.stringify({projects,notices,campaigns,meetings,gcClientId,teamMembers});
   navigator.clipboard.writeText(data).then(()=>{
     toast('✅ 클립보드에 복사됐습니다');
   }).catch(()=>{
@@ -8206,8 +8204,8 @@ function pasteDataFromClipboard(){
       const text=await navigator.clipboard.readText();
       const parsed=JSON.parse(text);
       if(!parsed.projects) throw new Error('올바른 데이터가 아닙니다');
-      localStorage.setItem(LS_KEY,text);
-      toast('✅ 가져오기 완료! 새로고침합니다...');
+      try{const d=JSON.parse(text);applyFirebaseData(d);saveToLS();}catch(e2){toast('가져오기 실패');return;}
+      toast('✅ 가져오기 완료!');
       setTimeout(()=>location.reload(),900);
     }catch(err){
       toast('❌ 클립보드 오류: '+err.message);
