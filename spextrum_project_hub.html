@@ -817,15 +817,18 @@ let formDepts=[],formColor='teal',formScheds=[],formWAs=[];
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
 
-function cfm(title,msg,onYes,yesLabel,noLabel){
+function cfm(title,msg,onYes,yesLabel,noLabel,onNo2){
   const ov=document.createElement('div');ov.className='c-overlay';
   const yLbl=yesLabel||'삭제';
   const nLbl=noLabel||'취소';
   const yClass=yesLabel?'btn pri sm':'btn danger-full sm';
-  ov.innerHTML=`<div class="c-box"><div class="c-title">${title}</div><div class="c-msg" style="white-space:pre-line">${msg}</div><div class="btn-row"><button class="${yClass}" id="cyes">${yLbl}</button><button class="btn sm" id="cno">${nLbl}</button></div></div>`;
+  const extraBtn=onNo2?`<button class="btn sm" id="cno2">${nLbl}</button>`:'';
+  const cancelBtn=onNo2?`<button class="btn sm ghost" id="cno">취소</button>`:`<button class="btn sm" id="cno">${nLbl}</button>`;
+  ov.innerHTML=`<div class="c-box"><div class="c-title">${title}</div><div class="c-msg" style="white-space:pre-line">${msg}</div><div class="btn-row"><button class="${yClass}" id="cyes">${yLbl}</button>${extraBtn}${cancelBtn}</div></div>`;
   document.body.appendChild(ov);
   ov.querySelector('#cyes').onclick=()=>{document.body.removeChild(ov);onYes()};
   ov.querySelector('#cno').onclick=()=>document.body.removeChild(ov);
+  if(onNo2) ov.querySelector('#cno2').onclick=()=>{document.body.removeChild(ov);onNo2()};
   ov.addEventListener('click',e=>{if(e.target===ov)document.body.removeChild(ov)});
 }
 
@@ -965,9 +968,68 @@ function deleteProj(id){
 
 function archiveProj(id){
   const p=projects.find(x=>x.id===id);if(!p)return;
-  p.archived=true;saveToLS();
-  toast(`"${p.name}" 아카이브됐습니다`);
-  renderList();updateSb();
+
+  // 정리서 자동 생성 확인
+  cfm('프로젝트 아카이브',
+    `"${p.name}"을 아카이브합니다.\n프로젝트 정리서를 자동으로 생성할까요?`,
+    ()=>{
+      generateProjSummary(p);
+      p.archived=true;
+      p.archivedAt=new Date().toISOString().slice(0,10);
+      saveToLS();
+      toast(`"${p.name}" 아카이브 완료. 정리서가 블록에 저장됐습니다.`);
+      renderList();updateSb();
+    },
+    '정리서 생성 후 아카이브',
+    '그냥 아카이브',
+    ()=>{
+      p.archived=true;
+      p.archivedAt=new Date().toISOString().slice(0,10);
+      saveToLS();
+      toast(`"${p.name}" 아카이브됐습니다`);
+      renderList();updateSb();
+    }
+  );
+}
+
+function generateProjSummary(p){
+  const today=new Date().toLocaleDateString('ko-KR');
+  const allTasks=p.schedules.flatMap(s=>s.tasks);
+  const doneTasks=allTasks.filter(t=>t.done);
+  const totalTasks=allTasks.length;
+  const rate=totalTasks?Math.round(doneTasks.length/totalTasks*100):0;
+
+  // 담당자 수집
+  const members=[...new Set(allTasks.map(t=>t.meta).filter(Boolean).flatMap(m=>m.split(/[,·\s]+/).filter(s=>s.length>1)))];
+
+  // 링크/결과물 수집
+  const deliverables=(p.workAreas||[]).flatMap(wa=>wa.deliverables||[]);
+  const links=deliverables.filter(d=>d.link);
+
+  // 블록 에디터에 정리서 추가
+  if(!p.blocks) p.blocks=[];
+
+  const summaryBlocks=[
+    {id:uid(),type:'h2',content:'📋 프로젝트 정리서',_html:false},
+    {id:uid(),type:'callout',content:`📅 아카이브 일자: ${today}\n✅ 완료율: ${rate}% (${doneTasks.length}/${totalTasks})\n👥 참여: ${members.join(', ')||'미기록'}`,_html:false},
+    {id:uid(),type:'h3',content:'스케줄 요약',_html:false},
+    ...p.schedules.map(s=>({
+      id:uid(),type:'text',
+      content:`${s.status==='완료'?'✅':'⬜'} ${s.name} (${s.date||'-'}) — 태스크 ${s.tasks.filter(t=>t.done).length}/${s.tasks.length} 완료`,
+      _html:false
+    })),
+    {id:uid(),type:'h3',content:'주요 결과물',_html:false},
+    ...(links.length?links.map(d=>({
+      id:uid(),type:'text',
+      content:`🔗 ${d.name}: ${d.link}`,
+      _html:false
+    })):[{id:uid(),type:'text',content:'등록된 링크 없음',_html:false}]),
+    {id:uid(),type:'h3',content:'메모 및 회고',_html:false},
+    {id:uid(),type:'text',content:'(직접 작성)',_html:false},
+    {id:uid(),type:'divider',content:'',_html:false},
+  ];
+
+  p.blocks=[...summaryBlocks, ...p.blocks];
 }
 
 function unarchiveProj(id){
@@ -1335,7 +1397,23 @@ function projMainHTML(p,c,pr,allT,doneT){
             }</span>`:''}
           </div>
         </div>
-        ${fieldRow('카테고리','tag','예: 제품개발','fi-4')}
+        <div style="display:grid;grid-template-columns:90px 1fr;border-bottom:1px solid var(--border)">
+          <div style="padding:9px 12px;font-size:14px;color:var(--text3);background:var(--surface2);display:flex;align-items:center;font-weight:500">카테고리</div>
+          <div style="padding:7px 12px">
+            <select style="font-size:14px;border:none;outline:none;background:transparent;color:var(--text);width:100%"
+              onchange="saveProjField('${p.id}','tag',this.value)">
+              <option value="">선택</option>
+              <option value="SPEXTRUM" ${p.tag==='SPEXTRUM'?'selected':''}>SPEXTRUM</option>
+              <option value="쓰리포" ${p.tag==='쓰리포'?'selected':''}>쓰리포</option>
+              <option value="Lapalette" ${p.tag==='Lapalette'?'selected':''}>Lapalette</option>
+              <option value="B2B" ${p.tag==='B2B'?'selected':''}>B2B</option>
+              <option value="Commercial" ${p.tag==='Commercial'?'selected':''}>Commercial</option>
+              <option value="지원사업/공모" ${p.tag==='지원사업/공모'?'selected':''}>지원사업/공모</option>
+              <option value="회사운영" ${p.tag==='회사운영'?'selected':''}>회사운영</option>
+              <option value="전시" ${p.tag==='전시'?'selected':''}>전시</option>
+            </select>
+          </div>
+        </div>
         ${noteField('프로젝트 목적','purpose','브랜드·고객·수익 관점에서 이 프로젝트가 왜 필요한가...')}
         ${noteField('목표 결과물','delivItems','예: 제품 패키지 3종, 브랜드 가이드, SNS 런칭 콘텐츠 10개',true)}
       </div>
@@ -3915,7 +3993,17 @@ function openEditProjMeta(pid){
   const p=projects.find(x=>x.id===pid);if(!p)return;
   modal(`<div class="m-title">✎ 프로젝트 설정</div>
   <div class="frow"><label class="fl">카테고리</label>
-    <input id="em-tag" class="fi" value="${p.tag||''}" placeholder="예: 제품개발, B2B">
+    <select id="em-tag" class="fi">
+<option value="">카테고리 선택</option>
+<option value="SPEXTRUM">${p.tag==='SPEXTRUM'?' selected':''}SPEXTRUM</option>
+<option value="쓰리포">${p.tag==='쓰리포'?' selected':''}쓰리포</option>
+<option value="Lapalette">${p.tag==='Lapalette'?' selected':''}Lapalette</option>
+<option value="B2B">${p.tag==='B2B'?' selected':''}B2B</option>
+<option value="Commercial">${p.tag==='Commercial'?' selected':''}Commercial</option>
+<option value="지원사업/공모">${p.tag==='지원사업/공모'?' selected':''}지원사업/공모</option>
+<option value="회사운영">${p.tag==='회사운영'?' selected':''}회사운영</option>
+<option value="전시">${p.tag==='전시'?' selected':''}전시</option>
+</select>
   </div>
   <div class="frow"><label class="fl">컬러</label>
     <div class="color-row" id="em-colors">
@@ -4032,7 +4120,6 @@ function createRecurringTasks(pid,sid){
 // ── 프로젝트 템플릿 ────────────────────────────────────────────
 const PROJECT_TEMPLATES={
   '제품개발':{
-    color:'amber',tag:'제품개발',
     schedules:[
       {name:'기획',tasks:['컨셉 기획','타겟 정의','레퍼런스 수집','예산 수립']},
       {name:'디자인',tasks:['시안 제작','내부 컨펌 요청','수정 반영']},
@@ -4040,8 +4127,22 @@ const PROJECT_TEMPLATES={
       {name:'출시',tasks:['제품 촬영','상세페이지 제작','판매 채널 등록','프로모션 기획']},
     ]
   },
-  '지원사업':{
-    color:'teal',tag:'지원사업',
+  '콘텐츠제작':{
+    schedules:[
+      {name:'기획',tasks:['콘텐츠 방향 기획','레퍼런스 수집','촬영/제작 일정 수립']},
+      {name:'제작',tasks:['원고/스크립트 작성','촬영 또는 디자인 제작','내부 검토 및 수정']},
+      {name:'발행',tasks:['최종 컨펌','채널 업로드','반응 모니터링']},
+    ]
+  },
+  '전시/간담회':{
+    schedules:[
+      {name:'기획',tasks:['컨셉 기획','예산 수립','공간 섭외']},
+      {name:'준비',tasks:['전시 준비 체크리스트 확인','전시물/홍보물 제작','사전 홍보 시작']},
+      {name:'현장',tasks:['설치 및 세팅','전시 일일 보고서 작성','바이어/참석자 상담 기록']},
+      {name:'사후',tasks:['철수','팔로업 이메일 발송','결과 보고','프로젝트 정리서 작성']},
+    ]
+  },
+  '지원사업신청':{
     schedules:[
       {name:'사전조사',tasks:['공고 분석','자격요건 확인','제출 서류 목록 작성']},
       {name:'서류 준비',tasks:['사업계획서 작성','외부발송 전 체크리스트 확인','증빙서류 수집']},
@@ -4049,22 +4150,12 @@ const PROJECT_TEMPLATES={
       {name:'사후',tasks:['결과 확인','선정 시 계약 및 협약 진행','정산 준비']},
     ]
   },
-  'B2B':{
-    color:'blue',tag:'B2B',
+  'B2B프로젝트':{
     schedules:[
       {name:'준비',tasks:['바이어 온보딩','견적서(내부용) 작성','견적서(외부용) 발송']},
       {name:'미팅',tasks:['미팅 일정 조율','제안 자료 준비','미팅 진행']},
       {name:'계약',tasks:['계약서 검토','계약 체결','내부 공유']},
       {name:'납품',tasks:['작업지시서 발행','감리','인보이스/패킹리스트 작성','납품','정산']},
-    ]
-  },
-  '전시':{
-    color:'purple',tag:'전시',
-    schedules:[
-      {name:'기획',tasks:['컨셉 기획','예산 수립','공간 섭외']},
-      {name:'준비',tasks:['전시 준비 체크리스트 확인','전시물 제작','홍보물 제작','사전 홍보 시작']},
-      {name:'현장',tasks:['설치 및 세팅','전시 일일 보고서 작성','바이어 상담 기록']},
-      {name:'사후',tasks:['철수','바이어 팔로업 이메일 발송','결과 보고','프로젝트 정리서 작성']},
     ]
   },
 };
@@ -4076,7 +4167,7 @@ function openNew(){
 }
 function renderNewForm(){
   document.getElementById('new-form-body').innerHTML=`
-  <div class="frow"><label class="fl">템플릿으로 시작</label>
+  <div class="frow"><label class="fl">스케줄 템플릿</label>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn sm ghost" onclick="applyProjTemplate('')" id="tpl-none" style="border:2px solid var(--text)">비어있는 프로젝트</button>
       ${Object.keys(PROJECT_TEMPLATES).map(k=>`<button class="btn sm ghost" onclick="applyProjTemplate('${k}')" id="tpl-${k}">${k}</button>`).join('')}
@@ -4084,7 +4175,16 @@ function renderNewForm(){
   </div>
   <div class="frow"><label class="fl">프로젝트명 <span>*</span></label><input class="fi" id="f-name" placeholder="예: 전향 2차 컬렉션 런칭"></div>
   <div class="two-col">
-    <div class="frow"><label class="fl">카테고리</label><input class="fi" id="f-tag" placeholder="예: 제품개발"></div>
+    <div class="frow"><label class="fl">카테고리</label><select id="f-tag" class="fi"><option value="">카테고리 선택</option>
+<option value="SPEXTRUM">SPEXTRUM</option>
+<option value="쓰리포">쓰리포</option>
+<option value="Lapalette">Lapalette</option>
+<option value="B2B">B2B</option>
+<option value="Commercial">Commercial</option>
+<option value="지원사업/공모">지원사업/공모</option>
+<option value="회사운영">회사운영</option>
+<option value="전시">전시</option>
+</select></div>
     <div class="frow"><label class="fl">상태</label><select class="fi" id="f-status"><option>예정</option><option>진행중</option><option>완료</option></select></div>
   </div>
   <div class="two-col">
@@ -4152,10 +4252,6 @@ function applyProjTemplate(key){
     tasks:s.tasks.map(t=>({id:uid(),name:t,done:false,meta:'',dueDate:'',startDate:'',taskStatus:'예정'}))
   }));
   document.getElementById('form-scheds').innerHTML=fSchedsHTML();
-
-  // 카테고리 자동 입력
-  const tagEl=document.getElementById('f-tag');
-  if(tagEl&&!tagEl.value) tagEl.value=tpl.tag||key;
 
   toast(`"${key}" 템플릿이 적용됐습니다`);
 }
@@ -6459,14 +6555,30 @@ function doSearch(q){
       });
     });
 
-    // 결과물(deliverables)
+    // 블록 메모 — 별도 섹션으로
+    (p.blocks||[]).forEach(b=>{
+      const text=(b.content||'').replace(/<[^>]+>/g,'');
+      if(text.toLowerCase().includes(ql)){
+        const snip=snippet(text,q);
+        results.push({type:'memo',icon:'📝',
+          title:snip||text.slice(0,60),
+          sub:`${p.name} › 메모`,
+          action:`closeSearch();openProj('${p.id}')`,
+          _isMemo:true});
+      }
+    });
+
+    // 결과물 링크 — 별도 섹션으로
     (p.workAreas||[]).forEach(wa=>{
       (wa.deliverables||[]).forEach(d=>{
-        if((d.name||'').toLowerCase().includes(ql))
-          results.push({type:'deliv',icon:'📎',
+        const dText=(d.name||'')+' '+(d.memo||'');
+        if(dText.toLowerCase().includes(ql)){
+          results.push({type:'deliv',icon:d.link?'🔗':'📎',
             title:d.name,
-            sub:`${p.name} › ${wa.name} · ${d.done?'완료':'미완료'}`,
-            action:`closeSearch();openProj('${p.id}')`});
+            sub:`${p.name} › ${wa.name}${d.link?' · '+d.link.slice(0,40):''}`,
+            action:`closeSearch();openProj('${p.id}')`,
+            _isLink:!!d.link});
+        }
       });
     });
   });
@@ -6506,14 +6618,25 @@ function doSearch(q){
 
   if(!results.length){el.innerHTML='<div class="search-empty">검색 결과가 없습니다</div>';return;}
 
-  const grouped={};
-  const labels={proj:'프로젝트',sched:'스케줄',task:'태스크',deliv:'결과물',notice:'공지',camp:'캠페인',meet:'회의'};
-  const order=['proj','sched','task','deliv','notice','camp','meet'];
-  results.forEach(r=>{(grouped[r.type]=grouped[r.type]||[]).push(r);});
+  // 섹션 분리: 프로젝트 / 메모·블록 / 링크·결과물 / 태스크 / 기타
+  const sections=[
+    {key:'proj',   label:'📁 프로젝트', types:['proj']},
+    {key:'memo',   label:'📝 메모 · 블록', types:['memo']},
+    {key:'link',   label:'🔗 링크 · 결과물', types:['deliv','link']},
+    {key:'task',   label:'☐ 태스크', types:['task','sched']},
+    {key:'etc',    label:'기타', types:['notice','camp','meet']},
+  ];
 
-  el.innerHTML=order.filter(t=>grouped[t]).map(type=>{
-    const items=grouped[type];
-    return `<div class="search-cat">${labels[type]||type} <span style="font-size:14px;color:var(--text3)">${items.length}건</span></div>
+  // 블록/메모를 별도 타입으로 분리
+  results.forEach(r=>{
+    if(r.type==='proj'&&r._isMemo) r.type='memo';
+    if(r.type==='deliv'&&r._isLink) r.type='link';
+  });
+
+  el.innerHTML=sections.map(sec=>{
+    const items=results.filter(r=>sec.types.includes(r.type));
+    if(!items.length) return '';
+    return `<div class="search-cat">${sec.label} <span style="font-size:12px;color:var(--text3)">${items.length}건</span></div>
     ${items.map(r=>`<div class="search-item" onclick="${r.action}">
       <span class="search-item-icon">${r.icon}</span>
       <div style="flex:1;min-width:0">
