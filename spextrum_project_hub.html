@@ -657,6 +657,19 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
 </head>
 <body>
 <div class="toast" id="toast"></div>
+<!-- Firebase 로딩 오버레이 -->
+<div id="fb-loading-overlay" style="position:fixed;inset:0;background:var(--bg,#f7f6f2);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+  <div style="font-size:16px;font-weight:700;color:#1a1917;letter-spacing:.08em">SPEXTRUM</div>
+  <div style="display:flex;gap:6px;align-items:center">
+    <div style="width:6px;height:6px;border-radius:50%;background:#1a1917;animation:fbDot 1.2s infinite .0s both"></div>
+    <div style="width:6px;height:6px;border-radius:50%;background:#1a1917;animation:fbDot 1.2s infinite .2s both"></div>
+    <div style="width:6px;height:6px;border-radius:50%;background:#1a1917;animation:fbDot 1.2s infinite .4s both"></div>
+  </div>
+  <div style="font-size:14px;color:#908c86">데이터 불러오는 중...</div>
+</div>
+<style>
+@keyframes fbDot{0%,80%,100%{transform:scale(0);opacity:.4}40%{transform:scale(1);opacity:1}}
+</style>
 <div class="mob-overlay" id="mob-overlay" onclick="closeMobSidebar()"></div>
 <div class="app">
 <nav class="sidebar" id="sidebar">
@@ -734,7 +747,7 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
   <div class="view" id="v-home"><div class="home-content" id="home-content"></div></div>
   <div class="view active" id="v-list">
     <div class="content">
-      <div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div style="margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
         <div>
           <h1 style="font-size:19px;font-weight:700">프로젝트</h1>
           <p id="list-sub" style="font-size:14px;color:var(--text3);margin-top:3px"></p>
@@ -750,8 +763,6 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
           </button>
         </div>
       </div>
-      <!-- 카테고리 필터 -->
-      <div id="cat-filter-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px"></div>
       <div id="proj-grid"></div>
     </div>
   </div>
@@ -819,18 +830,15 @@ let formDepts=[],formColor='teal',formScheds=[],formWAs=[];
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
 
-function cfm(title,msg,onYes,yesLabel,noLabel,onNo2){
+function cfm(title,msg,onYes,yesLabel,noLabel){
   const ov=document.createElement('div');ov.className='c-overlay';
   const yLbl=yesLabel||'삭제';
   const nLbl=noLabel||'취소';
   const yClass=yesLabel?'btn pri sm':'btn danger-full sm';
-  const extraBtn=onNo2?`<button class="btn sm" id="cno2">${nLbl}</button>`:'';
-  const cancelBtn=onNo2?`<button class="btn sm ghost" id="cno">취소</button>`:`<button class="btn sm" id="cno">${nLbl}</button>`;
-  ov.innerHTML=`<div class="c-box"><div class="c-title">${title}</div><div class="c-msg" style="white-space:pre-line">${msg}</div><div class="btn-row"><button class="${yClass}" id="cyes">${yLbl}</button>${extraBtn}${cancelBtn}</div></div>`;
+  ov.innerHTML=`<div class="c-box"><div class="c-title">${title}</div><div class="c-msg" style="white-space:pre-line">${msg}</div><div class="btn-row"><button class="${yClass}" id="cyes">${yLbl}</button><button class="btn sm" id="cno">${nLbl}</button></div></div>`;
   document.body.appendChild(ov);
   ov.querySelector('#cyes').onclick=()=>{document.body.removeChild(ov);onYes()};
   ov.querySelector('#cno').onclick=()=>document.body.removeChild(ov);
-  if(onNo2) ov.querySelector('#cno2').onclick=()=>{document.body.removeChild(ov);onNo2()};
   ov.addEventListener('click',e=>{if(e.target===ov)document.body.removeChild(ov)});
 }
 
@@ -903,46 +911,20 @@ function renderList(){
   renderProjectGrid();
 }
 
-let filterCat=null; // 카테고리 필터
-
-const PROJ_CATS=['SPEXTRUM','쓰리포','Lapalette','B2B','Commercial','지원사업/공모','회사운영','전시'];
-
-function renderCatFilterBar(){
-  const bar=document.getElementById('cat-filter-bar');
-  if(!bar)return;
-  const active=projects.filter(p=>!p.archived);
-  // 실제 사용 중인 카테고리만 표시
-  const usedCats=PROJ_CATS.filter(c=>active.some(p=>p.tag===c));
-  if(!usedCats.length){bar.innerHTML='';return;}
-  bar.innerHTML=`
-    <button class="filt-btn${!filterCat?' on':''}" onclick="filterCat=null;renderProjectGrid()">전체</button>
-    ${usedCats.map(c=>`<button class="filt-btn${filterCat===c?' on':''}" onclick="filterCat='${c}';renderProjectGrid()">${c}</button>`).join('')}`;
-}
-
 function renderProjectGrid(){
   if(!projects) return;
   setBc([{label:'전체 프로젝트'}]);
   if(!document.getElementById('proj-grid')){const kb=document.getElementById('kanban-board');if(kb){const d=document.createElement('div');d.id='proj-grid';d.className='proj-grid';kb.replaceWith(d);}}
-
+  // 아카이브된 프로젝트 제외
   let list=(filterStatus
     ?projects.filter(p=>!p.archived&&p.schedules.some(s=>s.status===filterStatus))
     :projects.filter(p=>!p.archived));
-
-  // 카테고리 필터 적용
-  if(filterCat) list=list.filter(p=>p.tag===filterCat);
-
-  document.getElementById('list-sub').textContent=
-    filterCat?`${filterCat} · ${list.length}개`:
-    filterStatus?`'${filterStatus}' 포함 · ${list.length}개`:
-    `총 ${list.length}개 프로젝트`;
-
-  renderCatFilterBar();
-
+  document.getElementById('list-sub').textContent=filterStatus?`'${filterStatus}' 포함 · ${list.length}개`:`총 ${list.length}개 프로젝트`;
   const grid=document.getElementById('proj-grid');
+  grid.className='proj-grid';
   grid.setAttribute('ondragover','projGridDragOver(event)');
   grid.setAttribute('ondrop','event.preventDefault()');
-
-  function cardHTML(p){
+  grid.innerHTML=list.map(p=>{
     const c=COLORS[p.color],pr=prog(p);
     const allT=p.schedules.flatMap(s=>s.tasks);
     return `<div class="proj-card" data-pid="${p.id}" draggable="true"
@@ -959,39 +941,7 @@ function renderProjectGrid(){
       <div class="pb"><div class="pbf" style="width:${pr}%;background:${c.dot}"></div></div>
       <div class="pb-pct">${pr}% · ${allT.filter(t=>t.done).length}/${allT.length}</div>
     </div>`;
-  }
-
-  if(filterCat){
-    // 카테고리 선택 시 — 그냥 그리드
-    grid.className='proj-grid';
-    grid.innerHTML=list.map(cardHTML).join('')+
-      `<div class="proj-card add-card" onclick="openNew()"><div class="add-icon">+</div><div style="font-size:14px;font-weight:500">새 프로젝트 추가</div><div style="font-size:14px">템플릿 입력 후 자동 생성</div></div>`;
-  } else {
-    // 전체 보기 — 카테고리별 그룹
-    const usedCats=PROJ_CATS.filter(c=>list.some(p=>p.tag===c));
-    const uncategorized=list.filter(p=>!p.tag||!PROJ_CATS.includes(p.tag));
-
-    grid.className=''; // 그리드 해제, 섹션으로 구성
-    grid.innerHTML=[
-      ...usedCats.map(cat=>{
-        const catProjs=list.filter(p=>p.tag===cat);
-        return `<div style="margin-bottom:28px">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;cursor:pointer" onclick="filterCat='${cat}';renderProjectGrid()">
-            <span style="font-size:13px;font-weight:700;color:var(--text)">${cat}</span>
-            <span style="font-size:12px;color:var(--text3)">${catProjs.length}개</span>
-            <span style="font-size:12px;color:var(--text3);margin-left:auto">전체 보기 →</span>
-          </div>
-          <div class="proj-grid">${catProjs.map(cardHTML).join('')}</div>
-        </div>`;
-      }),
-      uncategorized.length?`<div style="margin-bottom:28px">
-        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">미분류 · ${uncategorized.length}개</div>
-        <div class="proj-grid">${uncategorized.map(cardHTML).join('')}</div>
-      </div>`:'',
-      `<div style="margin-top:8px"><div class="proj-grid"><div class="proj-card add-card" onclick="openNew()"><div class="add-icon">+</div><div style="font-size:14px;font-weight:500">새 프로젝트 추가</div><div style="font-size:14px">템플릿 입력 후 자동 생성</div></div></div></div>`
-    ].join('');
-  }
-
+  }).join('')+`<div class="proj-card add-card" onclick="openNew()"><div class="add-icon">+</div><div style="font-size:14px;font-weight:500">새 프로젝트 추가</div><div style="font-size:14px">템플릿 입력 후 자동 생성</div></div>`;
   showView('v-list');updateSb();
 }
 let _projDragId=null;
@@ -1028,68 +978,9 @@ function deleteProj(id){
 
 function archiveProj(id){
   const p=projects.find(x=>x.id===id);if(!p)return;
-
-  // 정리서 자동 생성 확인
-  cfm('프로젝트 아카이브',
-    `"${p.name}"을 아카이브합니다.\n프로젝트 정리서를 자동으로 생성할까요?`,
-    ()=>{
-      generateProjSummary(p);
-      p.archived=true;
-      p.archivedAt=new Date().toISOString().slice(0,10);
-      saveToLS();
-      toast(`"${p.name}" 아카이브 완료. 정리서가 블록에 저장됐습니다.`);
-      renderList();updateSb();
-    },
-    '정리서 생성 후 아카이브',
-    '그냥 아카이브',
-    ()=>{
-      p.archived=true;
-      p.archivedAt=new Date().toISOString().slice(0,10);
-      saveToLS();
-      toast(`"${p.name}" 아카이브됐습니다`);
-      renderList();updateSb();
-    }
-  );
-}
-
-function generateProjSummary(p){
-  const today=new Date().toLocaleDateString('ko-KR');
-  const allTasks=p.schedules.flatMap(s=>s.tasks);
-  const doneTasks=allTasks.filter(t=>t.done);
-  const totalTasks=allTasks.length;
-  const rate=totalTasks?Math.round(doneTasks.length/totalTasks*100):0;
-
-  // 담당자 수집
-  const members=[...new Set(allTasks.map(t=>t.meta).filter(Boolean).flatMap(m=>m.split(/[,·\s]+/).filter(s=>s.length>1)))];
-
-  // 링크/결과물 수집
-  const deliverables=(p.workAreas||[]).flatMap(wa=>wa.deliverables||[]);
-  const links=deliverables.filter(d=>d.link);
-
-  // 블록 에디터에 정리서 추가
-  if(!p.blocks) p.blocks=[];
-
-  const summaryBlocks=[
-    {id:uid(),type:'h2',content:'📋 프로젝트 정리서',_html:false},
-    {id:uid(),type:'callout',content:`📅 아카이브 일자: ${today}\n✅ 완료율: ${rate}% (${doneTasks.length}/${totalTasks})\n👥 참여: ${members.join(', ')||'미기록'}`,_html:false},
-    {id:uid(),type:'h3',content:'스케줄 요약',_html:false},
-    ...p.schedules.map(s=>({
-      id:uid(),type:'text',
-      content:`${s.status==='완료'?'✅':'⬜'} ${s.name} (${s.date||'-'}) — 태스크 ${s.tasks.filter(t=>t.done).length}/${s.tasks.length} 완료`,
-      _html:false
-    })),
-    {id:uid(),type:'h3',content:'주요 결과물',_html:false},
-    ...(links.length?links.map(d=>({
-      id:uid(),type:'text',
-      content:`🔗 ${d.name}: ${d.link}`,
-      _html:false
-    })):[{id:uid(),type:'text',content:'등록된 링크 없음',_html:false}]),
-    {id:uid(),type:'h3',content:'메모 및 회고',_html:false},
-    {id:uid(),type:'text',content:'(직접 작성)',_html:false},
-    {id:uid(),type:'divider',content:'',_html:false},
-  ];
-
-  p.blocks=[...summaryBlocks, ...p.blocks];
+  p.archived=true;saveToLS();
+  toast(`"${p.name}" 아카이브됐습니다`);
+  renderList();updateSb();
 }
 
 function unarchiveProj(id){
@@ -1457,23 +1348,7 @@ function projMainHTML(p,c,pr,allT,doneT){
             }</span>`:''}
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:90px 1fr;border-bottom:1px solid var(--border)">
-          <div style="padding:9px 12px;font-size:14px;color:var(--text3);background:var(--surface2);display:flex;align-items:center;font-weight:500">카테고리</div>
-          <div style="padding:7px 12px">
-            <select style="font-size:14px;border:none;outline:none;background:transparent;color:var(--text);width:100%"
-              onchange="saveProjField('${p.id}','tag',this.value)">
-              <option value="">선택</option>
-              <option value="SPEXTRUM" ${p.tag==='SPEXTRUM'?'selected':''}>SPEXTRUM</option>
-              <option value="쓰리포" ${p.tag==='쓰리포'?'selected':''}>쓰리포</option>
-              <option value="Lapalette" ${p.tag==='Lapalette'?'selected':''}>Lapalette</option>
-              <option value="B2B" ${p.tag==='B2B'?'selected':''}>B2B</option>
-              <option value="Commercial" ${p.tag==='Commercial'?'selected':''}>Commercial</option>
-              <option value="지원사업/공모" ${p.tag==='지원사업/공모'?'selected':''}>지원사업/공모</option>
-              <option value="회사운영" ${p.tag==='회사운영'?'selected':''}>회사운영</option>
-              <option value="전시" ${p.tag==='전시'?'selected':''}>전시</option>
-            </select>
-          </div>
-        </div>
+        ${fieldRow('카테고리','tag','예: 제품개발','fi-4')}
         ${noteField('프로젝트 목적','purpose','브랜드·고객·수익 관점에서 이 프로젝트가 왜 필요한가...')}
         ${noteField('목표 결과물','delivItems','예: 제품 패키지 3종, 브랜드 가이드, SNS 런칭 콘텐츠 10개',true)}
       </div>
@@ -4053,17 +3928,7 @@ function openEditProjMeta(pid){
   const p=projects.find(x=>x.id===pid);if(!p)return;
   modal(`<div class="m-title">✎ 프로젝트 설정</div>
   <div class="frow"><label class="fl">카테고리</label>
-    <select id="em-tag" class="fi">
-<option value="">카테고리 선택</option>
-<option value="SPEXTRUM">${p.tag==='SPEXTRUM'?' selected':''}SPEXTRUM</option>
-<option value="쓰리포">${p.tag==='쓰리포'?' selected':''}쓰리포</option>
-<option value="Lapalette">${p.tag==='Lapalette'?' selected':''}Lapalette</option>
-<option value="B2B">${p.tag==='B2B'?' selected':''}B2B</option>
-<option value="Commercial">${p.tag==='Commercial'?' selected':''}Commercial</option>
-<option value="지원사업/공모">${p.tag==='지원사업/공모'?' selected':''}지원사업/공모</option>
-<option value="회사운영">${p.tag==='회사운영'?' selected':''}회사운영</option>
-<option value="전시">${p.tag==='전시'?' selected':''}전시</option>
-</select>
+    <input id="em-tag" class="fi" value="${p.tag||''}" placeholder="예: 제품개발, B2B">
   </div>
   <div class="frow"><label class="fl">컬러</label>
     <div class="color-row" id="em-colors">
@@ -4180,6 +4045,7 @@ function createRecurringTasks(pid,sid){
 // ── 프로젝트 템플릿 ────────────────────────────────────────────
 const PROJECT_TEMPLATES={
   '제품개발':{
+    color:'amber',tag:'제품개발',
     schedules:[
       {name:'기획',tasks:['컨셉 기획','타겟 정의','레퍼런스 수집','예산 수립']},
       {name:'디자인',tasks:['시안 제작','내부 컨펌 요청','수정 반영']},
@@ -4187,22 +4053,8 @@ const PROJECT_TEMPLATES={
       {name:'출시',tasks:['제품 촬영','상세페이지 제작','판매 채널 등록','프로모션 기획']},
     ]
   },
-  '콘텐츠제작':{
-    schedules:[
-      {name:'기획',tasks:['콘텐츠 방향 기획','레퍼런스 수집','촬영/제작 일정 수립']},
-      {name:'제작',tasks:['원고/스크립트 작성','촬영 또는 디자인 제작','내부 검토 및 수정']},
-      {name:'발행',tasks:['최종 컨펌','채널 업로드','반응 모니터링']},
-    ]
-  },
-  '전시/간담회':{
-    schedules:[
-      {name:'기획',tasks:['컨셉 기획','예산 수립','공간 섭외']},
-      {name:'준비',tasks:['전시 준비 체크리스트 확인','전시물/홍보물 제작','사전 홍보 시작']},
-      {name:'현장',tasks:['설치 및 세팅','전시 일일 보고서 작성','바이어/참석자 상담 기록']},
-      {name:'사후',tasks:['철수','팔로업 이메일 발송','결과 보고','프로젝트 정리서 작성']},
-    ]
-  },
-  '지원사업신청':{
+  '지원사업':{
+    color:'teal',tag:'지원사업',
     schedules:[
       {name:'사전조사',tasks:['공고 분석','자격요건 확인','제출 서류 목록 작성']},
       {name:'서류 준비',tasks:['사업계획서 작성','외부발송 전 체크리스트 확인','증빙서류 수집']},
@@ -4210,12 +4062,22 @@ const PROJECT_TEMPLATES={
       {name:'사후',tasks:['결과 확인','선정 시 계약 및 협약 진행','정산 준비']},
     ]
   },
-  'B2B프로젝트':{
+  'B2B':{
+    color:'blue',tag:'B2B',
     schedules:[
       {name:'준비',tasks:['바이어 온보딩','견적서(내부용) 작성','견적서(외부용) 발송']},
       {name:'미팅',tasks:['미팅 일정 조율','제안 자료 준비','미팅 진행']},
       {name:'계약',tasks:['계약서 검토','계약 체결','내부 공유']},
       {name:'납품',tasks:['작업지시서 발행','감리','인보이스/패킹리스트 작성','납품','정산']},
+    ]
+  },
+  '전시':{
+    color:'purple',tag:'전시',
+    schedules:[
+      {name:'기획',tasks:['컨셉 기획','예산 수립','공간 섭외']},
+      {name:'준비',tasks:['전시 준비 체크리스트 확인','전시물 제작','홍보물 제작','사전 홍보 시작']},
+      {name:'현장',tasks:['설치 및 세팅','전시 일일 보고서 작성','바이어 상담 기록']},
+      {name:'사후',tasks:['철수','바이어 팔로업 이메일 발송','결과 보고','프로젝트 정리서 작성']},
     ]
   },
 };
@@ -4227,7 +4089,7 @@ function openNew(){
 }
 function renderNewForm(){
   document.getElementById('new-form-body').innerHTML=`
-  <div class="frow"><label class="fl">스케줄 템플릿</label>
+  <div class="frow"><label class="fl">템플릿으로 시작</label>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn sm ghost" onclick="applyProjTemplate('')" id="tpl-none" style="border:2px solid var(--text)">비어있는 프로젝트</button>
       ${Object.keys(PROJECT_TEMPLATES).map(k=>`<button class="btn sm ghost" onclick="applyProjTemplate('${k}')" id="tpl-${k}">${k}</button>`).join('')}
@@ -4235,16 +4097,7 @@ function renderNewForm(){
   </div>
   <div class="frow"><label class="fl">프로젝트명 <span>*</span></label><input class="fi" id="f-name" placeholder="예: 전향 2차 컬렉션 런칭"></div>
   <div class="two-col">
-    <div class="frow"><label class="fl">카테고리</label><select id="f-tag" class="fi"><option value="">카테고리 선택</option>
-<option value="SPEXTRUM">SPEXTRUM</option>
-<option value="쓰리포">쓰리포</option>
-<option value="Lapalette">Lapalette</option>
-<option value="B2B">B2B</option>
-<option value="Commercial">Commercial</option>
-<option value="지원사업/공모">지원사업/공모</option>
-<option value="회사운영">회사운영</option>
-<option value="전시">전시</option>
-</select></div>
+    <div class="frow"><label class="fl">카테고리</label><input class="fi" id="f-tag" placeholder="예: 제품개발"></div>
     <div class="frow"><label class="fl">상태</label><select class="fi" id="f-status"><option>예정</option><option>진행중</option><option>완료</option></select></div>
   </div>
   <div class="two-col">
@@ -4312,6 +4165,10 @@ function applyProjTemplate(key){
     tasks:s.tasks.map(t=>({id:uid(),name:t,done:false,meta:'',dueDate:'',startDate:'',taskStatus:'예정'}))
   }));
   document.getElementById('form-scheds').innerHTML=fSchedsHTML();
+
+  // 카테고리 자동 입력
+  const tagEl=document.getElementById('f-tag');
+  if(tagEl&&!tagEl.value) tagEl.value=tpl.tag||key;
 
   toast(`"${key}" 템플릿이 적용됐습니다`);
 }
@@ -6009,7 +5866,7 @@ window.addEventListener('load',()=>{
 });
 
 // ─── LOCALSTORAGE PERSISTENCE ────────────────────────────────
-// localStorage 제거 — Firebase only
+const LS_KEY='spextrum_v1';
 let teamMembers=['대표','김수경','정예진','엘레','김수아','두안','김보강','박수진','김진흥','정보겸','최원선','오경민','발롱탕','강효진'];
 
 // ─── FIREBASE 설정 ───────────────────────────────────────────
@@ -6073,6 +5930,7 @@ function initFirebase(){
     console.warn('Firebase 초기화 실패:', e);
     fbConnected=false;
     updateFbStatus('Firebase 미연결');
+    hideFbLoading();
   }
 }
 
@@ -6127,12 +5985,12 @@ function applyFirebaseData(d){
   if(d.meetings)                          meetings  =d.meetings;
   if(d.teamMembers&&d.teamMembers.length) teamMembers=d.teamMembers;
   if(d.gcClientId)                        gcClientId=d.gcClientId;
-  // Firebase only — localStorage 미사용
+  try{localStorage.setItem(LS_KEY,JSON.stringify({projects,notices,campaigns,meetings,gcClientId,teamMembers}));}catch(e){}
 }
 
 let _fbSaving=false;
 let _fbRetryCount=0;
-let _localSavedAt=0;
+let _localSavedAt=Date.now();
 // 기기 고유 ID — 자기 자신이 저장한 에코를 무시하기 위해 사용
 const _deviceId=(()=>{
   let id=localStorage.getItem('_spx_device_id');
@@ -6148,7 +6006,7 @@ function setSaveStatus(state){
     saving: {text:'저장 중...', color:'var(--text3)'},
     saved:  {text:'✓ 저장됨',   color:'#27ae60'},
     error:  {text:'⚠ 저장 실패', color:'#E24B4A'},
-    offline:{text:'오프라인 모드', color:'var(--text3)'},
+    offline:{text:'오프라인',    color:'var(--text3)'},
   };
   const s=map[state]||map.saved;
   el.textContent=s.text;
@@ -6220,22 +6078,20 @@ function fbLoadData(){
   if(!fbConnected||!fbDB) return;
 
   // ★ Firebase = 진짜 source of truth
-  // 항상 Firebase를 먼저 보고, 데이터가 있으면 무조건 Firebase 데이터를 씀
-  // localStorage는 Firebase 접근 실패 시 오프라인 백업용으로만 사용
+  // 항상 Firebase를 먼저 읽고, 데이터가 있으면 Firebase로 화면을 채움
   fbDB.ref('spextrum').once('value').then(snap=>{
     const d=snap.val();
-    if(d&&Object.keys(d).length>0){
-      // Firebase에 데이터 있음 → 무조건 Firebase 데이터 사용
+    if(d&&Object.keys(d).length>1){
+      // Firebase에 실제 데이터 있음 → Firebase 데이터 사용
       try{
         applyFirebaseData(d);
         _localSavedAt=d._savedAt||Date.now();
-        // Firebase only — localStorage 미사용
         refreshCurrentView();
         updateSb();
         setSaveStatus('saved');
       }catch(e){console.warn('FB load error:',e);}
     } else {
-      // Firebase 비어있음 → 로컬 데이터를 Firebase에 업로드
+      // Firebase 비어있음 → 현재 메모리(기본) 데이터 업로드
       const now=Date.now();
       _localSavedAt=now;
       fbDB.ref('spextrum').set({projects,notices,campaigns,meetings,gcClientId,teamMembers,_savedAt:now,_deviceId})
@@ -6243,14 +6099,19 @@ function fbLoadData(){
         .catch(e=>console.warn('[FB] 업로드 실패:',e));
     }
     fbInitDone=true;
+    hideFbLoading(); // 로딩 오버레이 제거
   }).catch(e=>{
-    // Firebase 접근 실패 (오프라인) → 로컬 데이터로 계속
     console.warn('FB load failed (offline mode):', e);
     fbInitDone=true;
     setSaveStatus('offline');
+    hideFbLoading(); // 오프라인이어도 오버레이 제거
   });
 }
 
+function hideFbLoading(){
+  const el=document.getElementById('fb-loading-overlay');
+  if(el){el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(()=>el.remove(),350);}
+}
 function updateFbStatus(msg){
   const el=document.getElementById('fb-status');
   if(el) el.textContent=msg;
@@ -6268,17 +6129,22 @@ function refreshCurrentView(){
 }
 
 function saveToLS(){
-  // localStorage 제거 — Firebase만 사용
-  const now2=Date.now();_localSavedAt=now2;
-  scheduleDriveSync();
-  fbSaveData();
+  try{
+    const data={projects,notices,campaigns,meetings,gcClientId,teamMembers};
+    localStorage.setItem(LS_KEY,JSON.stringify(data));
+    // Drive 자동 동기화 예약
+    scheduleDriveSync();
+  }catch(e){
+    console.error('로컬 저장 실패:',e);
+    setSaveStatus('error');
+    return;
+  }
+  fbSaveData(); // Firebase 백그라운드 저장
 }
 
 function loadFromLS(){
-  // localStorage 제거 — Firebase에서 로드
-  return false;
   try{
-    const raw=null;
+    const raw=localStorage.getItem(LS_KEY);
     if(!raw)return false;
     const d=JSON.parse(raw);
     if(d.projects)projects=d.projects;
@@ -6614,30 +6480,14 @@ function doSearch(q){
       });
     });
 
-    // 블록 메모 — 별도 섹션으로
-    (p.blocks||[]).forEach(b=>{
-      const text=(b.content||'').replace(/<[^>]+>/g,'');
-      if(text.toLowerCase().includes(ql)){
-        const snip=snippet(text,q);
-        results.push({type:'memo',icon:'📝',
-          title:snip||text.slice(0,60),
-          sub:`${p.name} › 메모`,
-          action:`closeSearch();openProj('${p.id}')`,
-          _isMemo:true});
-      }
-    });
-
-    // 결과물 링크 — 별도 섹션으로
+    // 결과물(deliverables)
     (p.workAreas||[]).forEach(wa=>{
       (wa.deliverables||[]).forEach(d=>{
-        const dText=(d.name||'')+' '+(d.memo||'');
-        if(dText.toLowerCase().includes(ql)){
-          results.push({type:'deliv',icon:d.link?'🔗':'📎',
+        if((d.name||'').toLowerCase().includes(ql))
+          results.push({type:'deliv',icon:'📎',
             title:d.name,
-            sub:`${p.name} › ${wa.name}${d.link?' · '+d.link.slice(0,40):''}`,
-            action:`closeSearch();openProj('${p.id}')`,
-            _isLink:!!d.link});
-        }
+            sub:`${p.name} › ${wa.name} · ${d.done?'완료':'미완료'}`,
+            action:`closeSearch();openProj('${p.id}')`});
       });
     });
   });
@@ -6677,25 +6527,14 @@ function doSearch(q){
 
   if(!results.length){el.innerHTML='<div class="search-empty">검색 결과가 없습니다</div>';return;}
 
-  // 섹션 분리: 프로젝트 / 메모·블록 / 링크·결과물 / 태스크 / 기타
-  const sections=[
-    {key:'proj',   label:'📁 프로젝트', types:['proj']},
-    {key:'memo',   label:'📝 메모 · 블록', types:['memo']},
-    {key:'link',   label:'🔗 링크 · 결과물', types:['deliv','link']},
-    {key:'task',   label:'☐ 태스크', types:['task','sched']},
-    {key:'etc',    label:'기타', types:['notice','camp','meet']},
-  ];
+  const grouped={};
+  const labels={proj:'프로젝트',sched:'스케줄',task:'태스크',deliv:'결과물',notice:'공지',camp:'캠페인',meet:'회의'};
+  const order=['proj','sched','task','deliv','notice','camp','meet'];
+  results.forEach(r=>{(grouped[r.type]=grouped[r.type]||[]).push(r);});
 
-  // 블록/메모를 별도 타입으로 분리
-  results.forEach(r=>{
-    if(r.type==='proj'&&r._isMemo) r.type='memo';
-    if(r.type==='deliv'&&r._isLink) r.type='link';
-  });
-
-  el.innerHTML=sections.map(sec=>{
-    const items=results.filter(r=>sec.types.includes(r.type));
-    if(!items.length) return '';
-    return `<div class="search-cat">${sec.label} <span style="font-size:12px;color:var(--text3)">${items.length}건</span></div>
+  el.innerHTML=order.filter(t=>grouped[t]).map(type=>{
+    const items=grouped[type];
+    return `<div class="search-cat">${labels[type]||type} <span style="font-size:14px;color:var(--text3)">${items.length}건</span></div>
     ${items.map(r=>`<div class="search-item" onclick="${r.action}">
       <span class="search-item-icon">${r.icon}</span>
       <div style="flex:1;min-width:0">
@@ -8050,7 +7889,8 @@ let _autoRunning = false;
 
 // ─── DATA SYNC PANEL ─────────────────────────────────────────
 function openDataPanel(){
-  const sizeKB='Firebase 동기화 중';
+  const saved=localStorage.getItem(LS_KEY);
+  const sizeKB=saved?Math.round(saved.length/1024)+'KB':'0KB';
   const taskCount=projects.flatMap(p=>p.schedules.flatMap(s=>s.tasks)).length;
   const connBadge=gcConnected
     ?'<span style="font-size:14px;padding:4px 10px;border-radius:10px;font-weight:600;background:#eaf3de;color:#3b6d11">연결됨</span>'
@@ -8097,7 +7937,7 @@ function openDataPanel(){
       +'4. Drive 저장은 백업 용도 — 앱 데이터는 자동으로 Firebase에 동기화됩니다'
     +'</div>'
     +'<div class="btn-row">'
-      +'<button class="btn sm danger-full" onclick="cfm(\'데이터 초기화\',\'모든 데이터가 삭제됩니다.\',()=>{if(fbDB)fbDB.ref(\'spextrum\').remove().then(()=>location.reload());else location.reload()})">초기화</button>'
+      +'<button class="btn sm danger-full" onclick="cfm(\'데이터 초기화\',\'모든 데이터가 삭제됩니다.\',()=>{localStorage.removeItem(\''+LS_KEY+'\');location.reload()})">초기화</button>'
       +'<button class="btn sm pri" onclick="openSnapshotPanel()">🕐 백업 복구</button>'
       +'<button class="btn sm" onclick="closeModal()">닫기</button>'
     +'</div>'
@@ -8152,7 +7992,7 @@ function restoreSnapshot(key){
 
 function exportData(){
   saveToLS();
-  const data=JSON.stringify({projects,notices,campaigns,meetings,gcClientId,teamMembers});
+  const data=localStorage.getItem(LS_KEY)||'{}';
   const now=new Date();
   const stamp=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
   const blob=new Blob([data],{type:'application/json'});
@@ -8173,8 +8013,8 @@ function importData(input){
       // validate structure
       if(!parsed.projects) throw new Error('올바른 Spextrum 데이터 파일이 아닙니다');
       cfm('데이터 가져오기',`프로젝트 ${parsed.projects.length}개, 태스크 ${parsed.projects.flatMap(p=>p.schedules?.flatMap(s=>s.tasks)||[]).length}개가 포함되어 있습니다.\n\n현재 데이터를 덮어씁니다. 계속하시겠습니까?`,()=>{
-        try{const d=JSON.parse(e.target.result);applyFirebaseData(d);saveToLS();}catch(e2){toast('가져오기 실패');return;}
-        toast('✅ 가져오기 완료!');
+        localStorage.setItem(LS_KEY,e.target.result);
+        toast('✅ 가져오기 완료! 새로고침합니다...');
         setTimeout(()=>location.reload(),900);
       });
     }catch(err){
@@ -8186,7 +8026,7 @@ function importData(input){
 
 function copyDataToClipboard(){
   saveToLS();
-  const data=JSON.stringify({projects,notices,campaigns,meetings,gcClientId,teamMembers});
+  const data=localStorage.getItem(LS_KEY)||'{}';
   navigator.clipboard.writeText(data).then(()=>{
     toast('✅ 클립보드에 복사됐습니다');
   }).catch(()=>{
@@ -8204,8 +8044,8 @@ function pasteDataFromClipboard(){
       const text=await navigator.clipboard.readText();
       const parsed=JSON.parse(text);
       if(!parsed.projects) throw new Error('올바른 데이터가 아닙니다');
-      try{const d=JSON.parse(text);applyFirebaseData(d);saveToLS();}catch(e2){toast('가져오기 실패');return;}
-      toast('✅ 가져오기 완료!');
+      localStorage.setItem(LS_KEY,text);
+      toast('✅ 가져오기 완료! 새로고침합니다...');
       setTimeout(()=>location.reload(),900);
     }catch(err){
       toast('❌ 클립보드 오류: '+err.message);
