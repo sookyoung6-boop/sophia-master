@@ -2945,6 +2945,8 @@ function schedListHTML(p,c){
             style="font-size:14px;font-weight:600;color:${sc};background:${sb};padding:3px 9px;border-radius:8px;cursor:pointer;user-select:none;transition:opacity .15s"
             onmouseenter="this.style.opacity='.7'" onmouseleave="this.style.opacity='1'"
             title="클릭으로 상태 변경">${s.status} ↻</span>
+          <button class="btn xs ghost" style="padding:5px 8px" title="스케줄 복제" onclick="duplicateSched('${p.id}','${s.id}')">⧉</button>
+          <button class="btn xs ghost" style="padding:5px 8px" title="다른 프로젝트로 이동" onclick="moveSchedModal('${p.id}','${s.id}')">↗</button>
           <button class="btn xs ghost" style="padding:5px 8px" onclick="openSched('${p.id}','${s.id}')">›</button>
           <button class="btn danger xs" onclick="deleteSched('${p.id}','${s.id}')">✕</button>
         </div>
@@ -3763,6 +3765,70 @@ function addSched(pid){
   saveToLS();document.getElementById('sched-list').innerHTML=schedListHTML(p,COLORS[p.color]);
   toast('스케줄이 추가됐습니다');
 }
+function duplicateSched(pid, sid){
+  const p=projects.find(x=>x.id===pid);
+  const s=p?.schedules.find(x=>x.id===sid);
+  if(!s)return;
+  const newS=JSON.parse(JSON.stringify(s));
+  newS.id=uid();
+  newS.name=s.name+' (복사본)';
+  newS.status='예정';
+  newS.tasks=newS.tasks.map(t=>({...t,id:uid(),done:false,taskStatus:'예정',completedAt:undefined}));
+  const idx=p.schedules.findIndex(x=>x.id===sid);
+  p.schedules.splice(idx+1,0,newS);
+  saveToLS();
+  document.getElementById('sched-list').innerHTML=schedListHTML(p,COLORS[p.color]);
+  toast(`"${s.name}" 복제됐습니다`);
+}
+
+function moveSchedModal(pid, sid){
+  const p=projects.find(x=>x.id===pid);
+  const s=p?.schedules.find(x=>x.id===sid);
+  if(!s)return;
+  const others=projects.filter(x=>x.id!==pid&&!x.archived);
+  if(!others.length){toast('이동할 수 있는 다른 프로젝트가 없습니다');return;}
+  modal(`<div class="m-title">↗ 스케줄 이동</div>
+  <div style="font-size:14px;color:var(--text3);margin-bottom:14px">"${s.name}" 스케줄을 다른 프로젝트로 이동합니다.<br>태스크 전체가 함께 이동됩니다.</div>
+  <div class="frow"><label class="fl">이동할 프로젝트</label>
+    <select id="move-target-pid" class="fi">
+      ${others.map(x=>`<option value="${x.id}">${x.name}</option>`).join('')}
+    </select>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+    <input type="checkbox" id="move-keep-copy" style="width:14px;height:14px">
+    <label for="move-keep-copy" style="font-size:14px;color:var(--text2);cursor:pointer">원본 유지 (복사로 이동)</label>
+  </div>
+  <div class="btn-row">
+    <button class="btn pri sm" onclick="doMoveSched('${pid}','${sid}')">이동</button>
+    <button class="btn sm" onclick="closeModal()">취소</button>
+  </div>`);
+}
+
+function doMoveSched(pid, sid){
+  const p=projects.find(x=>x.id===pid);
+  const s=p?.schedules.find(x=>x.id===sid);
+  const targetPid=document.getElementById('move-target-pid').value;
+  const keepCopy=document.getElementById('move-keep-copy').checked;
+  const target=projects.find(x=>x.id===targetPid);
+  if(!s||!target)return;
+
+  // 복사본 생성해서 타겟에 추가
+  const newS=JSON.parse(JSON.stringify(s));
+  newS.id=uid();
+  newS.tasks=newS.tasks.map(t=>({...t,id:uid()}));
+  target.schedules.push(newS);
+
+  // 원본 삭제 (복사 아닌 경우)
+  if(!keepCopy){
+    p.schedules=p.schedules.filter(x=>x.id!==sid);
+  }
+
+  closeModal();
+  saveToLS();
+  document.getElementById('sched-list').innerHTML=schedListHTML(p,COLORS[p.color]);
+  toast(`"${s.name}" → ${target.name}${keepCopy?' 복사':'이동'} 완료`);
+}
+
 function deleteSched(pid,sid,fromDetail){
   const p=projects.find(x=>x.id===pid),s=p.schedules.find(x=>x.id===sid);
   cfm('스케줄 삭제',`"${s.name}" 단계와 모든 태스크를 삭제합니다.`,()=>{
@@ -4281,7 +4347,6 @@ function renderHome(){
     <div class="h-sec-head">
       <div style="display:flex;align-items:center;gap:10px">
         <span class="h-sec-title">회의</span><span class="home-sec-handle" draggable="true" ondragstart="homeSectionDragStart(event)" ondragend="homeSectionDragEnd(event)">⠿</span>
-        <div style="display:flex;gap:5px">${['전체','예정','완료'].map(f=>`<button class="filt-btn${meetFilter===f?' on':''}" onclick="setMeetFilter('${f}')">${f}</button>`).join('')}</div>
       </div>
       <button class="btn sm" onclick="openAddMeeting()">+ 새 회의</button>
     </div>
@@ -5120,27 +5185,62 @@ function homeMetricsHTML(){
 }
 
 function meetListHTML(){
-  const list=meetFilter==='전체'?meetings:meetings.filter(m=>m.status===meetFilter);
-  if(!list.length) return'<div class="empty">회의가 없습니다</div>';
-  return [...list].sort((a,b)=>a.date.localeCompare(b.date)).map(m=>{
+  const STATUS_SEQ=['예정','진행중','완료'];
+  const active=meetings.filter(m=>m.status!=='완료');
+  const done=meetings.filter(m=>m.status==='완료');
+
+  function meetCard(m){
     const pts=m.date.split('.');
     const mon=(pts[1]||'').replace(/^0/,'')+'월',day=(pts[2]||'').replace(/^0/,'');
-    const cls=m.status==='완료'?'st-done':'st-active';
+    const statusColors={예정:'#EF9F27',진행중:'#378ADD',완료:'#27ae60'};
+    const statusBg={예정:'#faeeda',진행중:'#e6f1fb',완료:'#eaf3de'};
+    const sc=statusColors[m.status]||'#a8a49e';
+    const sb=statusBg[m.status]||'#f5f4f0';
     const synced=!!m.calEventId;
     const syncBtnHtml=gcConnected
       ?`<button class="sync-btn${synced?' synced':''}" onclick="event.stopPropagation();${synced?`removeMeetingFromCalendar('${m.id}')`:`syncMeetingToCalendar('${m.id}')`}" title="${synced?'캘린더에서 제거':'캘린더에 추가'}">${synced?'📅 동기화됨':'+ 캘린더'}</button>`
       :'';
-    return `<div style="display:flex;align-items:flex-start;gap:13px;padding:13px 20px;border-bottom:1px solid var(--border);transition:background .15s" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
+    const nextStatus=STATUS_SEQ[(STATUS_SEQ.indexOf(m.status)+1)%STATUS_SEQ.length];
+    return `<div style="display:flex;align-items:flex-start;gap:13px;padding:13px 20px;border-bottom:1px solid var(--border);transition:background .15s;${m.status==='완료'?'opacity:.6':''}" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
       <div style="width:44px;flex-shrink:0;text-align:center;background:var(--surface2);border-radius:var(--rsm);padding:6px 4px"><div style="font-size:14px;color:var(--text3)">${mon}</div><div style="font-size:18px;font-weight:700;color:var(--text);font-family:var(--mono);line-height:1.1">${day}</div></div>
       <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:500;color:var(--text)">${m.title}</div><div style="font-size:14px;color:var(--text3);margin-top:2px">${m.time} · ${m.attendees}${m.notes?` · ${m.notes.slice(0,40)}${m.notes.length>40?'…':''}`:''}</div></div>
       <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
         ${syncBtnHtml}
-        <span class="sbadge ${cls}">${m.status}</span>
+        <span onclick="cycleMeetStatus('${m.id}')"
+          style="font-size:14px;font-weight:600;color:${sc};background:${sb};padding:3px 9px;border-radius:8px;cursor:pointer;user-select:none;transition:opacity .15s;white-space:nowrap"
+          onmouseenter="this.style.opacity='.7'" onmouseleave="this.style.opacity='1'"
+          title="클릭으로 상태 변경 → ${nextStatus}">${m.status} ↻</span>
         <button class="btn danger xs" onclick="deleteMeeting('${m.id}')">✕</button>
       </div>
     </div>`;
-  }).join('');
+  }
+
+  const activeHTML=active.length
+    ? [...active].sort((a,b)=>a.date.localeCompare(b.date)).map(meetCard).join('')
+    : '<div class="empty">예정된 회의가 없습니다</div>';
+
+  const doneHTML=done.length
+    ? `<details style="border-top:1px solid var(--border)">
+        <summary style="padding:10px 20px;font-size:14px;font-weight:600;color:var(--text3);cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
+          <span>📦 완료된 회의 ${done.length}건</span>
+        </summary>
+        ${[...done].sort((a,b)=>b.date.localeCompare(a.date)).map(meetCard).join('')}
+      </details>`
+    : '';
+
+  return activeHTML + doneHTML;
 }
+
+function cycleMeetStatus(id){
+  const STATUS_SEQ=['예정','진행중','완료'];
+  const m=meetings.find(x=>x.id===id);
+  if(!m)return;
+  m.status=STATUS_SEQ[(STATUS_SEQ.indexOf(m.status)+1)%STATUS_SEQ.length];
+  saveToLS();
+  const el=document.getElementById('meet-list');
+  if(el) el.innerHTML=meetListHTML();
+}
+
 function setMeetFilter(f){meetFilter=f;document.getElementById('meet-list').innerHTML=meetListHTML()}
 function deleteMeeting(id){const m=meetings.find(x=>x.id===id);cfm('회의 삭제',`"${m.title}"을 삭제합니다.${m.calEventId&&gcConnected?' 캘린더 일정도 함께 삭제됩니다.':''}`,async()=>{
   if(m.calEventId&&gcConnected)await calFetch('DELETE',`/calendars/primary/events/${m.calEventId}`);
