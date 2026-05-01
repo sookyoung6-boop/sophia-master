@@ -6198,6 +6198,7 @@ function fbSaveSnapshot(){
 
 function fbSaveData(){
   if(!fbConnected||!fbDB) return;
+  if(!fbInitDone) return; // Firebase 로드 완료 전엔 절대 저장 금지
   clearTimeout(fbSaveTimer);
   setSaveStatus('saving');
   fbSaveTimer=setTimeout(()=>{
@@ -8841,14 +8842,22 @@ function closeSidePanel(){
   requestNotifPermission();
   // Firebase 초기화
   initFirebase();
-  // Run automation on load to check overdue/status
+  // Run automation on load — fbInitDone 완료 후에만 실행
   setTimeout(()=>{
-    automate();
-    saveToLS();
-    checkOverdueTasks();
+    if(!fbInitDone){
+      // Firebase 아직 로드 중 → saveToLS 절대 금지, automate만 조용히
+      automate();
+      checkOverdueTasks();
+    } else {
+      automate();
+      saveToLS();
+      checkOverdueTasks();
+    }
   }, 1200);
-  // Auto-save + auto-run every 30 seconds
-  setInterval(()=>{automate();saveToLS();}, 30000);
+  // Auto-save + auto-run every 30 seconds — fbInitDone 확인 후 실행
+  setInterval(()=>{
+    if(fbInitDone){automate();saveToLS();}
+  }, 30000);
 })();
 
 // ─── MOBILE ──────────────────────────────────────────────────
