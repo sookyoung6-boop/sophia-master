@@ -590,7 +590,7 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
 .cal-setup{background:var(--surface);border:1.5px dashed var(--border2);border-radius:var(--radius);padding:20px;margin-bottom:20px;text-align:center}
 
 .m-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:200;display:flex;align-items:center;justify-content:center;animation:fadeIn .15s}
-.m-box{background:var(--surface);border-radius:var(--radius);padding:24px 26px;width:440px;max-width:92vw;box-shadow:0 20px 50px rgba(0,0,0,.14)}
+.m-box{background:var(--surface);border-radius:var(--radius);padding:24px 26px;width:440px;max-width:92vw;box-shadow:0 20px 50px rgba(0,0,0,.14);max-height:90vh;overflow-y:auto}
 .m-title{font-size:15px;font-weight:700;margin-bottom:16px}
 
 /* TASK BOARD */
@@ -5261,6 +5261,7 @@ function meetListHTML(){
       <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:500;color:var(--text)">${m.title}</div><div style="font-size:14px;color:var(--text3);margin-top:2px">${m.time} · ${m.attendees}${m.notes?` · ${m.notes.slice(0,40)}${m.notes.length>40?'…':''}`:''}</div></div>
       <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
         ${syncBtnHtml}
+        <button class="btn xs ghost" onclick="openEditMeeting('${m.id}')" title="수정">✎</button>
         <span onclick="cycleMeetStatus('${m.id}')"
           style="font-size:14px;font-weight:600;color:${sc};background:${sb};padding:3px 9px;border-radius:8px;cursor:pointer;user-select:none;transition:opacity .15s;white-space:nowrap"
           onmouseenter="this.style.opacity='.7'" onmouseleave="this.style.opacity='1'"
@@ -5307,6 +5308,35 @@ function deleteMeeting(id){const m=meetings.find(x=>x.id===id);cfm('회의 삭�
   <div class="frow"><label class="fl">메모/안건</label><textarea class="fi" id="mm-notes" rows="3" placeholder="회의 내용 또는 사전 안건"></textarea></div>
   <div class="btn-row"><button class="btn pri sm" onclick="saveMeeting()">추가</button><button class="btn sm" onclick="closeModal()">취소</button></div>`);
 }
+function openEditMeeting(id){
+  const m=meetings.find(x=>x.id===id);if(!m)return;
+  modal(`<div class="m-title">✎ 회의 수정</div>
+  <div class="frow"><label class="fl">회의 제목</label><input class="fi" id="em-title" value="${m.title}"></div>
+  <div class="two-col">
+    <div class="frow"><label class="fl">날짜</label><input class="fi" id="em-date" value="${m.date}" placeholder="2026.04.15"></div>
+    <div class="frow"><label class="fl">시간</label><input class="fi" id="em-time" value="${m.time||''}" placeholder="10:00"></div>
+  </div>
+  <div class="frow"><label class="fl">참석자</label><input class="fi" id="em-att" value="${m.attendees||''}"></div>
+  <div class="frow"><label class="fl">메모/안건</label><textarea class="fi" id="em-notes" rows="3">${m.notes||''}</textarea></div>
+  <div class="btn-row">
+    <button class="btn pri sm" onclick="saveEditMeeting('${id}')">저장</button>
+    <button class="btn sm" onclick="closeModal()">취소</button>
+  </div>`);
+}
+
+function saveEditMeeting(id){
+  const m=meetings.find(x=>x.id===id);if(!m)return;
+  const title=document.getElementById('em-title').value.trim();if(!title)return;
+  m.title=title;
+  m.date=document.getElementById('em-date').value.trim()||m.date;
+  m.time=document.getElementById('em-time').value.trim();
+  m.attendees=document.getElementById('em-att').value.trim();
+  m.notes=document.getElementById('em-notes').value.trim();
+  closeModal();saveToLS();
+  document.getElementById('meet-list').innerHTML=meetListHTML();
+  toast('회의가 수정됐습니다');
+}
+
 function saveMeeting(){
   const title=document.getElementById('mm-title').value.trim();if(!title)return;
   meetings.push({id:uid(),title,date:document.getElementById('mm-date').value.trim()||today(),time:document.getElementById('mm-time').value.trim()||'',attendees:document.getElementById('mm-att').value.trim(),status:'예정',notes:document.getElementById('mm-notes').value.trim()});
