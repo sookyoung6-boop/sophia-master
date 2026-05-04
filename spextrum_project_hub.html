@@ -7024,6 +7024,7 @@ let tbView='board'; // 'board' | 'timeline' | 'table'
 let tbFilter='전체'; // '전체' | dept name
 let tbPersonFilter='전체'; // '전체' | person name
 let tbTagFilter='전체'; // '전체' | tag name
+let tbPeriodFilter='전체'; // '전체' | 'today' | 'week' | 'month' | 'next_month' | 'overdue' | 'no_date'
 
 // Flatten all tasks across projects with context
 function getAllTasks(){
@@ -7108,6 +7109,25 @@ function applyTbFilters(tasks){
     return t.meta.split(/[,·\/+\s]+/).map(m=>m.trim()).filter(m=>m.length>1).includes(tbPersonFilter);
   });
   if(tbTagFilter!=='전체') result=result.filter(t=>(t.tags||[]).includes(tbTagFilter));
+  if(tbPeriodFilter!=='전체'){
+    const today=new Date();today.setHours(0,0,0,0);
+    const todayMs=today.getTime();
+    const weekEnd=new Date(today);weekEnd.setDate(today.getDate()+(7-((today.getDay()||7))));weekEnd.setHours(23,59,59,999);
+    const monthEnd=new Date(today.getFullYear(),today.getMonth()+1,0,23,59,59,999);
+    const nextMonthStart=new Date(today.getFullYear(),today.getMonth()+1,1);
+    const nextMonthEnd=new Date(today.getFullYear(),today.getMonth()+2,0,23,59,59,999);
+    result=result.filter(t=>{
+      if(tbPeriodFilter==='no_date') return !t.dueDate;
+      if(!t.dueDate) return false;
+      const d=parseLocalDate(t.dueDate).getTime();
+      if(tbPeriodFilter==='overdue') return d<todayMs && !t.done;
+      if(tbPeriodFilter==='today') return d===todayMs;
+      if(tbPeriodFilter==='week') return d>=todayMs && d<=weekEnd.getTime();
+      if(tbPeriodFilter==='month') return d>=todayMs && d<=monthEnd.getTime();
+      if(tbPeriodFilter==='next_month') return d>=nextMonthStart.getTime() && d<=nextMonthEnd.getTime();
+      return true;
+    });
+  }
   if(tbHideDone) result=result.filter(t=>!t.done);
   return result;
 }
@@ -7284,12 +7304,23 @@ function renderTaskBoard(){
           <option value="전체"${tbTagFilter==='전체'?' selected':''}>전체 태그</option>
           ${getAllTags().map(tg=>`<option value="${tg}"${tbTagFilter===tg?' selected':''}>🏷 ${tg}</option>`).join('')}
         </select>
+        <!-- 기간 필터 -->
+        <select class="tb-filter" onchange="tbPeriodFilter=this.value;renderTaskBoard()">
+          <option value="전체"${tbPeriodFilter==='전체'?' selected':''}>전체 기간</option>
+          <option value="overdue"${tbPeriodFilter==='overdue'?' selected':''}>⚠️ 마감 초과</option>
+          <option value="today"${tbPeriodFilter==='today'?' selected':''}>📍 오늘 마감</option>
+          <option value="week"${tbPeriodFilter==='week'?' selected':''}>이번 주 마감</option>
+          <option value="month"${tbPeriodFilter==='month'?' selected':''}>이번 달 마감</option>
+          <option value="next_month"${tbPeriodFilter==='next_month'?' selected':''}>다음 달 마감</option>
+          <option value="no_date"${tbPeriodFilter==='no_date'?' selected':''}>마감일 없음</option>
+        </select>
         <!-- 완료 숨기기 -->
         <label style="display:flex;align-items:center;gap:5px;font-size:14px;color:var(--text3);cursor:pointer;flex-shrink:0">
           <input type="checkbox" ${tbHideDone?'checked':''} onchange="tbHideDone=this.checked;document.getElementById('tb-body').innerHTML=tbBodyHTML()" style="accent-color:var(--text);width:13px;height:13px">
           완료 숨기기
         </label>
         <div style="display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap">
+          ${tbPeriodFilter!=='전체'?`<span style="font-size:14px;background:#e6f1fb;color:#185fa5;padding:3px 9px;border-radius:10px;cursor:pointer" onclick="tbPeriodFilter='전체';renderTaskBoard()" title="기간 필터 해제">📅 ${({overdue:'마감 초과',today:'오늘',week:'이번 주',month:'이번 달',next_month:'다음 달',no_date:'마감일 없음'})[tbPeriodFilter]} ✕</span>`:''}
           ${tbTagFilter!=='전체'?`<span style="font-size:14px;background:#fff3a3;color:#854f0b;padding:3px 9px;border-radius:10px;cursor:pointer" onclick="tbTagFilter='전체';renderTaskBoard()" title="태그 필터 해제">🏷 ${tbTagFilter} ✕</span>`:''}
           ${tbPersonFilter!=='전체'?`<span style="font-size:14px;background:var(--surface2);color:var(--text2);padding:3px 9px;border-radius:10px">👤 ${tbPersonFilter}</span>`:''}
           ${tbFilter!=='전체'?`<span style="font-size:14px;background:var(--surface2);color:var(--text2);padding:3px 9px;border-radius:10px">🏷 ${tbFilter}</span>`:''}
@@ -7637,6 +7668,7 @@ function boardViewHTML(){
           <span style="font-size:14px;padding:2px 6px;border-radius:4px;background:${dc.bg};color:${dc.t}">${t.dept}</span>
           ${dueBadge}
         </div>
+        ${(t.tags||[]).length?`<div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:4px">${(t.tags||[]).map(tg=>`<span style="font-size:12px;background:#fff3a3;color:#854f0b;padding:1px 6px;border-radius:8px;cursor:pointer" onclick="event.stopPropagation();tbTagFilter='${tg}';renderTaskBoard()">🏷${tg}</span>`).join(' ')}</div>`:''}
         ${t.dueDate?`<div style="font-size:14px;color:var(--text3);font-family:var(--mono);margin-top:5px">${t.dueDate}</div>`:''}
       </div>`;
     }).join('');
@@ -7666,6 +7698,7 @@ function boardViewHTML(){
         const label=t.done?'완료':diff<0?`D+${-diff}`:diff===0?'오늘':`D-${diff}`;
         dueBadge=`<span class="sbadge ${cls}" style="font-size:14px;padding:2px 7px">${label}</span>`;
       }
+      const tagsHTML=(t.tags||[]).map(tg=>`<span style="font-size:12px;background:#fff3a3;color:#854f0b;padding:1px 6px;border-radius:8px;cursor:pointer" onclick="event.stopPropagation();tbTagFilter='${tg}';renderTaskBoard()">🏷${tg}</span>`).join(' ');
       return `<div class="bv-card" onclick="openSched('${t.projId}','${t.schedId}')">
         <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
           <div class="bv-check${t.done?' on':''}" onclick="event.stopPropagation();toggleTaskByRef('${t.projId}','${t.schedId}','${t.id}')">${t.done?'✓':''}</div>
@@ -7676,6 +7709,7 @@ function boardViewHTML(){
           ${t.meta?`<span style="font-size:14px;color:var(--text3)">${t.meta}</span>`:''}
           ${dueBadge}
         </div>
+        ${tagsHTML?`<div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:4px">${tagsHTML}</div>`:''}
         ${t.dueDate?`<div style="font-size:14px;color:var(--text3);font-family:var(--mono);margin-top:5px">${t.dueDate}</div>`:''}
       </div>`;
     }).join('');
