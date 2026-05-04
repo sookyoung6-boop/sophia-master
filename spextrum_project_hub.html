@@ -7525,9 +7525,8 @@ function workloadViewHTML(){
 // ── STATUS BOARD VIEW (예정/진행중/검토중/완료) ────────────────
 function statusBoardHTML(){
   const allTasks=getAllTasks();
-  const filtered=applyTbFilters(allTasks);
   // status board: show done tasks even if tbHideDone (user chose this view to see flow)
-  // but respect person/dept filter
+  // but respect dept/person/tag/period filter
   let base=allTasks;
   if(tbFilter!=='전체') base=base.filter(t=>{
     const metaDepts=deptsFromMeta(t.meta);
@@ -7535,6 +7534,26 @@ function statusBoardHTML(){
     return t.depts&&t.depts.includes(tbFilter);
   });
   if(tbPersonFilter!=='전체') base=base.filter(t=>t.meta&&t.meta.split(/[,·\/]/).map(m=>m.trim()).includes(tbPersonFilter));
+  if(tbTagFilter!=='전체') base=base.filter(t=>(t.tags||[]).includes(tbTagFilter));
+  if(tbPeriodFilter!=='전체'){
+    const today=new Date();today.setHours(0,0,0,0);
+    const todayMs=today.getTime();
+    const weekEnd=new Date(today);weekEnd.setDate(today.getDate()+(7-((today.getDay()||7))));weekEnd.setHours(23,59,59,999);
+    const monthEnd=new Date(today.getFullYear(),today.getMonth()+1,0,23,59,59,999);
+    const nextMonthStart=new Date(today.getFullYear(),today.getMonth()+1,1);
+    const nextMonthEnd=new Date(today.getFullYear(),today.getMonth()+2,0,23,59,59,999);
+    base=base.filter(t=>{
+      if(tbPeriodFilter==='no_date') return !t.dueDate;
+      if(!t.dueDate) return false;
+      const d=parseLocalDate(t.dueDate).getTime();
+      if(tbPeriodFilter==='overdue') return d<todayMs && !t.done;
+      if(tbPeriodFilter==='today') return d===todayMs;
+      if(tbPeriodFilter==='week') return d>=todayMs && d<=weekEnd.getTime();
+      if(tbPeriodFilter==='month') return d>=todayMs && d<=monthEnd.getTime();
+      if(tbPeriodFilter==='next_month') return d>=nextMonthStart.getTime() && d<=nextMonthEnd.getTime();
+      return true;
+    });
+  }
   const today=new Date();today.setHours(0,0,0,0);
 
   const statuses=[
@@ -7566,7 +7585,7 @@ function statusBoardHTML(){
         draggable="true"
         ondragstart="statusDragStart(event,'${t.projId}','${t.schedId}','${t.id}')"
         ondragend="statusDragEnd(event)"
-        onclick="if(!_statusDragged)openSched('${t.projId}','${t.schedId}')">
+        onclick="if(!_statusDragged)openSidePanel('${t.projId}','${t.schedId}','${t.id}')">
         <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
           <div class="bv-check${t.done?' on':''}" onclick="event.stopPropagation();toggleTaskByRef('${t.projId}','${t.schedId}','${t.id}')">${t.done?'✓':''}</div>
           <div class="bv-card-title${t.done?' done':''}" style="flex:1">${t.name}</div>
@@ -7576,6 +7595,7 @@ function statusBoardHTML(){
           ${t.meta?`<span style="font-size:14px;padding:2px 5px;border-radius:4px;background:${dc.bg};color:${dc.t}">${t.meta}</span>`:''}
           ${dueBadge}
         </div>
+        ${(t.tags||[]).length?`<div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:4px">${(t.tags||[]).map(tg=>`<span style="font-size:12px;background:#fff3a3;color:#854f0b;padding:1px 6px;border-radius:8px;cursor:pointer" onclick="event.stopPropagation();tbTagFilter='${tg}';renderTaskBoard()">🏷${tg}</span>`).join(' ')}</div>`:''}
       </div>`;
     }).join('');
 
@@ -7658,7 +7678,7 @@ function boardViewHTML(){
         const label=t.done?'완료':diff<0?`D+${-diff}`:diff===0?'오늘':`D-${diff}`;
         dueBadge=`<span class="sbadge ${cls}" style="font-size:14px;padding:2px 7px">${label}</span>`;
       }
-      return `<div class="bv-card" onclick="openSched('${t.projId}','${t.schedId}')">
+      return `<div class="bv-card" onclick="openSidePanel('${t.projId}','${t.schedId}','${t.id}')">
         <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
           <div class="bv-check${t.done?' on':''}" onclick="event.stopPropagation();toggleTaskByRef('${t.projId}','${t.schedId}','${t.id}')">${t.done?'✓':''}</div>
           <div class="bv-card-title${t.done?' done':''}" style="flex:1">${t.name}</div>
@@ -7699,7 +7719,7 @@ function boardViewHTML(){
         dueBadge=`<span class="sbadge ${cls}" style="font-size:14px;padding:2px 7px">${label}</span>`;
       }
       const tagsHTML=(t.tags||[]).map(tg=>`<span style="font-size:12px;background:#fff3a3;color:#854f0b;padding:1px 6px;border-radius:8px;cursor:pointer" onclick="event.stopPropagation();tbTagFilter='${tg}';renderTaskBoard()">🏷${tg}</span>`).join(' ');
-      return `<div class="bv-card" onclick="openSched('${t.projId}','${t.schedId}')">
+      return `<div class="bv-card" onclick="openSidePanel('${t.projId}','${t.schedId}','${t.id}')">
         <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
           <div class="bv-check${t.done?' on':''}" onclick="event.stopPropagation();toggleTaskByRef('${t.projId}','${t.schedId}','${t.id}')">${t.done?'✓':''}</div>
           <div class="bv-card-title${t.done?' done':''}" style="flex:1">${t.name}</div>
