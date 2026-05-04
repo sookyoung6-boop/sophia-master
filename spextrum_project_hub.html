@@ -652,34 +652,12 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
 <script src="https://accounts.google.com/gsi/client" async></script>
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 </head>
 <body>
 <div class="toast" id="toast"></div>
 <!-- Firebase 로딩 오버레이 -->
-<!-- ─── 인증 게이트 (로그인 안 했으면 모든 콘텐츠 가림) ─────────────── -->
-<div id="auth-gate" style="position:fixed;inset:0;background:#f7f6f2;z-index:99998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:20px">
-  <div style="font-size:20px;font-weight:700;color:#1a1917;letter-spacing:.12em">SPEXTRUM</div>
-  <div style="font-size:14px;color:#908c86;margin-top:-12px">Business OS</div>
-  <div id="auth-status" style="font-size:14px;color:#908c86;min-height:20px">로그인 상태 확인 중...</div>
-  <button id="auth-login-btn" onclick="authSignIn()"
-    style="display:none;align-items:center;gap:10px;padding:11px 22px;background:#fff;border:1px solid #d8d5cf;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;color:#1a1917;box-shadow:0 1px 3px rgba(0,0,0,.04);transition:background .15s"
-    onmouseenter="this.style.background='#f0eee9'" onmouseleave="this.style.background='#fff'">
-    <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
-    Google 계정으로 로그인
-  </button>
-  <div id="auth-denied-block" style="display:none;text-align:center;max-width:380px">
-    <div style="font-size:38px;margin-bottom:8px">🚫</div>
-    <div style="font-size:15px;font-weight:600;color:#c0392b;margin-bottom:6px">접근 권한이 없습니다</div>
-    <div id="auth-denied-email" style="font-size:14px;color:#908c86;margin-bottom:14px;font-family:ui-monospace,monospace"></div>
-    <div style="font-size:14px;color:#3c3a35;line-height:1.6">이 계정은 Spextrum Business OS 접근이 허용되지 않았습니다.<br>관리자(수경)에게 문의해주세요.</div>
-    <button onclick="authSignOut()" style="margin-top:16px;padding:8px 18px;background:#fff;border:1px solid #d8d5cf;border-radius:6px;cursor:pointer;font-size:14px;color:#1a1917">다른 계정으로 로그인</button>
-  </div>
-  <div style="position:absolute;bottom:24px;font-size:14px;color:#aaa6a0">© 2026 Spextrum Inc.</div>
-</div>
-
 <div id="fb-loading-overlay" style="position:fixed;inset:0;background:var(--bg,#f7f6f2);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
   <div style="font-size:16px;font-weight:700;color:#1a1917;letter-spacing:.08em">SPEXTRUM</div>
   <div style="display:flex;gap:6px;align-items:center">
@@ -9343,71 +9321,13 @@ function closeSidePanel(){
 
 
 
-// ─── 인증 (Google 로그인 + 화이트리스트) ─────────────────────
-const AUTH_WHITELIST=[
-  'sookyoung6@gmail.com',
-  'skkim@spextrum.net',
-  'bogang@spextrum.net',
-  'bogyeom@spextrum.net',
-  'elettra@spextrum.net',
-  'antoine@spextrum.net',
-  'jinheung@spextrum.net',
-  'sooah@spextrum.net',
-  'support@spextrum.net',
-  'design@spextrum.net',
-  'md@spextrum.net',
-  'hello@spextrum.net',
-  'w@spextrum.net',
-  'wonsun@spextrum.net',
-  'yejin@spextrum.net',
-];
-let currentUser=null;
-let _appBooted=false;
-
-function authSetStatus(text){
-  const el=document.getElementById('auth-status');
-  if(el) el.textContent=text;
-}
-function authShowLoginButton(){
-  document.getElementById('auth-login-btn').style.display='inline-flex';
-  document.getElementById('auth-denied-block').style.display='none';
-  authSetStatus('Spextrum 직원 계정으로 로그인해주세요');
-}
-function authShowDenied(email){
-  document.getElementById('auth-login-btn').style.display='none';
-  document.getElementById('auth-denied-block').style.display='block';
-  document.getElementById('auth-denied-email').textContent=email;
-  authSetStatus('');
-}
-function authHideGate(){
-  const gate=document.getElementById('auth-gate');
-  if(gate) gate.style.display='none';
-}
-async function authSignIn(){
-  try{
-    authSetStatus('Google 로그인 창을 여는 중...');
-    const provider=new firebase.auth.GoogleAuthProvider();
-    provider.setCustomParameters({prompt:'select_account'});
-    await firebase.auth().signInWithPopup(provider);
-  }catch(e){
-    console.error('Sign-in error',e);
-    authSetStatus('로그인 실패: '+(e.message||e.code));
-    document.getElementById('auth-login-btn').style.display='inline-flex';
-  }
-}
-async function authSignOut(){
-  try{
-    await firebase.auth().signOut();
-    location.reload();
-  }catch(e){console.error('Sign-out error',e);}
-}
-
-function bootApp(){
-  if(_appBooted) return;
-  _appBooted=true;
+// ─── INIT: localStorage + notifications + automation ─────────
+(function(){
   if(loadFromLS())toast('저장된 데이터를 불러왔습니다');
   requestNotifPermission();
+  // Firebase 초기화
   initFirebase();
+  // Run automation on load — fbInitDone 완료 후에만 실행
   setTimeout(()=>{
     if(!fbInitDone){
       automate();
@@ -9418,63 +9338,11 @@ function bootApp(){
       checkOverdueTasks();
     }
   }, 1200);
+  // Auto-save + auto-run every 30 seconds — fbInitDone 확인 후 실행
   setInterval(()=>{
     if(fbInitDone){automate();saveToLS();}
   }, 30000);
-}
-
-// ─── INIT: 인증 먼저, 통과한 사용자만 앱 부팅 ────────────────────
-(function(){
-  // Firebase Auth 초기화 (config는 위쪽 const로 정의됨, IIFE는 뒤에 실행되니 OK)
-  try{
-    if(!firebase.apps.length){
-      firebase.initializeApp(firebaseConfig);
-    }
-  }catch(e){
-    authSetStatus('Firebase 초기화 오류');
-    console.error(e);
-    return;
-  }
-  authSetStatus('로그인 상태 확인 중...');
-  firebase.auth().onAuthStateChanged(user=>{
-    if(!user){
-      currentUser=null;
-      authShowLoginButton();
-      return;
-    }
-    const email=(user.email||'').toLowerCase().trim();
-    const allowed=AUTH_WHITELIST.map(e=>e.toLowerCase().trim());
-    if(!allowed.includes(email)){
-      currentUser=null;
-      authShowDenied(user.email||'(이메일 없음)');
-      return;
-    }
-    // 통과
-    currentUser={uid:user.uid,email:user.email,name:user.displayName||user.email,photoURL:user.photoURL||''};
-    authHideGate();
-    bootApp();
-    setTimeout(updateUserBadge, 300);
-  });
 })();
-
-function updateUserBadge(){
-  if(!currentUser) return;
-  const fb=document.getElementById('fb-status');
-  if(!fb) return;
-  // 이미 있으면 갱신
-  let badge=document.getElementById('user-badge');
-  if(!badge){
-    badge=document.createElement('div');
-    badge.id='user-badge';
-    badge.style.cssText='font-size:14px;color:var(--text2);margin-bottom:6px;display:flex;align-items:center;gap:8px;padding:6px 0';
-    fb.parentNode.insertBefore(badge,fb);
-  }
-  const initial=(currentUser.name||currentUser.email||'?').charAt(0).toUpperCase();
-  const avatar=currentUser.photoURL
-    ?`<img src="${currentUser.photoURL}" style="width:22px;height:22px;border-radius:50%;flex-shrink:0" onerror="this.outerHTML='<div style=\\'width:22px;height:22px;border-radius:50%;background:#1a1917;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600\\'>${initial}</div>'">`
-    :`<div style="width:22px;height:22px;border-radius:50%;background:#1a1917;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0">${initial}</div>`;
-  badge.innerHTML=`${avatar}<div style="flex:1;min-width:0;overflow:hidden"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500">${currentUser.name||''}</div><div style="font-size:12px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${currentUser.email||''}</div></div><button onclick="authSignOut()" title="로그아웃" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:2px 5px" onmouseenter="this.style.color='var(--text)'" onmouseleave="this.style.color='var(--text3)'">↪</button>`;
-}
 
 // ─── MOBILE ──────────────────────────────────────────────────
 function toggleMobSidebar(){
