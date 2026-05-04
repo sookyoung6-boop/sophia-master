@@ -693,6 +693,10 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
       <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="3" width="11" height="8" rx="1.5" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M1 5.5h11M4.5 7.5h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
       아카이브 <span class="nav-count" id="nav-archive-count"></span>
     </div>
+    <div class="nav-item" id="nav-deliv" onclick="goDeliverableArchive()">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 2h6l3 3v6H2V2z" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linejoin="round"/><path d="M8 2v3h3" stroke="currentColor" stroke-width="1.2"/></svg>
+      결과물 아카이브
+    </div>
     <!-- 진행현황 카운트 (숨겨진 상태로 유지 — updateSb에서 사용) -->
     <span id="nav-c1" style="display:none"></span>
     <span id="nav-c2" style="display:none"></span>
@@ -742,6 +746,7 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
     </div>
   </div>
   <div class="view" id="v-tasks"></div>
+  <div class="view" id="v-deliv"><div class="content" id="deliv-content" style="max-width:1100px"></div></div>
   <div class="view" id="v-cal"><div class="content" id="cal-content" style="max-width:640px"></div></div>
   <div class="view" id="v-home"><div class="home-content" id="home-content"></div></div>
   <div class="view active" id="v-list">
@@ -1302,10 +1307,11 @@ function projMainHTML(p,c,pr,allT,doneT){
       <div style="padding:9px 12px;font-size:14px;color:var(--text3);background:var(--surface2);display:flex;align-items:flex-start;font-weight:500;padding-top:11px">${lbl}</div>
       <div style="padding:7px 12px">
         <div contenteditable="true" spellcheck="false"
-          style="font-size:14px;color:var(--text);outline:none;min-height:36px;border-radius:3px;padding:2px 4px;line-height:1.7"
+          style="font-size:14px;color:var(--text);outline:none;min-height:36px;border-radius:3px;padding:2px 4px;line-height:1.7;white-space:pre-wrap"
           data-placeholder="${ph}"
           onfocus="this.style.background='var(--surface2)'"
-          onblur="this.style.background='';saveProjField('${p.id}','${field}',this.textContent)"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();document.execCommand('insertHTML',false,'<br>')}"
+          onblur="this.style.background='';saveProjField('${p.id}','${field}',this.innerHTML)"
         >${p[field]||''}</div>
       </div>
     </div>`;
@@ -2289,11 +2295,11 @@ function blockKeydown(e, pid, bid){
     blocks.splice(idx+1,0,nb);
     saveToLS();
     reRenderBlocks(pid);
-    // Focus new block
-    setTimeout(()=>{
+    // Focus new block immediately (microtask, not setTimeout)
+    requestAnimationFrame(()=>{
       const newEl=document.querySelector(`[data-bid="${nb.id}"]`);
       if(newEl){newEl.focus();placeCaretAtStart(newEl);}
-    },30);
+    });
   }
   else if(e.key==='Backspace' && e.target.textContent==='' && blocks.length>1){
     e.preventDefault();
@@ -2722,15 +2728,18 @@ function saveWeekRange(pid,wi,val){
 }
 function saveGoalText(pid,wi,gi,val){
   const p=projects.find(x=>x.id===pid);
-  if(!p.weeklyGoals[wi])return;
-  const g=p.weeklyGoals[wi].goals[gi];
-  if(typeof g==='string') p.weeklyGoals[wi].goals[gi]=val;
-  else p.weeklyGoals[wi].goals[gi]={...g,text:val};
+  if(!p||!p.weeklyGoals||!p.weeklyGoals[wi])return;
+  const goals=p.weeklyGoals[wi].goals;
+  if(!goals||goals[gi]===undefined)return;
+  const g=goals[gi];
+  if(typeof g==='string') goals[gi]={text:val,done:false};
+  else goals[gi]={...g,text:val};
   saveToLS();
 }
 function addGoalItem(pid,wi){
   const p=projects.find(x=>x.id===pid);
-  if(p.weeklyGoals[wi])p.weeklyGoals[wi].goals.push('');
+  if(!p||!p.weeklyGoals)return;
+  if(p.weeklyGoals[wi])p.weeklyGoals[wi].goals.push({text:'',done:false});
   saveToLS();document.getElementById('weekly-goals').innerHTML=weeklyGoalsHTML(p);
 }
 function deleteGoal(pid,wi,gi){
@@ -4047,8 +4056,25 @@ function delRef(pid,fid){
 function openEditProjMeta(pid){
   const p=projects.find(x=>x.id===pid);if(!p)return;
   modal(`<div class="m-title">✎ 프로젝트 설정</div>
+  <div class="frow"><label class="fl">프로젝트명</label>
+    <input id="em-name" class="fi" value="${(p.name||'').replace(/"/g,'&quot;')}" placeholder="프로젝트 이름">
+  </div>
+  <div class="two-col">
+    <div class="frow"><label class="fl">시작</label>
+      <input id="em-start" class="fi" value="${p.start||''}" placeholder="예: 2026.04">
+    </div>
+    <div class="frow"><label class="fl">종료</label>
+      <input id="em-end" class="fi" value="${p.end||''}" placeholder="예: 2026.12">
+    </div>
+  </div>
+  <div class="frow"><label class="fl">한 줄 설명</label>
+    <input id="em-desc" class="fi" value="${(p.desc||'').replace(/"/g,'&quot;')}" placeholder="짧은 한 줄 요약">
+  </div>
   <div class="frow"><label class="fl">카테고리</label>
-    <input id="em-tag" class="fi" value="${p.tag||''}" placeholder="예: 제품개발, B2B">
+    <select id="em-tag" class="fi">
+      <option value="">선택</option>
+      ${['SPEXTRUM','쓰리포','Lapalette','B2B','Commercial','지원사업/공모','회사운영','전시'].map(c=>`<option value="${c}"${p.tag===c?' selected':''}>${c}</option>`).join('')}
+    </select>
   </div>
   <div class="frow"><label class="fl">컬러</label>
     <div class="color-row" id="em-colors">
@@ -4064,8 +4090,16 @@ function openEditProjMeta(pid){
 
 function saveEditProjMeta(pid){
   const p=projects.find(x=>x.id===pid);if(!p)return;
+  const name=document.getElementById('em-name').value.trim();
   const tag=document.getElementById('em-tag').value.trim();
-  if(tag) p.tag=tag;
+  const start=document.getElementById('em-start').value.trim();
+  const end=document.getElementById('em-end').value.trim();
+  const desc=document.getElementById('em-desc').value.trim();
+  if(name) p.name=name;
+  p.tag=tag;
+  if(start) p.start=start;
+  if(end) p.end=end;
+  if(desc) p.desc=desc;
   if(window._emColor) p.color=window._emColor;
   saveToLS();closeModal();openProj(pid);
 }
@@ -4823,6 +4857,42 @@ function ganttHTML(){
 
 // ─── 타임라인 프로젝트 순서 드래그 ─────────────────────────
 let _ganttDragId=null,_ganttDragEl=null;
+let _weeklyGanttCollapsed={}; // {projId: true/false}
+
+function toggleWeeklyGanttCollapse(pid){
+  _weeklyGanttCollapsed[pid]=!_weeklyGanttCollapsed[pid];
+  const el=document.getElementById('home-timeline');
+  if(el && typeof weeklyGanttHTML==='function'){
+    el.innerHTML=weeklyGanttHTML();
+  }
+}
+function weeklyGanttCollapseAll(){
+  projects.filter(p=>!p.archived).forEach(p=>{_weeklyGanttCollapsed[p.id]=true;});
+  const el=document.getElementById('home-timeline');
+  if(el) el.innerHTML=weeklyGanttHTML();
+}
+function weeklyGanttExpandAll(){
+  _weeklyGanttCollapsed={};
+  const el=document.getElementById('home-timeline');
+  if(el) el.innerHTML=weeklyGanttHTML();
+}
+function toggleWeeklyGanttCollapseOffset(pid){
+  _weeklyGanttCollapsed[pid]=!_weeklyGanttCollapsed[pid];
+  const el=document.getElementById('home-timeline');
+  if(el && typeof weeklyGanttHTMLWithOffset==='function'){
+    el.innerHTML=weeklyGanttHTMLWithOffset(typeof _weekOffset==='number'?_weekOffset:0);
+  }
+}
+function weeklyGanttCollapseAllOffset(offset){
+  projects.filter(p=>!p.archived).forEach(p=>{_weeklyGanttCollapsed[p.id]=true;});
+  const el=document.getElementById('home-timeline');
+  if(el) el.innerHTML=weeklyGanttHTMLWithOffset(offset);
+}
+function weeklyGanttExpandAllOffset(offset){
+  _weeklyGanttCollapsed={};
+  const el=document.getElementById('home-timeline');
+  if(el) el.innerHTML=weeklyGanttHTMLWithOffset(offset);
+}
 function ganttRowDragStart(e,pid){
   _ganttDragId=pid;_ganttDragEl=e.currentTarget;
   e.dataTransfer.effectAllowed='move';
@@ -4931,7 +5001,8 @@ function weeklyGanttHTML(){
       </div>`;
     }
 
-    // Project header row — draggable
+    // Project header row — draggable, with collapse toggle
+    const isCollapsed=_weeklyGanttCollapsed[p.id]===true;
     const projRow=`<div data-gantt-pid="${p.id}" draggable="true"
       ondragstart="ganttRowDragStart(event,'${p.id}')"
       ondragend="ganttRowDragEnd(event)"
@@ -4939,8 +5010,12 @@ function weeklyGanttHTML(){
       <div style="display:flex;align-items:center;border-bottom:1px solid var(--border);min-height:34px;background:var(--surface2)">
         <div style="width:${LABEL_W}px;flex-shrink:0;padding:0 8px 0 12px;display:flex;align-items:center;gap:6px">
           <span style="color:var(--text3);cursor:grab;font-size:12px;flex-shrink:0" title="드래그로 순서 변경">⠿</span>
+          <span onclick="toggleWeeklyGanttCollapse('${p.id}')"
+            style="font-size:11px;color:var(--text3);cursor:pointer;flex-shrink:0;width:14px;text-align:center;user-select:none;transition:transform .15s;transform:rotate(${isCollapsed?'-90':'0'}deg);display:inline-block"
+            title="${isCollapsed?'펼치기':'접기'}">▼</span>
           <div style="width:8px;height:8px;border-radius:50%;background:${c.dot};flex-shrink:0"></div>
           <span style="font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="openProj('${p.id}')" title="${p.name}">${p.name}</span>
+          ${isCollapsed?`<span style="font-size:12px;color:var(--text3);font-weight:400">${weekTasks.length}건</span>`:''}
         </div>
         <div style="flex:1;display:flex">
           ${dateLabels.map((_,i)=>`<div style="width:${COL_W}px;flex-shrink:0;border-right:1px solid var(--border);${i===todayIdx?'background:rgba(226,75,74,.06)':''}"></div>`).join('')}
@@ -4989,7 +5064,7 @@ function weeklyGanttHTML(){
       </div>`;
     }).join('');
 
-    return projRow+taskRows+`</div>`;
+    return projRow+(isCollapsed?'':taskRows)+`</div>`;
   }).join('');
 
   // Week nav
@@ -4999,11 +5074,15 @@ function weeklyGanttHTML(){
   const nextStr=`${nextMon.getFullYear()}-${String(nextMon.getMonth()+1).padStart(2,'0')}-${String(nextMon.getDate()).padStart(2,'0')}`;
 
   return `<div style="min-width:${TOTAL_W}px">
-    <div style="display:flex;align-items:center;gap:8px;padding:8px 0 4px">
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0 4px;flex-wrap:wrap">
       <button class="btn xs ghost" onclick="shiftWeeklyGantt('${prevStr}')">‹ 이전 주</button>
       <button class="btn xs ghost" onclick="setHomeTimeline('week')">오늘</button>
       <button class="btn xs ghost" onclick="shiftWeeklyGantt('${nextStr}')">다음 주 ›</button>
       <span style="font-size:14px;color:var(--text3);margin-left:6px">${mon.getMonth()+1}/${mon.getDate()} – ${sun.getMonth()+1}/${sun.getDate()} · 이번 주 마감 태스크 표시</span>
+      <div style="margin-left:auto;display:flex;gap:6px">
+        <button class="btn xs ghost" onclick="weeklyGanttCollapseAll()" title="모두 접기">▷ 모두 접기</button>
+        <button class="btn xs ghost" onclick="weeklyGanttExpandAll()" title="모두 펼치기">▽ 모두 펼치기</button>
+      </div>
     </div>
     ${header}
     <div id="gantt-rows-wrap">${rows||'<div class="empty" style="padding:20px">이번 주 마감 태스크가 없습니다</div>'}</div>
@@ -5065,21 +5144,36 @@ function weeklyGanttHTMLWithOffset(weekOffset){
       const inWeek=(sd&&sd<=sun&&(!ed||ed>=mon))||(ed&&ed>=mon&&ed<=sun)||(sd&&sd>=mon&&sd<=sun);
       if(inWeek) weekTasks.push({...t,schedId:s.id,schedName:s.name});
     }));
-    if(!weekTasks.length) return `<div style="display:flex;align-items:center;border-bottom:1px solid var(--border);min-height:34px;opacity:.4">
-      <div style="width:${LABEL_W}px;flex-shrink:0;position:sticky;left:0;background:var(--surface);z-index:2;padding:0 12px;display:flex;align-items:center;gap:7px;border-right:1px solid var(--border)">
-        <div style="width:7px;height:7px;border-radius:50%;background:${c.dot}"></div>
-        <span style="font-size:14px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</span>
+    if(!weekTasks.length) return `<div data-gantt-pid="${p.id}" draggable="true"
+        ondragstart="ganttRowDragStart(event,'${p.id}')"
+        ondragend="ganttRowDragEnd(event)"
+        ondragover="ganttRowDragOver(event)"
+        style="display:flex;align-items:center;border-bottom:1px solid var(--border);min-height:34px;opacity:.4">
+      <div style="width:${LABEL_W}px;flex-shrink:0;position:sticky;left:0;background:var(--surface);z-index:2;padding:0 8px 0 12px;display:flex;align-items:center;gap:6px;border-right:1px solid var(--border)">
+        <span style="color:var(--text3);cursor:grab;font-size:12px;flex-shrink:0">⠿</span>
+        <div style="width:7px;height:7px;border-radius:50%;background:${c.dot};flex-shrink:0"></div>
+        <span style="font-size:14px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.name}">${p.name}</span>
       </div>
       <div style="flex:1;display:flex">${dateLabels.map((_,i)=>`<div style="width:${COL_W}px;flex-shrink:0;border-right:1px solid var(--border);${i===todayIdx?'background:rgba(226,75,74,.04)':''}"></div>`).join('')}</div>
     </div>`;
 
-    const projRow=`<div style="display:flex;align-items:center;border-bottom:1px solid var(--border);min-height:34px;background:var(--surface2)">
-      <div style="width:${LABEL_W}px;flex-shrink:0;position:sticky;left:0;background:var(--surface2);z-index:2;padding:0 12px;display:flex;align-items:center;gap:7px;border-right:1px solid var(--border)">
-        <div style="width:8px;height:8px;border-radius:50%;background:${c.dot}"></div>
-        <span style="font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="openProj('${p.id}')" title="${p.name}">${p.name}</span>
-      </div>
-      <div style="flex:1;display:flex">${dateLabels.map((_,i)=>`<div style="width:${COL_W}px;flex-shrink:0;border-right:1px solid var(--border);${i===todayIdx?'background:rgba(226,75,74,.06)':''}"></div>`).join('')}</div>
-    </div>`;
+    const isCollapsed=_weeklyGanttCollapsed[p.id]===true;
+    const projRow=`<div data-gantt-pid="${p.id}" draggable="true"
+      ondragstart="ganttRowDragStart(event,'${p.id}')"
+      ondragend="ganttRowDragEnd(event)"
+      ondragover="ganttRowDragOver(event)">
+      <div style="display:flex;align-items:center;border-bottom:1px solid var(--border);min-height:34px;background:var(--surface2)">
+        <div style="width:${LABEL_W}px;flex-shrink:0;position:sticky;left:0;background:var(--surface2);z-index:2;padding:0 8px 0 12px;display:flex;align-items:center;gap:6px;border-right:1px solid var(--border)">
+          <span style="color:var(--text3);cursor:grab;font-size:12px;flex-shrink:0" title="드래그로 순서 변경">⠿</span>
+          <span onclick="toggleWeeklyGanttCollapseOffset('${p.id}')"
+            style="font-size:11px;color:var(--text3);cursor:pointer;flex-shrink:0;width:14px;text-align:center;user-select:none;transform:rotate(${isCollapsed?'-90':'0'}deg);display:inline-block"
+            title="${isCollapsed?'펼치기':'접기'}">▼</span>
+          <div style="width:8px;height:8px;border-radius:50%;background:${c.dot};flex-shrink:0"></div>
+          <span style="font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="openProj('${p.id}')" title="${p.name}">${p.name}</span>
+          ${isCollapsed?`<span style="font-size:12px;color:var(--text3);font-weight:400">${weekTasks.length}건</span>`:''}
+        </div>
+        <div style="flex:1;display:flex">${dateLabels.map((_,i)=>`<div style="width:${COL_W}px;flex-shrink:0;border-right:1px solid var(--border);${i===todayIdx?'background:rgba(226,75,74,.06)':''}"></div>`).join('')}</div>
+      </div>`;
 
     const taskRows=weekTasks.map(t=>{
       const sd=t.startDate?parseLocalDate(t.startDate):null;
@@ -5111,7 +5205,7 @@ function weeklyGanttHTMLWithOffset(weekOffset){
         </div>
       </div>`;
     }).join('');
-    return projRow+taskRows;
+    return projRow+(isCollapsed?'':taskRows)+`</div>`;
   }).join('');
 
   const prevW=weekOffset-1,nextW=weekOffset+1;
@@ -5119,7 +5213,7 @@ function weeklyGanttHTMLWithOffset(weekOffset){
   const ganttInner=`<div style="overflow-x:auto" id="weekly-gantt-scroll">
     <div style="min-width:${TOTAL_W}px">
       ${header}
-      ${rows||'<div class="empty" style="padding:20px">이번 주 해당하는 태스크가 없습니다<br><span style="font-size:14px">태스크에 시작일/마감일을 입력하면 여기에 표시됩니다</span></div>'}
+      <div id="gantt-rows-wrap">${rows||'<div class="empty" style="padding:20px">이번 주 해당하는 태스크가 없습니다<br><span style="font-size:14px">태스크에 시작일/마감일을 입력하면 여기에 표시됩니다</span></div>'}</div>
     </div>
   </div>`;
   if(todayIdx>=0){
@@ -5129,11 +5223,15 @@ function weeklyGanttHTMLWithOffset(weekOffset){
     },80);
   }
   return `<div>
-    <div style="display:flex;align-items:center;gap:8px;padding:8px 0 4px">
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0 4px;flex-wrap:wrap">
       <button class="btn xs ghost" onclick="_weekOffset=${prevW};document.getElementById('home-timeline').innerHTML=weeklyGanttHTMLWithOffset(${prevW})">‹ 이전 주</button>
       <button class="btn xs ghost" onclick="_weekOffset=0;setHomeTimeline('week')">오늘</button>
       <button class="btn xs ghost" onclick="_weekOffset=${nextW};document.getElementById('home-timeline').innerHTML=weeklyGanttHTMLWithOffset(${nextW})">다음 주 ›</button>
       <span style="font-size:14px;color:var(--text3);margin-left:6px">${mon.getMonth()+1}/${mon.getDate()} – ${sun.getMonth()+1}/${sun.getDate()}</span>
+      <div style="margin-left:auto;display:flex;gap:6px">
+        <button class="btn xs ghost" onclick="weeklyGanttCollapseAllOffset(${weekOffset})">▷ 모두 접기</button>
+        <button class="btn xs ghost" onclick="weeklyGanttExpandAllOffset(${weekOffset})">▽ 모두 펼치기</button>
+      </div>
     </div>
     ${ganttInner}
   </div>`;
@@ -6925,6 +7023,7 @@ function checkOverdueTasks(){
 let tbView='board'; // 'board' | 'timeline' | 'table'
 let tbFilter='전체'; // '전체' | dept name
 let tbPersonFilter='전체'; // '전체' | person name
+let tbTagFilter='전체'; // '전체' | tag name
 
 // Flatten all tasks across projects with context
 function getAllTasks(){
@@ -6989,21 +7088,131 @@ function getAllPersons(){
 }
 
 // Apply all active task board filters
+function getAllTags(){
+  const tags=new Set();
+  projects.forEach(p=>p.schedules.forEach(s=>s.tasks.forEach(t=>{
+    (t.tags||[]).forEach(tag=>tags.add(tag));
+  })));
+  return [...tags].sort();
+}
+
 function applyTbFilters(tasks){
   let result=tasks;
   if(tbFilter!=='전체') result=result.filter(t=>{
-    // 담당자(meta)에서 파트 추론
     const metaDepts=deptsFromMeta(t.meta);
     if(metaDepts.includes(tbFilter)) return true;
-    // fallback: 프로젝트 departments
     return t.depts&&t.depts.includes(tbFilter);
   });
   if(tbPersonFilter!=='전체') result=result.filter(t=>{
     if(!t.meta)return false;
     return t.meta.split(/[,·\/+\s]+/).map(m=>m.trim()).filter(m=>m.length>1).includes(tbPersonFilter);
   });
+  if(tbTagFilter!=='전체') result=result.filter(t=>(t.tags||[]).includes(tbTagFilter));
   if(tbHideDone) result=result.filter(t=>!t.done);
   return result;
+}
+
+let delivGroupBy='project'; // 'project' | 'tag'
+
+function goDeliverableArchive(){
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('nav-deliv').classList.add('active');
+  setBc([{label:'결과물 아카이브'}]);
+  document.getElementById('topbar-actions').innerHTML='';
+  renderDeliverableArchive();
+  showView('v-deliv');
+}
+
+function renderDeliverableArchive(){
+  // 모든 결과물 수집
+  const allDelivs=[];
+  projects.filter(p=>!p.archived).forEach(p=>{
+    (p.workAreas||[]).forEach(wa=>{
+      (wa.deliverables||[]).forEach(d=>{
+        allDelivs.push({...d, projId:p.id, projName:p.name, projColor:p.color, projTag:p.tag, waName:wa.name});
+      });
+    });
+  });
+
+  const total=allDelivs.length;
+  const done=allDelivs.filter(d=>d.done).length;
+  const withFile=allDelivs.filter(d=>d.file||d.link).length;
+
+  let body='';
+  if(!allDelivs.length){
+    body='<div class="empty" style="padding:60px 20px">아직 등록된 결과물이 없습니다</div>';
+  } else if(delivGroupBy==='project'){
+    // 프로젝트별 그룹
+    const groups={};
+    allDelivs.forEach(d=>{
+      if(!groups[d.projId]) groups[d.projId]={name:d.projName,color:d.projColor,tag:d.projTag,items:[]};
+      groups[d.projId].items.push(d);
+    });
+    body=Object.values(groups).map(g=>{
+      const c=COLORS[g.color];
+      return `<div style="margin-bottom:24px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid ${c.dot}">
+          <div style="width:8px;height:8px;border-radius:50%;background:${c.dot}"></div>
+          <span style="font-size:15px;font-weight:700">${g.name}</span>
+          <span style="font-size:13px;color:var(--text3)">${g.tag||''} · ${g.items.length}개</span>
+        </div>
+        ${g.items.map(d=>delivRowHTML(d)).join('')}
+      </div>`;
+    }).join('');
+  } else {
+    // 카테고리(태그)별 그룹
+    const groups={};
+    allDelivs.forEach(d=>{
+      const k=d.projTag||'미분류';
+      if(!groups[k]) groups[k]=[];
+      groups[k].push(d);
+    });
+    body=Object.entries(groups).map(([tag,items])=>{
+      return `<div style="margin-bottom:24px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--border2)">
+          <span style="font-size:15px;font-weight:700">${tag}</span>
+          <span style="font-size:13px;color:var(--text3)">${items.length}개</span>
+        </div>
+        ${items.map(d=>delivRowHTML(d,true)).join('')}
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('deliv-content').innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h1 style="font-size:19px;font-weight:700">결과물 아카이브</h1>
+        <p style="font-size:14px;color:var(--text3);margin-top:3px">전체 ${total}개 · 완료 ${done}개 · 파일/링크 ${withFile}개</p>
+      </div>
+      <div class="view-toggle">
+        <button class="vt-btn${delivGroupBy==='project'?' on':''}" onclick="delivGroupBy='project';renderDeliverableArchive()">프로젝트별</button>
+        <button class="vt-btn${delivGroupBy==='tag'?' on':''}" onclick="delivGroupBy='tag';renderDeliverableArchive()">카테고리별</button>
+      </div>
+    </div>
+    ${body}`;
+}
+
+function delivRowHTML(d, showProj){
+  const c=COLORS[d.projColor];
+  const linkBadge=d.link
+    ? `<a href="${d.link}" target="_blank" style="font-size:13px;color:#185fa5;text-decoration:none;background:#e6f1fb;padding:2px 8px;border-radius:6px;flex-shrink:0">🔗 링크</a>`
+    : '';
+  const fileBadge=d.file?`<span style="font-size:13px;background:#eaf3de;color:#3b6d11;padding:2px 8px;border-radius:6px;flex-shrink:0">📎 ${d.file}</span>`:'';
+  return `<div onclick="openProj('${d.projId}')"
+    style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s"
+    onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
+    <span style="font-size:14px;flex-shrink:0">${d.done?'✅':'⬜'}</span>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:14px;font-weight:500;color:var(--text);${d.done?'':''}overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.name}</div>
+      <div style="font-size:13px;color:var(--text3);margin-top:1px">
+        ${showProj?`<span style="background:${c.tag};color:${c.tagT};padding:1px 6px;border-radius:4px;margin-right:6px">${d.projName}</span>`:''}
+        <span>${d.waName}</span>
+        ${d.memo?`<span style="margin-left:6px">· ${escHtml(d.memo).slice(0,40)}</span>`:''}
+      </div>
+    </div>
+    ${linkBadge}
+    ${fileBadge}
+  </div>`;
 }
 
 function goTaskBoard(){
@@ -7070,12 +7279,18 @@ function renderTaskBoard(){
           <option value="전체"${tbPersonFilter==='전체'?' selected':''}>전체 담당자</option>
           ${persons.slice(1).map(n=>`<option value="${n}"${tbPersonFilter===n?' selected':''}>${n}</option>`).join('')}
         </select>
+        <!-- 태그 필터 -->
+        <select class="tb-filter" onchange="tbTagFilter=this.value;renderTaskBoard()">
+          <option value="전체"${tbTagFilter==='전체'?' selected':''}>전체 태그</option>
+          ${getAllTags().map(tg=>`<option value="${tg}"${tbTagFilter===tg?' selected':''}>🏷 ${tg}</option>`).join('')}
+        </select>
         <!-- 완료 숨기기 -->
         <label style="display:flex;align-items:center;gap:5px;font-size:14px;color:var(--text3);cursor:pointer;flex-shrink:0">
           <input type="checkbox" ${tbHideDone?'checked':''} onchange="tbHideDone=this.checked;document.getElementById('tb-body').innerHTML=tbBodyHTML()" style="accent-color:var(--text);width:13px;height:13px">
           완료 숨기기
         </label>
         <div style="display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap">
+          ${tbTagFilter!=='전체'?`<span style="font-size:14px;background:#fff3a3;color:#854f0b;padding:3px 9px;border-radius:10px;cursor:pointer" onclick="tbTagFilter='전체';renderTaskBoard()" title="태그 필터 해제">🏷 ${tbTagFilter} ✕</span>`:''}
           ${tbPersonFilter!=='전체'?`<span style="font-size:14px;background:var(--surface2);color:var(--text2);padding:3px 9px;border-radius:10px">👤 ${tbPersonFilter}</span>`:''}
           ${tbFilter!=='전체'?`<span style="font-size:14px;background:var(--surface2);color:var(--text2);padding:3px 9px;border-radius:10px">🏷 ${tbFilter}</span>`:''}
           ${overdueCount?`<span onclick="openOverdueModal()" style="font-size:14px;background:#fdf2f2;color:var(--red);padding:3px 9px;border-radius:10px;font-weight:600;cursor:pointer;transition:opacity .15s" onmouseenter="this.style.opacity='.7'" onmouseleave="this.style.opacity='1'" title="클릭하면 초과 태스크 목록 보기">⚠️ 초과 ${overdueCount}건</span>`:''}
@@ -8612,10 +8827,15 @@ function openSidePanel(pid,sid,tid){
         <button class="btn xs ghost" onclick="tspArchiveMemo()" title="메모를 결과물 아카이브에 저장">📦 아카이브</button>
       </div>
       <div contenteditable="true" spellcheck="false" id="tsp-memo-el"
-        style="font-size:14px;color:var(--text);outline:none;min-height:60px;line-height:1.7;border-radius:var(--rsm);padding:6px 8px;background:var(--surface2)"
+        style="font-size:14px;color:var(--text);outline:none;min-height:60px;line-height:1.7;border-radius:var(--rsm);padding:6px 8px;background:var(--surface2);white-space:pre-wrap"
         data-ph="메모를 입력하세요... (/ 로 서식 변경)"
         onkeydown="tspMemoKeydown(event)"
-        onblur="tspSaveField('memo',this.textContent)">${t.memo||''}</div>
+        onblur="tspSaveField('memo',this.innerHTML)">${t.memo||''}</div>
+    </div>
+
+    <div style="border-top:1px solid var(--border);padding-top:14px">
+      <div style="font-size:14px;font-weight:600;color:var(--text3);margin-bottom:8px">🏷 태그</div>
+      <div id="tsp-tags-wrap">${tspTagsHTML(t)}</div>
     </div>
 
     <div style="border-top:1px solid var(--border);padding-top:14px">
@@ -8672,6 +8892,12 @@ function tspSaveField(field,val){
 }
 
 function tspMemoKeydown(e){
+  // Enter 키를 <br>로 강제 — Shift+Enter도 동일
+  if(e.key==='Enter'){
+    e.preventDefault();
+    document.execCommand('insertHTML',false,'<br>');
+    return;
+  }
   if(e.key==='/'){
     const existing=document.getElementById('tsp-slash-pop');
     if(existing) existing.remove();
@@ -8854,7 +9080,13 @@ function tspArchiveMemo(){
   const p=projects.find(x=>x.id===_tspPid);
   const t=p?.schedules.find(x=>x.id===_tspSid)?.tasks.find(x=>x.id===_tspTid);
   if(!t)return;
-  const memo=document.getElementById('tsp-memo-el')?.textContent?.trim()||t.memo||'';
+  const memoEl=document.getElementById('tsp-memo-el');
+  let memo='';
+  if(memoEl){
+    // br을 줄바꿈으로 치환 후 텍스트만 추출
+    memo=memoEl.innerHTML.replace(/<br\s*\/?>/gi,'\n').replace(/<[^>]+>/g,'').trim();
+  }
+  if(!memo) memo=t.memo||'';
   if(!memo){toast('메모 내용이 없습니다');return;}
   tspSaveToArchive(p, `📝 ${t.name} — 메모`, memo);
 }
@@ -8940,6 +9172,49 @@ function tspDeleteComment(cid){
   saveToLS();
   document.getElementById('tsp-comment-list').innerHTML=tspCommentListHTML(t.comments);
   toast('코멘트가 삭제됐습니다');
+}
+
+function tspTagsHTML(t){
+  const tags=t.tags||[];
+  return `
+    <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px">
+      ${tags.map(tg=>`<span style="font-size:14px;background:#fff3a3;color:#854f0b;border-radius:10px;padding:2px 8px 2px 10px;display:inline-flex;align-items:center;gap:4px;cursor:pointer" onclick="closeSidePanel();tbTagFilter='${tg}';goTaskBoard()" title="이 태그로 보드 필터">
+        🏷 ${tg}
+        <button onclick="event.stopPropagation();tspRemoveTag('${tg}')" style="background:none;border:none;cursor:pointer;color:#854f0b;font-size:14px;line-height:1;padding:0">×</button>
+      </span>`).join('')}
+    </div>
+    <div style="display:flex;gap:6px">
+      <input id="tsp-tag-inp" class="fi" placeholder="태그 추가 (Enter)" style="flex:1;font-size:14px;padding:5px 9px"
+        list="tsp-tag-list"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();tspAddTag()}">
+      <datalist id="tsp-tag-list">
+        ${getAllTags().map(tg=>`<option value="${tg}">`).join('')}
+      </datalist>
+      <button class="btn sm" onclick="tspAddTag()">+</button>
+    </div>`;
+}
+
+function tspAddTag(){
+  const inp=document.getElementById('tsp-tag-inp');
+  const tag=inp?.value.trim();
+  if(!tag)return;
+  const p=projects.find(x=>x.id===_tspPid);
+  const t=p?.schedules.find(x=>x.id===_tspSid)?.tasks.find(x=>x.id===_tspTid);
+  if(!t)return;
+  if(!t.tags) t.tags=[];
+  if(t.tags.includes(tag)){toast('이미 있는 태그입니다');return;}
+  t.tags.push(tag);
+  saveToLS();
+  document.getElementById('tsp-tags-wrap').innerHTML=tspTagsHTML(t);
+}
+
+function tspRemoveTag(tag){
+  const p=projects.find(x=>x.id===_tspPid);
+  const t=p?.schedules.find(x=>x.id===_tspSid)?.tasks.find(x=>x.id===_tspTid);
+  if(!t)return;
+  t.tags=(t.tags||[]).filter(x=>x!==tag);
+  saveToLS();
+  document.getElementById('tsp-tags-wrap').innerHTML=tspTagsHTML(t);
 }
 
 function closeSidePanel(){
