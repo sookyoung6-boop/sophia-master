@@ -680,24 +680,23 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
       <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 6.5L6.5 2l5 4.5V12h-3.5V9h-3v3H1.5V6.5z" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linejoin="round"/></svg>
       홈 대시보드
     </div>
+    <div class="nav-item" id="nav-tasks" onclick="goTaskBoard()">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="3" height="11" rx="1" fill="currentColor" opacity=".5"/><rect x="5.5" y="1" width="3" height="7" rx="1" fill="currentColor" opacity=".5"/><rect x="10" y="1" width="3" height="9" rx="1" fill="currentColor" opacity=".5"/></svg>
+      태스크 보드
+    </div>
     <div class="nav-label">프로젝트</div>
     <div class="nav-item active" id="nav-all" onclick="navAll()">
       <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="5" height="5" rx="1.5" fill="currentColor" opacity=".6"/><rect x="7" y="1" width="5" height="5" rx="1.5" fill="currentColor" opacity=".6"/><rect x="1" y="7" width="5" height="5" rx="1.5" fill="currentColor" opacity=".6"/><rect x="7" y="7" width="5" height="5" rx="1.5" fill="currentColor" opacity=".6"/></svg>
       전체 프로젝트 <span class="nav-count" id="nav-total">4</span>
     </div>
-    <div class="nav-label">진행 현황</div>
-    <div class="nav-item" onclick="navFilter('진행중')"><div class="nav-dot" style="background:#378ADD"></div>진행중 <span class="nav-count" id="nav-c1"></span></div>
-    <div class="nav-item" onclick="navFilter('예정')"><div class="nav-dot" style="background:#EF9F27"></div>예정 <span class="nav-count" id="nav-c2"></span></div>
-    <div class="nav-item" onclick="navFilter('완료')"><div class="nav-dot" style="background:#27ae60"></div>완료 <span class="nav-count" id="nav-c3"></span></div>
     <div class="nav-item" id="nav-archive" onclick="goArchive()">
       <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="3" width="11" height="8" rx="1.5" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M1 5.5h11M4.5 7.5h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
       아카이브 <span class="nav-count" id="nav-archive-count"></span>
     </div>
-    <div class="nav-label">태스크</div>
-    <div class="nav-item" id="nav-tasks" onclick="goTaskBoard()">
-      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="3" height="11" rx="1" fill="currentColor" opacity=".5"/><rect x="5.5" y="1" width="3" height="7" rx="1" fill="currentColor" opacity=".5"/><rect x="10" y="1" width="3" height="9" rx="1" fill="currentColor" opacity=".5"/></svg>
-      태스크 보드
-    </div>
+    <!-- 진행현황 카운트 (숨겨진 상태로 유지 — updateSb에서 사용) -->
+    <span id="nav-c1" style="display:none"></span>
+    <span id="nav-c2" style="display:none"></span>
+    <span id="nav-c3" style="display:none"></span>
     <div class="nav-label">도구</div>
     <div class="nav-item" id="nav-cal" onclick="goCalSettings()">
       <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M1 4.5h11M4 1v1.5M9 1v1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
@@ -4766,7 +4765,7 @@ function parseLocalDate(s){
   const d=new Date(+m[1],+m[2]-1,+m[3]); // local midnight, no UTC shift
   return d;
 }
-let homeTimelineView='year';
+let homeTimelineView='week';
 function setHomeTimeline(v){
   homeTimelineView=v;
   const el=document.getElementById('home-timeline');
@@ -4784,7 +4783,6 @@ function ganttHTML(){
   const RE=new Date('2026-12-31T23:59:59').getTime();
   const TOTAL=RE-RS;
 
-  // 날짜 → px 변환 (COL_W*12 기준)
   function dateToPx(ms){ return Math.max(0,Math.min(TOTAL_W,((ms-RS)/TOTAL)*TOTAL_W)); }
   function pm(s){if(!s)return null;const m=s.match(/(\d{4})\.(\d{2})/);return m?new Date(+m[1],+m[2]-1,1).getTime():null}
 
@@ -4804,9 +4802,14 @@ function ganttHTML(){
       const w=Math.max(COL_W-4, r-l);
       bar=`<div onclick="openProj('${p.id}')" title="${p.name}" style="position:absolute;left:${l}px;width:${w}px;height:20px;border-radius:4px;background:${c.dot};display:flex;align-items:center;padding:0 8px;font-size:14px;color:#fff;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;z-index:1;transition:opacity .15s" onmouseenter="this.style.opacity='.8'" onmouseleave="this.style.opacity='1'">${p.name}</div>`;
     }
-    return `<div style="display:flex;align-items:center;border-bottom:1px solid var(--border);min-height:38px">
-      <div style="width:${LABEL_W}px;flex-shrink:0;position:sticky;left:0;background:var(--surface);z-index:2;border-right:1px solid var(--border)">
-        <div style="font-size:14px;font-weight:500;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 8px;cursor:pointer" onclick="openProj('${p.id}')" title="${p.name}">${p.name}</div>
+    return `<div data-gantt-pid="${p.id}" draggable="true"
+      ondragstart="ganttRowDragStart(event,'${p.id}')"
+      ondragend="ganttRowDragEnd(event)"
+      ondragover="ganttRowDragOver(event)"
+      style="display:flex;align-items:center;border-bottom:1px solid var(--border);min-height:38px;transition:opacity .15s">
+      <div style="width:${LABEL_W}px;flex-shrink:0;position:sticky;left:0;background:var(--surface);z-index:2;border-right:1px solid var(--border);display:flex;align-items:center;gap:4px;padding:0 6px">
+        <span style="color:var(--text3);cursor:grab;font-size:12px;opacity:.4;flex-shrink:0" title="드래그로 순서 변경">⠿</span>
+        <div style="font-size:14px;font-weight:500;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;flex:1" onclick="openProj('${p.id}')" title="${p.name}">${p.name}</div>
       </div>
       <div style="width:${TOTAL_W}px;flex-shrink:0;position:relative;height:38px;display:flex;align-items:center">
         ${months.map((_,i)=>`<div style="position:absolute;top:0;bottom:0;left:${i*COL_W}px;width:1px;background:var(--border)"></div>`).join('')}
@@ -4815,7 +4818,44 @@ function ganttHTML(){
       </div>
     </div>`;
   }).join('');
-  return `<div style="overflow-x:auto"><div style="min-width:${LABEL_W+TOTAL_W}px">${header}${rows}</div></div>`;
+  return `<div style="overflow-x:auto"><div style="min-width:${LABEL_W+TOTAL_W}px" id="gantt-rows-wrap">${header}${rows}</div></div>`;
+}
+
+// ─── 타임라인 프로젝트 순서 드래그 ─────────────────────────
+let _ganttDragId=null,_ganttDragEl=null;
+function ganttRowDragStart(e,pid){
+  _ganttDragId=pid;_ganttDragEl=e.currentTarget;
+  e.dataTransfer.effectAllowed='move';
+  setTimeout(()=>{if(_ganttDragEl)_ganttDragEl.style.opacity='.35';},0);
+}
+function ganttRowDragEnd(e){
+  if(_ganttDragEl) _ganttDragEl.style.opacity='1';
+  // DOM 순서로 projects 배열 재정렬
+  const wrap=document.getElementById('gantt-rows-wrap');
+  if(wrap){
+    const pids=[...wrap.querySelectorAll('[data-gantt-pid]')].map(el=>el.dataset.ganttPid);
+    if(pids.length){
+      const sorted=pids.map(pid=>projects.find(p=>p.id===pid)).filter(Boolean);
+      const rest=projects.filter(p=>!pids.includes(p.id));
+      projects.splice(0,projects.length,...sorted,...rest);
+      saveToLS();
+    }
+  }
+  _ganttDragId=null;_ganttDragEl=null;
+}
+function ganttRowDragOver(e){
+  e.preventDefault();
+  if(!_ganttDragEl)return;
+  const wrap=document.getElementById('gantt-rows-wrap');if(!wrap)return;
+  const rows=[...wrap.querySelectorAll('[data-gantt-pid]')];
+  let target=null,insertBefore=true;
+  for(const row of rows){
+    if(row===_ganttDragEl)continue;
+    const rect=row.getBoundingClientRect();
+    if(e.clientY<rect.top+rect.height/2){target=row;insertBefore=true;break;}
+    target=row;insertBefore=false;
+  }
+  if(target){if(insertBefore)wrap.insertBefore(_ganttDragEl,target);else target.after(_ganttDragEl);}
 }
 
 function weeklyGanttHTML(){
@@ -4875,11 +4915,15 @@ function weeklyGanttHTML(){
     });
 
     if(!weekTasks.length){
-      // Project bar with no tasks this week — show muted row
-      return `<div style="display:flex;align-items:center;border-bottom:1px solid var(--border);min-height:36px;opacity:.45">
-        <div style="width:${LABEL_W}px;flex-shrink:0;padding:0 12px;display:flex;align-items:center;gap:7px">
-          <div style="width:7px;height:7px;border-radius:50%;background:${c.dot}"></div>
-          <span style="font-size:14px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</span>
+      return `<div data-gantt-pid="${p.id}" draggable="true"
+        ondragstart="ganttRowDragStart(event,'${p.id}')"
+        ondragend="ganttRowDragEnd(event)"
+        ondragover="ganttRowDragOver(event)"
+        style="display:flex;align-items:center;border-bottom:1px solid var(--border);min-height:36px;opacity:.45">
+        <div style="width:${LABEL_W}px;flex-shrink:0;padding:0 8px 0 12px;display:flex;align-items:center;gap:6px">
+          <span style="color:var(--text3);cursor:grab;font-size:12px;opacity:.5;flex-shrink:0">⠿</span>
+          <div style="width:7px;height:7px;border-radius:50%;background:${c.dot};flex-shrink:0"></div>
+          <span style="font-size:14px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.name}">${p.name}</span>
         </div>
         <div style="flex:1;display:flex">
           ${dateLabels.map((_,i)=>`<div style="width:${COL_W}px;flex-shrink:0;border-right:1px solid var(--border);${i===todayIdx?'background:rgba(226,75,74,.04)':''}"></div>`).join('')}
@@ -4887,16 +4931,21 @@ function weeklyGanttHTML(){
       </div>`;
     }
 
-    // Project header row
-    const projRow=`<div style="display:flex;align-items:center;border-bottom:1px solid var(--border);min-height:34px;background:var(--surface2)">
-      <div style="width:${LABEL_W}px;flex-shrink:0;padding:0 12px;display:flex;align-items:center;gap:7px">
-        <div style="width:8px;height:8px;border-radius:50%;background:${c.dot}"></div>
-        <span style="font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="openProj('${p.id}')">${p.name}</span>
-      </div>
-      <div style="flex:1;display:flex">
-        ${dateLabels.map((_,i)=>`<div style="width:${COL_W}px;flex-shrink:0;border-right:1px solid var(--border);${i===todayIdx?'background:rgba(226,75,74,.06)':''}"></div>`).join('')}
-      </div>
-    </div>`;
+    // Project header row — draggable
+    const projRow=`<div data-gantt-pid="${p.id}" draggable="true"
+      ondragstart="ganttRowDragStart(event,'${p.id}')"
+      ondragend="ganttRowDragEnd(event)"
+      ondragover="ganttRowDragOver(event)">
+      <div style="display:flex;align-items:center;border-bottom:1px solid var(--border);min-height:34px;background:var(--surface2)">
+        <div style="width:${LABEL_W}px;flex-shrink:0;padding:0 8px 0 12px;display:flex;align-items:center;gap:6px">
+          <span style="color:var(--text3);cursor:grab;font-size:12px;flex-shrink:0" title="드래그로 순서 변경">⠿</span>
+          <div style="width:8px;height:8px;border-radius:50%;background:${c.dot};flex-shrink:0"></div>
+          <span style="font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="openProj('${p.id}')" title="${p.name}">${p.name}</span>
+        </div>
+        <div style="flex:1;display:flex">
+          ${dateLabels.map((_,i)=>`<div style="width:${COL_W}px;flex-shrink:0;border-right:1px solid var(--border);${i===todayIdx?'background:rgba(226,75,74,.06)':''}"></div>`).join('')}
+        </div>
+      </div>`;
 
     // Task rows
     const taskRows=weekTasks.map(t=>{
@@ -4940,7 +4989,7 @@ function weeklyGanttHTML(){
       </div>`;
     }).join('');
 
-    return projRow+taskRows;
+    return projRow+taskRows+`</div>`;
   }).join('');
 
   // Week nav
@@ -4957,7 +5006,7 @@ function weeklyGanttHTML(){
       <span style="font-size:14px;color:var(--text3);margin-left:6px">${mon.getMonth()+1}/${mon.getDate()} – ${sun.getMonth()+1}/${sun.getDate()} · 이번 주 마감 태스크 표시</span>
     </div>
     ${header}
-    ${rows||'<div class="empty" style="padding:20px">이번 주 마감 태스크가 없습니다</div>'}
+    <div id="gantt-rows-wrap">${rows||'<div class="empty" style="padding:20px">이번 주 마감 태스크가 없습니다</div>'}</div>
   </div>`;
 }
 
@@ -5027,7 +5076,7 @@ function weeklyGanttHTMLWithOffset(weekOffset){
     const projRow=`<div style="display:flex;align-items:center;border-bottom:1px solid var(--border);min-height:34px;background:var(--surface2)">
       <div style="width:${LABEL_W}px;flex-shrink:0;position:sticky;left:0;background:var(--surface2);z-index:2;padding:0 12px;display:flex;align-items:center;gap:7px;border-right:1px solid var(--border)">
         <div style="width:8px;height:8px;border-radius:50%;background:${c.dot}"></div>
-        <span style="font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="openProj('${p.id}')">${p.name}</span>
+        <span style="font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="openProj('${p.id}')" title="${p.name}">${p.name}</span>
       </div>
       <div style="flex:1;display:flex">${dateLabels.map((_,i)=>`<div style="width:${COL_W}px;flex-shrink:0;border-right:1px solid var(--border);${i===todayIdx?'background:rgba(226,75,74,.06)':''}"></div>`).join('')}</div>
     </div>`;
