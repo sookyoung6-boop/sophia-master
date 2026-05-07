@@ -653,7 +653,6 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 </head>
 <body>
 <div class="toast" id="toast"></div>
@@ -5458,8 +5457,14 @@ function meetListHTML(){
     </div>`;
   }
 
+  const dateTimeKey=m=>{
+    // "2026.04.15" + "14:30" → "2026.04.15 14:30"  (시간 없으면 23:59로 마지막 처리)
+    const t=(m.time||'').trim();
+    return (m.date||'')+' '+(t||'23:59');
+  };
+
   const activeHTML=active.length
-    ? [...active].sort((a,b)=>a.date.localeCompare(b.date)).map(meetCard).join('')
+    ? [...active].sort((a,b)=>dateTimeKey(a).localeCompare(dateTimeKey(b))).map(meetCard).join('')
     : '<div class="empty">예정된 회의가 없습니다</div>';
 
   const doneHTML=done.length
@@ -5467,7 +5472,7 @@ function meetListHTML(){
         <summary style="padding:10px 20px;font-size:14px;font-weight:600;color:var(--text3);cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
           <span>📦 완료된 회의 ${done.length}건</span>
         </summary>
-        ${[...done].sort((a,b)=>b.date.localeCompare(a.date)).map(meetCard).join('')}
+        ${[...done].sort((a,b)=>dateTimeKey(b).localeCompare(dateTimeKey(a))).map(meetCard).join('')}
       </details>`
     : '';
 
