@@ -6486,7 +6486,7 @@ function fbSaveData(){
           toast('⚠️ 저장에 실패했습니다. 데이터 패널에서 수동 저장해주세요.');
         }
       });
-  },1200);
+  },300); // [v46 PATCH] 1200ms→300ms — 다중 사용자 동시 저장 시 충돌 윈도우 축소
 }
 
 function fbLoadData(){
