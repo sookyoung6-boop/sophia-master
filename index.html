@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- [v47] 검색엔진 차단 — 외부 검색에서 사이트가 안 잡히게 -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="googlebot" content="noindex, nofollow">
 <title>Spextrum Business OS</title>
 <!-- PWA -->
 <link rel="manifest" href="manifest.json">
@@ -655,6 +658,57 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 </head>
 <body>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     [v47] 비밀번호 게이트 — 회사 내부용 접근 차단
+     비밀번호 변경 시: 아래 SPX_AUTH_KEY 값을 새 비번의 base64로 교체
+     base64 변환: 검색창에 "base64 encoder" 또는 console에서 btoa('새비번')
+═══════════════════════════════════════════════════════════════════ -->
+<div id="spx-auth-gate" style="position:fixed;inset:0;z-index:99999;background:#f7f6f2;display:flex;align-items:center;justify-content:center;font-family:'Pretendard','맑은 고딕','Malgun Gothic',sans-serif">
+  <div style="text-align:center;padding:40px 32px;max-width:360px;width:100%;box-sizing:border-box">
+    <div style="font-size:13px;letter-spacing:3px;color:#908c86;margin-bottom:10px;font-weight:600">SPEXTRUM</div>
+    <div style="font-size:22px;font-weight:700;color:#1a1917;margin-bottom:6px;letter-spacing:-.01em">Business OS</div>
+    <div style="font-size:13px;color:#6b6860;margin-bottom:32px">접근을 위해 비밀번호를 입력하세요</div>
+    <input type="password" id="spx-auth-input" placeholder="비밀번호" autocomplete="current-password"
+           style="width:100%;padding:14px 16px;font-size:15px;background:#fff;border:1px solid #d5d2cc;border-radius:8px;color:#1a1917;outline:none;box-sizing:border-box;font-family:inherit;text-align:center;letter-spacing:.04em"
+           onkeydown="if(event.key==='Enter'){event.preventDefault();spxCheckAuth()}">
+    <div id="spx-auth-err" style="color:#c0392b;font-size:12px;margin-top:12px;min-height:16px"></div>
+    <button onclick="spxCheckAuth()"
+            style="margin-top:4px;width:100%;padding:14px;background:#1a1917;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">입장</button>
+    <div style="font-size:11px;color:#908c86;margin-top:24px;line-height:1.6">Spextrum 임직원 전용<br>비밀번호 문의: 관리자</div>
+  </div>
+</div>
+<script>
+  // 비밀번호의 base64 인코딩값. 비번 변경 시 이 한 줄만 교체.
+  const SPX_AUTH_KEY = "c3BleHRydW0yMDI2"; // spextrum2026
+  // 이미 인증된 기기는 즉시 통과
+  (function(){
+    try{
+      if(localStorage.getItem('spx_auth_v1') === SPX_AUTH_KEY){
+        document.getElementById('spx-auth-gate').style.display = 'none';
+      } else {
+        // 인증 안 됨 — 입력칸에 포커스
+        setTimeout(()=>{ const i=document.getElementById('spx-auth-input'); if(i) i.focus(); }, 100);
+      }
+    }catch(e){}
+  })();
+  function spxCheckAuth(){
+    const inp = document.getElementById('spx-auth-input');
+    const err = document.getElementById('spx-auth-err');
+    let encoded;
+    try{ encoded = btoa(inp.value); }catch(e){ encoded = ''; }
+    if(encoded === SPX_AUTH_KEY){
+      try{ localStorage.setItem('spx_auth_v1', SPX_AUTH_KEY); }catch(e){}
+      document.getElementById('spx-auth-gate').style.display = 'none';
+    } else {
+      err.textContent = '비밀번호가 올바르지 않습니다';
+      inp.value = ''; inp.focus();
+      setTimeout(()=>{ err.textContent = ''; }, 3000);
+    }
+  }
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
 <div class="toast" id="toast"></div>
 <!-- Firebase 로딩 오버레이 -->
 <div id="fb-loading-overlay" style="position:fixed;inset:0;background:var(--bg,#f7f6f2);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
@@ -4398,15 +4452,14 @@ function renderHome(){
     <div class="h-sec-head"><span class="h-sec-title">공지</span><div style="display:flex;gap:8px;align-items:center"><button class="btn sm" onclick="openAddNotice()">+ 새 공지</button><span class="home-sec-handle" draggable="true" ondragstart="homeSectionDragStart(event)" ondragend="homeSectionDragEnd(event)" title="드래그로 순서 변경">⠿</span></div></div>
     <div id="notice-list">${noticeListHTML()}</div>
   </div>
-  <div class="h-section" data-section="timeline">
+  <div class="h-section" data-section="meeting">
     <div class="h-sec-head">
-      <div style="display:flex;align-items:center;gap:10px"><span class="h-sec-title">프로젝트 타임라인</span><span class="home-sec-handle" draggable="true" ondragstart="homeSectionDragStart(event)" ondragend="homeSectionDragEnd(event)">⠿</span></div>
-      <div class="tb-view-toggle">
-        <button class="tb-vbtn${homeTimelineView==='year'?' on':''}" onclick="setHomeTimeline('year')">연간</button>
-        <button class="tb-vbtn${homeTimelineView==='week'?' on':''}" onclick="setHomeTimeline('week')">주간 <span style="font-size:14px;opacity:.7">· 세부 태스크 포함</span></button>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="h-sec-title">회의</span><span class="home-sec-handle" draggable="true" ondragstart="homeSectionDragStart(event)" ondragend="homeSectionDragEnd(event)">⠿</span>
       </div>
+      <button class="btn sm" onclick="openAddMeeting()">+ 새 회의</button>
     </div>
-    <div id="home-timeline" style="padding:0 20px 16px;overflow-x:auto">${homeTimelineView==='week'?weeklyGanttHTML():ganttHTML()}</div>
+    <div id="meet-list">${meetListHTML()}</div>
   </div>
   <div class="h-section" data-section="calendar">
     <div class="h-sec-head">
@@ -4420,6 +4473,16 @@ function renderHome(){
     </div>
     <div id="home-cal-body" style="padding:0 20px 20px"></div>
   </div>
+  <div class="h-section" data-section="timeline">
+    <div class="h-sec-head">
+      <div style="display:flex;align-items:center;gap:10px"><span class="h-sec-title">프로젝트 타임라인</span><span class="home-sec-handle" draggable="true" ondragstart="homeSectionDragStart(event)" ondragend="homeSectionDragEnd(event)">⠿</span></div>
+      <div class="tb-view-toggle">
+        <button class="tb-vbtn${homeTimelineView==='year'?' on':''}" onclick="setHomeTimeline('year')">연간</button>
+        <button class="tb-vbtn${homeTimelineView==='week'?' on':''}" onclick="setHomeTimeline('week')">주간 <span style="font-size:14px;opacity:.7">· 세부 태스크 포함</span></button>
+      </div>
+    </div>
+    <div id="home-timeline" style="padding:0 20px 16px;overflow-x:auto">${homeTimelineView==='week'?weeklyGanttHTML():ganttHTML()}</div>
+  </div>
   <div class="h-section" data-section="campaign">
     <div class="h-sec-head">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -4429,15 +4492,6 @@ function renderHome(){
       <button class="btn sm" onclick="openAddCampaign()">+ 새 캠페인</button>
     </div>
     <div style="overflow-x:auto"><div id="camp-table">${campTableHTML()}</div></div>
-  </div>
-  <div class="h-section" data-section="meeting">
-    <div class="h-sec-head">
-      <div style="display:flex;align-items:center;gap:10px">
-        <span class="h-sec-title">회의</span><span class="home-sec-handle" draggable="true" ondragstart="homeSectionDragStart(event)" ondragend="homeSectionDragEnd(event)">⠿</span>
-      </div>
-      <button class="btn sm" onclick="openAddMeeting()">+ 새 회의</button>
-    </div>
-    <div id="meet-list">${meetListHTML()}</div>
   </div>
 
   <div class="h-section" data-section="urgency">
@@ -6268,6 +6322,55 @@ async function doSendReportEmail(){
   }
   toast(`✅ ${emails.length}명에게 리포트가 발송됐습니다`);
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// [v47] 주간 보고/리포트 — 본문 HTML 그대로 이메일 발송 (공통 헬퍼)
+// ═══════════════════════════════════════════════════════════════════
+function openHtmlEmailSender(htmlBody, defaultSubject, reportName){
+  if(!gcConnected){
+    toast('Google 연동이 필요합니다. 좌측 메뉴 "Google 연동"에서 먼저 연결하세요.');
+    return;
+  }
+  modal(`<div class="m-title">📧 ${reportName} 이메일 발송</div>
+  <div class="frow"><label class="fl">받는 사람</label>
+    <input class="fi" id="html-email-to" placeholder="이메일 주소 (쉼표로 구분)" autofocus>
+  </div>
+  <div class="frow"><label class="fl">제목</label>
+    <input class="fi" id="html-email-subject" value="${defaultSubject.replace(/"/g,'&quot;')}">
+  </div>
+  <div style="font-size:14px;color:var(--text3);margin:10px 0 4px">현재 보고 본문이 그대로 이메일로 발송됩니다.</div>
+  <div class="btn-row" style="margin-top:14px">
+    <button class="btn pri sm" onclick="doSendHtmlEmail()">발송</button>
+    <button class="btn sm" onclick="closeModal()">취소</button>
+  </div>`);
+  // 모달 내부 변수에 본문 저장
+  window._pendingEmailHtml = htmlBody;
+}
+async function doSendHtmlEmail(){
+  const to=document.getElementById('html-email-to')?.value.trim();
+  const subject=document.getElementById('html-email-subject')?.value.trim();
+  const html=window._pendingEmailHtml;
+  if(!to){toast('받는 사람을 입력하세요');return;}
+  if(!html){toast('보고 본문을 찾을 수 없습니다');return;}
+  closeModal();toast('발송 중...');
+  const emails=to.split(/[,;]/).map(e=>e.trim()).filter(Boolean);
+  let success=0;
+  for(const email of emails){
+    try{
+      await gmailSend(email,subject,html);
+      success++;
+    }catch(e){
+      console.warn('이메일 발송 실패:',email,e);
+    }
+  }
+  window._pendingEmailHtml = null;
+  if(success===emails.length){
+    toast(`✅ ${success}명에게 발송됐습니다`);
+  } else {
+    toast(`⚠️ ${success}/${emails.length}명 발송 완료`);
+  }
+}
+// ═══════════════════════════════════════════════════════════════════
 
 window.addEventListener('load',()=>{
   setTimeout(()=>{
@@ -8739,11 +8842,12 @@ function openMeetingReport(){
           <div style="font-size:14px;color:#999;margin-top:3px">${fmtFull(today)} 기준</div>
         </div>
         <div style="display:flex;gap:8px">
+          <button class="btn sm" onclick="sendMeetingReportEmail()">📧 이메일 발송</button>
           <button class="btn sm" onclick="window.print()">🖨️ 인쇄/PDF</button>
           <button class="btn sm" onclick="document.getElementById('meeting-report-ov').remove()">✕ 닫기</button>
         </div>
       </div>
-      <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 8px rgba(0,0,0,.08)">
+      <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 8px rgba(0,0,0,.08)" id="meeting-report-table">
         <thead>
           <tr style="background:#1a1917;color:#fff">
             <th style="padding:10px 12px;font-size:14px;font-weight:600;width:90px;text-align:center">파트</th>
@@ -8761,6 +8865,30 @@ function openMeetingReport(){
     <style>@media print{button{display:none!important}}</style>
   `;
   document.body.appendChild(ov);
+}
+
+// [v47] 주간 보고를 이메일로 발송
+function sendMeetingReportEmail(){
+  const table=document.getElementById('meeting-report-table');
+  if(!table){toast('주간 보고를 먼저 열어주세요');return;}
+  // 표 전체 + 제목 영역을 함께 캡처
+  const ov=document.getElementById('meeting-report-ov');
+  const headerInfo=ov?.querySelector('div[style*="max-width:1200px"] > div:first-child > div:first-child');
+  const period=headerInfo?.querySelectorAll('div')[1]?.textContent || '주간 업무 보고';
+  const date=headerInfo?.querySelectorAll('div')[2]?.textContent || '';
+  // 이메일용 HTML 조립 (인라인 스타일 유지)
+  const emailHtml=`
+    <div style="font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;max-width:800px;margin:0 auto;padding:20px;color:#1a1917">
+      <div style="border-bottom:3px solid #1a1917;padding-bottom:16px;margin-bottom:20px">
+        <div style="font-size:14px;font-weight:600;color:#888;letter-spacing:.1em;margin-bottom:4px">SPEXTRUM 주간 보고</div>
+        <div style="font-size:20px;font-weight:700">${period}</div>
+        <div style="font-size:13px;color:#999;margin-top:3px">${date}</div>
+      </div>
+      ${table.outerHTML}
+      <div style="margin-top:16px;font-size:13px;color:#aaa;text-align:right">— Spextrum Business OS</div>
+    </div>`;
+  const subj=`[Spextrum] ${period}`;
+  openHtmlEmailSender(emailHtml, subj, '주간 보고');
 }
 
 
@@ -8818,8 +8946,12 @@ function openWeeklyReport(){
   }).join('');
 
   const html='<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>Spextrum 주간 리포트</title>'
-    +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:14px;color:#1a1917;background:#fff;padding:32px 40px;max-width:1000px;margin:0 auto}@media print{body{padding:16px 20px}@page{margin:1.5cm}}</style>'
+    +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:14px;color:#1a1917;background:#fff;padding:32px 40px;max-width:1000px;margin:0 auto}.wr-actions{display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px}.wr-btn{padding:8px 14px;font-size:14px;background:#fff;border:1px solid #d5d2cc;border-radius:6px;cursor:pointer;font-family:inherit;color:#1a1917;transition:background .15s}.wr-btn:hover{background:#f7f6f2}.wr-btn.pri{background:#1a1917;color:#fff;border-color:#1a1917}.wr-btn.pri:hover{background:#333}@media print{body{padding:16px 20px}@page{margin:1.5cm}.wr-actions{display:none!important}}</style>'
     +'</head><body>'
+    +'<div class="wr-actions">'
+      +'<button class="wr-btn" onclick="window.print()">🖨️ 인쇄 / PDF 저장</button>'
+      +'<button class="wr-btn pri" onclick="sendWeeklyReportByEmail()">📧 이메일 발송</button>'
+    +'</div>'
     +'<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;padding-bottom:16px;border-bottom:3px solid #1a1917">'
       +'<div><div style="font-size:14px;font-weight:600;color:#888;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">SPEXTRUM WEEKLY REPORT</div>'
       +'<div style="font-size:22px;font-weight:700">'+fmt(thisMon)+' – '+fmt(thisSun)+', '+thisMon.getFullYear()+'</div>'
@@ -8832,12 +8964,25 @@ function openWeeklyReport(){
     +'</div>'
     +projSections
     +'<div style="margin-top:24px;padding-top:12px;border-top:1px solid #eee;font-size:14px;color:#aaa;text-align:right">Spextrum Business OS · 자동 생성</div>'
-    +'<script>document.title="Spextrum 주간리포트 '+fmt(thisMon)+'";setTimeout(()=>{},200)<\/script>'
+    +'<script>'
+      +'document.title="Spextrum 주간리포트 '+fmt(thisMon)+'";'
+      // 새 창에서 이메일 발송 — 부모 창 함수 호출
+      +'function sendWeeklyReportByEmail(){'
+        +'if(!window.opener||window.opener.closed){alert("부모 창이 닫혔습니다. 메인 화면에서 다시 열어주세요.");return;}'
+        +'if(!window.opener.gcConnected){alert("Google 연동이 필요합니다.\\n메인 화면 좌측 메뉴 \\"Google 연동\\"에서 먼저 연결하세요.");return;}'
+        +'const clone=document.body.cloneNode(true);'
+        +'clone.querySelectorAll(".wr-actions").forEach(el=>el.remove());'
+        +'const emailHtml=\'<div style="font-family:Apple SD Gothic Neo,Malgun Gothic,sans-serif;max-width:1000px;margin:0 auto;padding:20px;color:#1a1917">\'+clone.innerHTML+\'</div>\';'
+        +'const subj="[Spextrum] 주간 리포트 '+fmt(thisMon)+'-'+fmt(thisSun)+'";'
+        +'window.opener.openHtmlEmailSender(emailHtml,subj,"주간 리포트");'
+        +'window.opener.focus();'
+      +'}'
+    +'<\/script>'
     +'</body></html>';
 
   const w=window.open('','_blank','width=1100,height=800,scrollbars=yes');
   if(w){w.document.write(html);w.document.close();}
-  toast('주간 리포트 생성 완료! Ctrl+P로 PDF 저장 가능');
+  toast('주간 리포트 생성 완료');
 }
 
 renderList();
