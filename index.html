@@ -4852,9 +4852,34 @@ function parseLocalDate(s){
   const d=new Date(+m[1],+m[2]-1,+m[3]); // local midnight, no UTC shift
   return d;
 }
-let homeTimelineView='week';
+// ═══════════════════════════════════════════════════════════════════
+// [v48] 개인 화면 설정 — 이 PC에만 저장 (Firebase 아님, 개인별 자동 분리)
+// 기본값은 전 직원 공통, 개인이 바꾸면 그 PC localStorage에만 적용
+// ═══════════════════════════════════════════════════════════════════
+function prefGet(key, fallback){
+  try{
+    const v=localStorage.getItem('spx_pref_'+key);
+    if(v===null||v===undefined) return fallback;
+    return JSON.parse(v);
+  }catch(e){ return fallback; }
+}
+function prefSet(key, val){
+  try{ localStorage.setItem('spx_pref_'+key, JSON.stringify(val)); }catch(e){}
+}
+// 개인 화면 설정 전체 초기화 (기본값으로 되돌리기)
+function resetViewPrefs(){
+  try{
+    Object.keys(localStorage).filter(k=>k.startsWith('spx_pref_')||k==='spextrum_home_order')
+      .forEach(k=>localStorage.removeItem(k));
+  }catch(e){}
+  location.reload();
+}
+// ═══════════════════════════════════════════════════════════════════
+
+let homeTimelineView=prefGet('homeTimelineView','week'); // [v48] 개인 설정
 function setHomeTimeline(v){
   homeTimelineView=v;
+  prefSet('homeTimelineView',v); // [v48] 이 PC에 저장
   const el=document.getElementById('home-timeline');
   if(!el)return;
   el.innerHTML=v==='week'?weeklyGanttHTML():ganttHTML();
@@ -4910,10 +4935,32 @@ function ganttHTML(){
 
 // ─── 타임라인 프로젝트 순서 드래그 ─────────────────────────
 let _ganttDragId=null,_ganttDragEl=null;
-let _weeklyGanttCollapsed={}; // {projId: true/false}
+let _weeklyGanttCollapsed=prefGet('ganttCollapsed',{}); // [v48] {projId:true/false} 개인 설정
+// [v48] 타임라인 기본 접힘 — 저장된 설정 없으면 모든 프로젝트 접힘으로 시작
+let _weeklyGanttInitDone=false;
+function initWeeklyGanttCollapsed(){
+  if(_weeklyGanttInitDone) return;
+  // 저장된 개인 설정이 비어있을 때만 "전체 접힘" 기본값 적용
+  if(!_weeklyGanttCollapsed || Object.keys(_weeklyGanttCollapsed).length===0){
+    _weeklyGanttCollapsed={};
+    projects.filter(p=>!p.archived).forEach(p=>{ _weeklyGanttCollapsed[p.id]=true; });
+  }
+  _weeklyGanttInitDone=true;
+}
+// [v48] 완료 태스크 숨김 — 기본 true(숨김). 개인이 바꾸면 그 PC에 저장
+let _weeklyGanttHideDone=prefGet('ganttHideDone',true);
+function toggleWeeklyGanttHideDone(){
+  _weeklyGanttHideDone=!_weeklyGanttHideDone;
+  prefSet('ganttHideDone',_weeklyGanttHideDone); // [v48] 이 PC에 저장
+  const el=document.getElementById('home-timeline');
+  if(el) el.innerHTML = (typeof _weekOffset==='number' && _weekOffset)
+    ? weeklyGanttHTMLWithOffset(_weekOffset)
+    : weeklyGanttHTML();
+}
 
 function toggleWeeklyGanttCollapse(pid){
   _weeklyGanttCollapsed[pid]=!_weeklyGanttCollapsed[pid];
+  prefSet('ganttCollapsed',_weeklyGanttCollapsed); // [v48]
   const el=document.getElementById('home-timeline');
   if(el && typeof weeklyGanttHTML==='function'){
     el.innerHTML=weeklyGanttHTML();
@@ -4921,16 +4968,19 @@ function toggleWeeklyGanttCollapse(pid){
 }
 function weeklyGanttCollapseAll(){
   projects.filter(p=>!p.archived).forEach(p=>{_weeklyGanttCollapsed[p.id]=true;});
+  prefSet('ganttCollapsed',_weeklyGanttCollapsed); // [v48]
   const el=document.getElementById('home-timeline');
   if(el) el.innerHTML=weeklyGanttHTML();
 }
 function weeklyGanttExpandAll(){
   _weeklyGanttCollapsed={};
+  prefSet('ganttCollapsed',_weeklyGanttCollapsed); // [v48]
   const el=document.getElementById('home-timeline');
   if(el) el.innerHTML=weeklyGanttHTML();
 }
 function toggleWeeklyGanttCollapseOffset(pid){
   _weeklyGanttCollapsed[pid]=!_weeklyGanttCollapsed[pid];
+  prefSet('ganttCollapsed',_weeklyGanttCollapsed); // [v48]
   const el=document.getElementById('home-timeline');
   if(el && typeof weeklyGanttHTMLWithOffset==='function'){
     el.innerHTML=weeklyGanttHTMLWithOffset(typeof _weekOffset==='number'?_weekOffset:0);
@@ -4938,11 +4988,13 @@ function toggleWeeklyGanttCollapseOffset(pid){
 }
 function weeklyGanttCollapseAllOffset(offset){
   projects.filter(p=>!p.archived).forEach(p=>{_weeklyGanttCollapsed[p.id]=true;});
+  prefSet('ganttCollapsed',_weeklyGanttCollapsed); // [v48]
   const el=document.getElementById('home-timeline');
   if(el) el.innerHTML=weeklyGanttHTMLWithOffset(offset);
 }
 function weeklyGanttExpandAllOffset(offset){
   _weeklyGanttCollapsed={};
+  prefSet('ganttCollapsed',_weeklyGanttCollapsed); // [v48]
   const el=document.getElementById('home-timeline');
   if(el) el.innerHTML=weeklyGanttHTMLWithOffset(offset);
 }
@@ -4982,6 +5034,7 @@ function ganttRowDragOver(e){
 }
 
 function weeklyGanttHTML(){
+  initWeeklyGanttCollapsed(); // [v48] 첫 렌더 시 모두 접힘
   // Determine week range: Mon–Sun of current week
   const now=new Date();
   const day=now.getDay(); // 0=Sun
@@ -5033,7 +5086,7 @@ function weeklyGanttHTML(){
         const ed=t.dueDate?parseLocalDate(t.dueDate):null;
         // include if dueDate in week, or startDate in week, or spans week
         const inWeek=(sd&&sd<=sun&&(!ed||ed>=mon))||(ed&&ed>=mon&&ed<=sun)||(sd&&sd>=mon&&sd<=sun);
-        if(inWeek) weekTasks.push({...t,schedId:s.id,schedName:s.name});
+        if(inWeek && !(_weeklyGanttHideDone && t.done)) weekTasks.push({...t,schedId:s.id,schedName:s.name});
       });
     });
 
@@ -5133,6 +5186,8 @@ function weeklyGanttHTML(){
       <button class="btn xs ghost" onclick="shiftWeeklyGantt('${nextStr}')">다음 주 ›</button>
       <span style="font-size:14px;color:var(--text3);margin-left:6px">${mon.getMonth()+1}/${mon.getDate()} – ${sun.getMonth()+1}/${sun.getDate()} · 이번 주 마감 태스크 표시</span>
       <div style="margin-left:auto;display:flex;gap:6px">
+        <button class="btn xs ghost" onclick="if(confirm('이 PC의 화면 설정(섹션 순서·접힘·필터 등)을 기본값으로 되돌립니다. 업무 데이터는 영향 없습니다.'))resetViewPrefs()" title="이 PC의 화면 설정만 초기화">⟲ 화면 초기화</button>
+        <button class="btn xs ghost" onclick="toggleWeeklyGanttHideDone()" title="완료 태스크 표시/숨김">${_weeklyGanttHideDone?'☑ 완료 숨김':'☐ 완료 숨김'}</button>
         <button class="btn xs ghost" onclick="weeklyGanttCollapseAll()" title="모두 접기">▷ 모두 접기</button>
         <button class="btn xs ghost" onclick="weeklyGanttExpandAll()" title="모두 펼치기">▽ 모두 펼치기</button>
       </div>
@@ -5161,6 +5216,7 @@ function weeklyGanttHTMLOffset(offset){
 }
 
 function weeklyGanttHTMLWithOffset(weekOffset){
+  initWeeklyGanttCollapsed(); // [v48] 첫 렌더 시 모두 접힘
   const nowShifted=new Date(Date.now()+Math.round(weekOffset)*7*864e5);
   const day=nowShifted.getDay();
   const diffToMon=day===0?-6:1-day;
@@ -5195,7 +5251,7 @@ function weeklyGanttHTMLWithOffset(weekOffset){
       const sd=t.startDate?parseLocalDate(t.startDate):null;
       const ed=t.dueDate?parseLocalDate(t.dueDate):null;
       const inWeek=(sd&&sd<=sun&&(!ed||ed>=mon))||(ed&&ed>=mon&&ed<=sun)||(sd&&sd>=mon&&sd<=sun);
-      if(inWeek) weekTasks.push({...t,schedId:s.id,schedName:s.name});
+      if(inWeek && !(_weeklyGanttHideDone && t.done)) weekTasks.push({...t,schedId:s.id,schedName:s.name});
     }));
     if(!weekTasks.length) return `<div data-gantt-pid="${p.id}" draggable="true"
         ondragstart="ganttRowDragStart(event,'${p.id}')"
@@ -5282,6 +5338,7 @@ function weeklyGanttHTMLWithOffset(weekOffset){
       <button class="btn xs ghost" onclick="_weekOffset=${nextW};document.getElementById('home-timeline').innerHTML=weeklyGanttHTMLWithOffset(${nextW})">다음 주 ›</button>
       <span style="font-size:14px;color:var(--text3);margin-left:6px">${mon.getMonth()+1}/${mon.getDate()} – ${sun.getMonth()+1}/${sun.getDate()}</span>
       <div style="margin-left:auto;display:flex;gap:6px">
+        <button class="btn xs ghost" onclick="toggleWeeklyGanttHideDone()" title="완료 태스크 표시/숨김">${_weeklyGanttHideDone?'☑ 완료 숨김':'☐ 완료 숨김'}</button>
         <button class="btn xs ghost" onclick="weeklyGanttCollapseAllOffset(${weekOffset})">▷ 모두 접기</button>
         <button class="btn xs ghost" onclick="weeklyGanttExpandAllOffset(${weekOffset})">▽ 모두 펼치기</button>
       </div>
@@ -6423,7 +6480,12 @@ function initFirebase(){
     // 실시간 변경 감지 — 다른 기기에서 저장한 것만 적용
     fbDB.ref('spextrum').on('value',snap=>{
       if(!fbInitDone) return; // 초기 업로드 완료 전엔 무시
-      if(_fbSaving) return;   // 내가 저장 중일 때 에코 무시
+      if(_fbSaving){
+        // [v49 패치③] 내가 저장 중일 때 도착한 남의 변경 — 버리지 않고 표시만
+        // 저장 완료 후 fbSaveData가 이 플래그를 보고 최신 데이터를 다시 받아옴
+        _pendingRemoteChange=true;
+        return;
+      }
       const d=snap.val();
       if(!d) return;
       // 내 기기에서 온 변경이면 무시 (에코 방지)
@@ -6442,6 +6504,27 @@ function initFirebase(){
         if(el3) el3.textContent=active.filter(p=>p.schedules.some(s=>s.status==='예정')).length||'';
         if(el4) el4.textContent=active.filter(p=>p.schedules.every(s=>s.status==='완료')).length||'';
       }catch(e){console.warn('Firebase sync error:',e);}
+    });
+
+    // [v50 2단계-1차] 회의 가지 독립 구독 — 다른 기기의 회의 변경만 별도로 수신
+    // 메인 가지와 분리돼 있어, 회의 변경이 다른 영역 작업과 충돌하지 않음
+    fbDB.ref('spextrum_meetings').on('value',snap=>{
+      if(!fbInitDone) return;
+      if(_fbSaving){ _pendingRemoteChange=true; return; }
+      const md=snap.val();
+      if(!md) return;
+      if(md._deviceId&&md._deviceId===_deviceId) return; // 내 변경 에코 무시
+      try{
+        if(md.list!==undefined&&md.list!==null){
+          meetings=toArr(md.list);
+          try{localStorage.setItem(LS_KEY,JSON.stringify({projects,notices,campaigns,meetings,gcClientId,teamMembers}));}catch(e){}
+          // 회의 섹션이 화면에 떠 있으면 그 부분만 다시 그림
+          const meetEl=document.getElementById('meet-list');
+          if(meetEl && typeof meetListHTML==='function') meetEl.innerHTML=meetListHTML();
+          // 홈 KPI의 '이번 달 회의' 숫자도 갱신
+          if(typeof refreshHomeKPI==='function') refreshHomeKPI();
+        }
+      }catch(e){console.warn('회의 sync error:',e);}
     });
   }catch(e){
     console.warn('Firebase 초기화 실패:', e);
@@ -6496,18 +6579,22 @@ function sanitizeFirebaseData(d){
 function applyFirebaseData(d){
   if(!d) return;
   d=sanitizeFirebaseData(d);
-  if(d.projects&&d.projects.length)       projects  =d.projects;
-  if(d.notices)                           notices   =d.notices;
-  if(d.campaigns)                         campaigns =d.campaigns;
-  if(d.meetings)                          meetings  =d.meetings;
-  if(d.teamMembers&&d.teamMembers.length) teamMembers=d.teamMembers;
-  if(d.gcClientId)                        gcClientId=d.gcClientId;
+  // [v49 패치①] undefined만 거부 — 빈 배열(0개)은 정상 변경이므로 수용
+  // (마지막 프로젝트 삭제 등 정상 상황이 다른 기기에 반영 안 되던 문제 수정)
+  if(d.projects!==undefined&&d.projects!==null)       projects   =d.projects;
+  if(d.notices!==undefined&&d.notices!==null)         notices    =d.notices;
+  if(d.campaigns!==undefined&&d.campaigns!==null)     campaigns  =d.campaigns;
+  // [v50 2단계-1차] meetings는 spextrum_meetings 별도 가지에서 처리 — 여기서 제외
+  // (단, 마이그레이션 전 옛 데이터 호환을 위해 메인 가지에 meetings가 남아있으면 fbLoadData가 처리)
+  if(d.teamMembers!==undefined&&d.teamMembers!==null&&d.teamMembers.length) teamMembers=d.teamMembers;
+  if(d.gcClientId)                                    gcClientId =d.gcClientId;
   try{localStorage.setItem(LS_KEY,JSON.stringify({projects,notices,campaigns,meetings,gcClientId,teamMembers}));}catch(e){}
 }
 
 let _fbSaving=false;
 let _fbRetryCount=0;
 let _localSavedAt=Date.now();
+let _pendingRemoteChange=false; // [v49 패치③] 저장 중 도착한 남의 변경 표시
 // 기기 고유 ID — 자기 자신이 저장한 에코를 무시하기 위해 사용
 const _deviceId=(()=>{
   let id=localStorage.getItem('_spx_device_id');
@@ -6535,27 +6622,49 @@ function setSaveStatus(state){
 let _lastSnapshotTs=0;
 const SNAPSHOT_INTERVAL=30*60*1000; // 30분
 const MAX_SNAPSHOTS=20;
+let _snapshotInFlight=false; // [v49 패치②] 동시 진입 방지
 
 function fbSaveSnapshot(){
   if(!fbConnected||!fbDB) return;
+  if(_snapshotInFlight) return; // 이미 진행 중이면 스킵
   const now=Date.now();
+  // 로컬 1차 게이트 (불필요한 Firebase 읽기 줄이기)
   if(now-_lastSnapshotTs < SNAPSHOT_INTERVAL) return;
-  _lastSnapshotTs=now;
 
-  const ts=new Date().toISOString().slice(0,16).replace('T','_').replace(':','-'); // 2026-04-23_14-30
-  const payload={projects,notices,campaigns,meetings,gcClientId,teamMembers,_savedAt:new Date().toLocaleString('ko-KR')};
-  fbDB.ref('spextrum_backup/'+ts).set(payload)
-    .then(()=>{
-      // 오래된 스냅샷 정리 (MAX_SNAPSHOTS 초과분 삭제)
-      fbDB.ref('spextrum_backup').once('value').then(snap=>{
-        const keys=Object.keys(snap.val()||{}).sort();
-        if(keys.length>MAX_SNAPSHOTS){
-          const toDelete=keys.slice(0,keys.length-MAX_SNAPSHOTS);
-          toDelete.forEach(k=>fbDB.ref('spextrum_backup/'+k).remove());
-        }
-      });
-    })
-    .catch(e=>console.warn('스냅샷 저장 실패:',e));
+  _snapshotInFlight=true;
+  // [v49 패치②] Firebase에 공유된 마지막 스냅샷 시각을 확인 — 모든 기기가 같은 30분 타이머 공유
+  // (기존: 기기마다 _lastSnapshotTs가 따로 돌아 30분보다 훨씬 자주 생성되던 문제)
+  fbDB.ref('spextrum_meta/lastSnapshotTs').once('value').then(snap=>{
+    const sharedTs=snap.val()||0;
+    if(now-sharedTs < SNAPSHOT_INTERVAL){
+      // 다른 기기가 이미 최근에 스냅샷 만듦 → 내 로컬 시각만 맞추고 종료
+      _lastSnapshotTs=sharedTs;
+      _snapshotInFlight=false;
+      return;
+    }
+    // 내가 스냅샷 생성 담당 — 공유 시각 먼저 선점(레이스 최소화)
+    _lastSnapshotTs=now;
+    fbDB.ref('spextrum_meta/lastSnapshotTs').set(now);
+
+    const ts=new Date().toISOString().slice(0,16).replace('T','_').replace(':','-'); // 2026-04-23_14-30
+    const payload={projects,notices,campaigns,meetings,gcClientId,teamMembers,_savedAt:new Date().toLocaleString('ko-KR')};
+    fbDB.ref('spextrum_backup/'+ts).set(payload)
+      .then(()=>{
+        // 오래된 스냅샷 정리 (MAX_SNAPSHOTS 초과분 삭제)
+        fbDB.ref('spextrum_backup').once('value').then(snap=>{
+          const keys=Object.keys(snap.val()||{}).sort();
+          if(keys.length>MAX_SNAPSHOTS){
+            const toDelete=keys.slice(0,keys.length-MAX_SNAPSHOTS);
+            toDelete.forEach(k=>fbDB.ref('spextrum_backup/'+k).remove());
+          }
+        });
+      })
+      .catch(e=>console.warn('스냅샷 저장 실패:',e))
+      .finally(()=>{ _snapshotInFlight=false; });
+  }).catch(e=>{
+    console.warn('스냅샷 시각 확인 실패:',e);
+    _snapshotInFlight=false;
+  });
 }
 
 function fbSaveData(){
@@ -6567,14 +6676,40 @@ function fbSaveData(){
     _fbSaving=true;
     const now=Date.now();
     _localSavedAt=now;
-    const payload={projects,notices,campaigns,meetings,gcClientId,teamMembers,_savedAt:now,_deviceId};
-    fbDB.ref('spextrum').set(payload)
+    // [v50 2단계-1차] meetings는 별도 가지(spextrum_meetings)로 분리 — 메인 payload에서 제외
+    // 이유: 회의 수정과 다른 영역 수정이 동시에 일어나도 서로 안 덮어쓰게 (가지가 다름)
+    const payload={projects,notices,campaigns,gcClientId,teamMembers,_savedAt:now,_deviceId};
+    // 메인 가지 + 회의 가지를 함께 저장 (Promise.all로 둘 다 완료 대기)
+    Promise.all([
+      fbDB.ref('spextrum').set(payload),
+      fbDB.ref('spextrum_meetings').set({list:meetings,_savedAt:now,_deviceId})
+    ])
       .then(()=>{
         _fbRetryCount=0;
         _fbSaving=false;
         updateFbStatus('✅ '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}));
         setSaveStatus('saved');
         fbSaveSnapshot(); // 스냅샷 백업 (30분마다)
+        // [v49 패치③] 저장하는 사이 다른 기기의 변경이 도착했었다면
+        // → Firebase 최신본을 다시 읽어 메모리를 동기화 (다음 저장 때 남의 변경을 덮지 않도록)
+        // 화면은 가볍게 카운트만 갱신 — 입력 중인 필드를 건드리지 않기 위해 전체 refresh는 안 함
+        if(_pendingRemoteChange){
+          _pendingRemoteChange=false;
+          Promise.all([
+            fbDB.ref('spextrum').once('value'),
+            fbDB.ref('spextrum_meetings').once('value')
+          ]).then(([snapMain,snapMeet])=>{
+            const d=snapMain.val();
+            if(d){
+              try{
+                applyFirebaseData(d);
+                const md=snapMeet.val();
+                if(md&&md.list!==undefined&&md.list!==null) meetings=toArr(md.list);
+                if(typeof updateSb==='function') updateSb();
+              }catch(e){console.warn('pending sync error:',e);}
+            }
+          }).catch(e=>console.warn('pending re-read failed:',e));
+        }
       })
       .catch(e=>{
         _fbSaving=false;
@@ -6597,12 +6732,34 @@ function fbLoadData(){
 
   // ★ Firebase = 진짜 source of truth
   // 항상 Firebase를 먼저 읽고, 데이터가 있으면 Firebase로 화면을 채움
-  fbDB.ref('spextrum').once('value').then(snap=>{
+  // [v50 2단계-1차] 메인 가지 + 회의 가지를 함께 읽음
+  Promise.all([
+    fbDB.ref('spextrum').once('value'),
+    fbDB.ref('spextrum_meetings').once('value')
+  ]).then(([snap,snapMeet])=>{
     const d=snap.val();
+    const md=snapMeet.val();
     if(d&&Object.keys(d).length>1){
       // Firebase에 실제 데이터 있음 → Firebase 데이터 사용
       try{
         applyFirebaseData(d);
+        // [v50] 회의 데이터 처리 — 우선순위: 새 가지 > 기존 spextrum.meetings(마이그레이션)
+        if(md&&md.list!==undefined&&md.list!==null){
+          // 새 가지에 회의 데이터 있음 → 그걸 사용
+          meetings=toArr(md.list);
+        } else if(d.meetings!==undefined&&d.meetings!==null){
+          // 새 가지 없음 + 기존 위치에 회의 있음 → 마이그레이션 (한 번만 일어남)
+          meetings=toArr(d.meetings);
+          // 새 가지로 즉시 이전 + 기존 위치는 정리
+          const nowM=Date.now();
+          fbDB.ref('spextrum_meetings').set({list:meetings,_savedAt:nowM,_deviceId})
+            .then(()=>{
+              fbDB.ref('spextrum/meetings').remove(); // 기존 위치 제거 (중복 방지)
+              console.log('[v50] meetings 마이그레이션 완료: spextrum/meetings → spextrum_meetings');
+            })
+            .catch(e=>console.warn('[v50] meetings 마이그레이션 실패:',e));
+        }
+        // 둘 다 없으면 meetings는 메모리 기본값 그대로 유지
         _localSavedAt=d._savedAt||Date.now();
         refreshCurrentView();
         updateSb();
@@ -6612,7 +6769,10 @@ function fbLoadData(){
       // Firebase 비어있음 → 현재 메모리(기본) 데이터 업로드
       const now=Date.now();
       _localSavedAt=now;
-      fbDB.ref('spextrum').set({projects,notices,campaigns,meetings,gcClientId,teamMembers,_savedAt:now,_deviceId})
+      Promise.all([
+        fbDB.ref('spextrum').set({projects,notices,campaigns,gcClientId,teamMembers,_savedAt:now,_deviceId}),
+        fbDB.ref('spextrum_meetings').set({list:meetings,_savedAt:now,_deviceId})
+      ])
         .then(()=>setSaveStatus('saved'))
         .catch(e=>console.warn('[FB] 업로드 실패:',e));
     }
@@ -7165,7 +7325,7 @@ function checkOverdueTasks(){
 }
 
 // ─── TASK BOARD ──────────────────────────────────────────────
-let tbView='board'; // 'board' | 'timeline' | 'table'
+let tbView=prefGet('tbView','board'); // [v48] 개인 설정 'board'|'timeline'|'table'
 let tbFilter='전체'; // '전체' | dept name
 let tbPersonFilter='전체'; // '전체' | person name
 let tbTagFilter='전체'; // '전체' | tag name
@@ -7392,8 +7552,8 @@ function goTaskBoard(){
   renderTaskBoard();showView('v-tasks');
 }
 
-let tbHideDone=true;
-let tbSort='urgent';
+let tbHideDone=prefGet('tbHideDone',true); // [v48] 개인 설정
+let tbSort=prefGet('tbSort','urgent'); // [v48] 개인 설정
 
 function renderTaskBoard(){
   const depts=getAllDepts();
@@ -7430,7 +7590,7 @@ function renderTaskBoard(){
           </button>
         </div>
         <!-- 정렬 -->
-        <select class="tb-filter" onchange="tbSort=this.value;document.getElementById('tb-body').innerHTML=tbBodyHTML()" style="font-size:14px;padding:5px 8px">
+        <select class="tb-filter" onchange="tbSort=this.value;prefSet('tbSort',tbSort);document.getElementById('tb-body').innerHTML=tbBodyHTML()" style="font-size:14px;padding:5px 8px">
           <option value="urgent"${tbSort==='urgent'?' selected':''}>⚡ 긴급순</option>
           <option value="date"${tbSort==='date'?' selected':''}>📅 날짜순</option>
           <option value="default"${tbSort==='default'?' selected':''}>기본순</option>
@@ -7461,7 +7621,7 @@ function renderTaskBoard(){
         </select>
         <!-- 완료 숨기기 -->
         <label style="display:flex;align-items:center;gap:5px;font-size:14px;color:var(--text3);cursor:pointer;flex-shrink:0">
-          <input type="checkbox" ${tbHideDone?'checked':''} onchange="tbHideDone=this.checked;document.getElementById('tb-body').innerHTML=tbBodyHTML()" style="accent-color:var(--text);width:13px;height:13px">
+          <input type="checkbox" ${tbHideDone?'checked':''} onchange="tbHideDone=this.checked;prefSet('tbHideDone',tbHideDone);document.getElementById('tb-body').innerHTML=tbBodyHTML()" style="accent-color:var(--text);width:13px;height:13px">
           완료 숨기기
         </label>
         <div style="display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap">
@@ -7478,7 +7638,7 @@ function renderTaskBoard(){
   </div>`;
 }
 
-function setTbView(v){tbView=v;renderTaskBoard()}
+function setTbView(v){tbView=v;prefSet('tbView',v);renderTaskBoard()}
 function setTbDeptFilter(v){tbFilter=v;document.getElementById('tb-body').innerHTML=tbBodyHTML()}
 
 function openOverdueModal(){
