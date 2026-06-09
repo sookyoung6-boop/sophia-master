@@ -1668,7 +1668,7 @@ function projListInner(p){
     }).join('')||`<div style="padding:10px 14px;font-size:14px;color:var(--text3)">태스크 없음</div>`;
 
     const cls=STC[s.status]||'st-pending';
-    return `<div style="border-bottom:2px solid var(--border)">
+    return `<div data-sched-id="${s.id}" style="border-bottom:2px solid var(--border)">
       <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface2)">
         <div style="width:8px;height:8px;border-radius:50%;background:${c.dot}"></div>
         <span style="font-size:14px;font-weight:700;color:var(--text);flex:1">${s.name}</span>
@@ -3183,10 +3183,48 @@ function refListHTML(p){
 }
 
 // SCHED DETAIL
+// [v51] openSched — 별도 페이지 대신 "그 프로젝트의 태스크 탭"으로 통일
+// 같은 정보가 두 화면에 흩어져 있던 문제 해결. 직원이 외울 화면이 줄어듦.
+// 기존 v-sched 페이지/renderSchedDetail은 코드엔 남겨두지만 진입점 없음 (안전을 위해 제거 안 함)
 function openSched(pid,sid){
+  // 1. 해당 프로젝트로 진입 + 태스크 탭으로 전환
   curProj=projects.find(p=>p.id===pid);
-  curSched=curProj.schedules.find(s=>s.id===sid);
-  renderSchedDetail();showView('v-sched');
+  if(!curProj) return;
+  curSched=curProj.schedules.find(s=>s.id===sid)||null;
+  // 메모리에 "이 프로젝트는 태스크 탭에서 열림"을 기록 → renderProj가 태스크 탭으로 그림
+  projTabMemory[pid]='tasks';
+  projTab='tasks';
+  // 다른 데이터 초기화 (openProj와 같이)
+  const p=curProj;
+  if(!p.memo)         p.memo='';
+  if(!p.links)        p.links=[];
+  if(!p.images)       p.images=[];
+  if(!p.figmas)       p.figmas=[];
+  if(!p.launchDate)   p.launchDate='';
+  if(!p.manager)      p.manager='';
+  if(!p.members)      p.members='';
+  if(!p.purpose)      p.purpose='';
+  if(!p.delivItems)   p.delivItems='';
+  if(!p.statusNote)   p.statusNote='';
+  if(!p.risks)        p.risks='';
+  if(!p.deliverables) p.deliverables=[{id:uid(),text:''}];
+  if(!p.relatedProjects) p.relatedProjects=[];
+  if(!p.blocks||!p.blocks.length) initBlocks(p);
+  // 2. v-proj 화면 렌더링 + 태스크 탭 표시
+  renderProj();
+  // 3. 렌더링 후 해당 스케줄 그룹 위치로 자동 스크롤 (DOM 그려진 다음 프레임에)
+  setTimeout(()=>{
+    const sel=`[data-sched-id="${sid}"]`;
+    const el=document.querySelector(sel);
+    if(el){
+      el.scrollIntoView({behavior:'smooth',block:'start'});
+      // 잠깐 강조 표시 (어느 그룹으로 왔는지 시각 피드백)
+      const orig=el.style.background||'';
+      el.style.transition='background .4s';
+      el.style.background='rgba(255,224,130,0.35)';
+      setTimeout(()=>{ el.style.background=orig; }, 1200);
+    }
+  }, 120);
 }
 
 let schedView='both'; // 'both' | 'list' | 'timeline' | 'process'
@@ -6494,6 +6532,8 @@ function initFirebase(){
       try{
         applyFirebaseData(d);
         _localSavedAt=d._savedAt||Date.now();
+        // [v51] 받은 데이터를 "이미 저장된 상태"로 표시 (이걸 그대로 다시 저장하지 않도록)
+        _lastSavedMainHash=_quickHash({projects,notices,campaigns,gcClientId,teamMembers});
         const active=projects.filter(p=>!p.archived);
         const el1=document.getElementById('nav-total');
         const el2=document.getElementById('nav-c1');
@@ -6517,6 +6557,8 @@ function initFirebase(){
       try{
         if(md.list!==undefined&&md.list!==null){
           meetings=toArr(md.list);
+          // [v51] 받은 데이터를 "이미 저장된 상태"로 표시
+          _lastSavedMeetingsHash=_quickHash(meetings);
           try{localStorage.setItem(LS_KEY,JSON.stringify({projects,notices,campaigns,meetings,gcClientId,teamMembers}));}catch(e){}
           // 회의 섹션이 화면에 떠 있으면 그 부분만 다시 그림
           const meetEl=document.getElementById('meet-list');
@@ -6595,6 +6637,13 @@ let _fbSaving=false;
 let _fbRetryCount=0;
 let _localSavedAt=Date.now();
 let _pendingRemoteChange=false; // [v49 패치③] 저장 중 도착한 남의 변경 표시
+// [v51] 마지막으로 Firebase에 보낸 데이터 해시 — 같으면 저장 스킵해서 트래픽 절감
+let _lastSavedMainHash=null;
+let _lastSavedMeetingsHash=null;
+function _quickHash(obj){
+  // 빠른 비교용 — JSON 문자열을 그대로 비교 (객체 크기 작아서 충분히 빠름)
+  try{ return JSON.stringify(obj); }catch(e){ return null; }
+}
 // 기기 고유 ID — 자기 자신이 저장한 에코를 무시하기 위해 사용
 const _deviceId=(()=>{
   let id=localStorage.getItem('_spx_device_id');
@@ -6616,7 +6665,46 @@ function setSaveStatus(state){
   el.textContent=s.text;
   el.style.color=s.color;
   if(state==='saved') setTimeout(()=>{if(el.textContent==='✓ 저장됨')el.textContent='';},3000);
+  // [v51.5 패치①] error/offline 상태일 때 화면 상단에 빨간 배너 — 사용자가 못 보고 지나치지 않도록
+  showSaveErrorBanner(state==='error' || state==='offline', state);
 }
+
+// [v51.5 패치①] 저장 실패 배너 — 상단에 고정, error 풀리면 자동 사라짐
+function showSaveErrorBanner(show, state){
+  let banner=document.getElementById('spx-save-error-banner');
+  if(show){
+    if(!banner){
+      banner=document.createElement('div');
+      banner.id='spx-save-error-banner';
+      banner.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9998;background:#E24B4A;color:#fff;padding:10px 16px;font-size:14px;font-weight:600;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.15);font-family:inherit;cursor:default';
+      document.body.appendChild(banner);
+      // 본문이 가려지지 않게 body 패딩 추가
+      document.body.style.paddingTop=(parseInt(document.body.style.paddingTop)||0)+38+'px';
+    }
+    const msg=state==='offline'
+      ? '⚠️ Firebase 연결 끊김 — 작업 내용이 저장되지 않을 수 있습니다. 새로고침이나 페이지 닫기 전 데이터 백업을 받으세요.'
+      : '⚠️ 저장 실패 — 작업 내용이 위험합니다. 데이터 패널에서 JSON 백업을 받으시고 시스템을 다시 시작하세요.';
+    banner.textContent=msg;
+    // 저장 실패 상태 표시 (beforeunload에서 사용)
+    window._spxSaveErrorActive=true;
+  } else {
+    if(banner){
+      banner.remove();
+      // body 패딩 원복
+      document.body.style.paddingTop=Math.max(0,(parseInt(document.body.style.paddingTop)||38)-38)+'px';
+    }
+    window._spxSaveErrorActive=false;
+  }
+}
+
+// [v51.5 패치③] 저장 실패 상태에서 페이지 닫기/새로고침 시 브라우저 경고
+window.addEventListener('beforeunload', function(e){
+  if(window._spxSaveErrorActive){
+    e.preventDefault();
+    e.returnValue='저장되지 않은 작업이 있을 수 있습니다. 정말 나가시겠습니까?';
+    return e.returnValue;
+  }
+});
 
 // 마지막 스냅샷 저장 시각 (30분마다 1회)
 let _lastSnapshotTs=0;
@@ -6679,12 +6767,27 @@ function fbSaveData(){
     // [v50 2단계-1차] meetings는 별도 가지(spextrum_meetings)로 분리 — 메인 payload에서 제외
     // 이유: 회의 수정과 다른 영역 수정이 동시에 일어나도 서로 안 덮어쓰게 (가지가 다름)
     const payload={projects,notices,campaigns,gcClientId,teamMembers,_savedAt:now,_deviceId};
-    // 메인 가지 + 회의 가지를 함께 저장 (Promise.all로 둘 다 완료 대기)
-    Promise.all([
-      fbDB.ref('spextrum').set(payload),
-      fbDB.ref('spextrum_meetings').set({list:meetings,_savedAt:now,_deviceId})
-    ])
+    // [v51] 변경 없으면 저장 스킵 — 트래픽 절감 (가장 큰 효과)
+    // _savedAt·_deviceId 제외하고 본 데이터만으로 해시 (메타 변경만으로 저장 안 트리거되게)
+    const mainHash=_quickHash({projects,notices,campaigns,gcClientId,teamMembers});
+    const meetingsHash=_quickHash(meetings);
+    const mainChanged=(mainHash!==_lastSavedMainHash);
+    const meetingsChanged=(meetingsHash!==_lastSavedMeetingsHash);
+    if(!mainChanged && !meetingsChanged){
+      // 변경 없음 → 저장 자체를 스킵
+      _fbSaving=false;
+      setSaveStatus('saved'); // UI는 그대로 '저장됨' 유지
+      return;
+    }
+    // 가지별로 변경된 것만 저장
+    const savePromises=[];
+    if(mainChanged) savePromises.push(fbDB.ref('spextrum').set(payload));
+    if(meetingsChanged) savePromises.push(fbDB.ref('spextrum_meetings').set({list:meetings,_savedAt:now,_deviceId}));
+    Promise.all(savePromises)
       .then(()=>{
+        // 저장 성공 → 해시 갱신
+        if(mainChanged) _lastSavedMainHash=mainHash;
+        if(meetingsChanged) _lastSavedMeetingsHash=meetingsHash;
         _fbRetryCount=0;
         _fbSaving=false;
         updateFbStatus('✅ '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}));
@@ -6724,7 +6827,7 @@ function fbSaveData(){
           toast('⚠️ 저장에 실패했습니다. 데이터 패널에서 수동 저장해주세요.');
         }
       });
-  },300); // [v46 PATCH] 1200ms→300ms — 다중 사용자 동시 저장 시 충돌 윈도우 축소
+  },500); // [v51] 300ms→500ms — 트래픽 감소(체감 영향 없음, 충돌 윈도우는 여전히 충분히 좁음)
 }
 
 function fbLoadData(){
@@ -6776,6 +6879,9 @@ function fbLoadData(){
         .then(()=>setSaveStatus('saved'))
         .catch(e=>console.warn('[FB] 업로드 실패:',e));
     }
+    // [v51] 로드 직후 해시 초기화 — 같은 데이터를 다시 저장하지 않도록
+    _lastSavedMainHash=_quickHash({projects,notices,campaigns,gcClientId,teamMembers});
+    _lastSavedMeetingsHash=_quickHash(meetings);
     fbInitDone=true;
     hideFbLoading(); // 로딩 오버레이 제거
   }).catch(e=>{
@@ -6806,10 +6912,80 @@ function refreshCurrentView(){
   updateSb();
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// [v51.5 패치②] 회의 안전 백업 — Firebase와 무관하게 이 PC에 별도 저장
+// 이번 사고 같은 "한도 차단으로 저장 실패 → 데이터 사라짐" 재발 방지
+// ═══════════════════════════════════════════════════════════════════
+let _lastSafeBackupTs=0;
+function safeBackupMeetings(){
+  const now=Date.now();
+  // 1분 안엔 중복 백업 안 함 (성능 보호)
+  if(now-_lastSafeBackupTs < 60000) return;
+  _lastSafeBackupTs=now;
+  try{
+    const dateKey=new Date().toISOString().slice(0,10); // 2026-05-21
+    const key=`spx_meetings_backup_${dateKey}`;
+    localStorage.setItem(key, JSON.stringify({
+      ts: now,
+      tsStr: new Date().toLocaleString('ko-KR'),
+      count: meetings.length,
+      meetings: meetings
+    }));
+    // 7일 초과한 백업 삭제 (용량 보호)
+    const cutoff=new Date();
+    cutoff.setDate(cutoff.getDate()-7);
+    const cutoffKey=`spx_meetings_backup_${cutoff.toISOString().slice(0,10)}`;
+    Object.keys(localStorage).forEach(k=>{
+      if(k.startsWith('spx_meetings_backup_') && k<cutoffKey){
+        localStorage.removeItem(k);
+      }
+    });
+  }catch(e){
+    console.warn('[v51.5] 회의 안전 백업 실패:', e);
+  }
+}
+// 디버깅·복구용 — 콘솔에서 spxListMeetingsBackup() 호출하면 백업 목록 보임
+window.spxListMeetingsBackup=function(){
+  const list=[];
+  Object.keys(localStorage).forEach(k=>{
+    if(k.startsWith('spx_meetings_backup_') && k!=='spx_meetings_backup_last_ts'){
+      try{
+        const v=JSON.parse(localStorage.getItem(k));
+        list.push({date:k.replace('spx_meetings_backup_',''), time:v.tsStr, count:v.count, meetings:v.meetings});
+      }catch(e){}
+    }
+  });
+  list.sort((a,b)=>b.date.localeCompare(a.date));
+  console.log('회의 안전 백업 목록 (최신순):');
+  list.forEach(b=>console.log(`  ${b.date} (${b.time}) — ${b.count}건`));
+  console.log('복구하려면: 위 목록에서 날짜 확인 → spxRestoreMeetings("2026-05-21") 호출');
+  return list;
+};
+window.spxRestoreMeetings=function(dateKey){
+  const key=`spx_meetings_backup_${dateKey}`;
+  const raw=localStorage.getItem(key);
+  if(!raw){ console.warn('해당 날짜 백업 없음:', dateKey); return false; }
+  try{
+    const v=JSON.parse(raw);
+    if(!confirm(`회의를 ${dateKey} (${v.tsStr}) 시점으로 복원합니다.\n현재 ${meetings.length}건 → 복원 후 ${v.count}건\n계속하시겠습니까?`)) return false;
+    meetings=v.meetings;
+    saveToLS();
+    if(document.getElementById('meet-list')) document.getElementById('meet-list').innerHTML=meetListHTML();
+    toast(`✅ 회의 ${v.count}건 복원됨`);
+    return true;
+  }catch(e){
+    console.warn('복원 실패:', e);
+    return false;
+  }
+};
+// ═══════════════════════════════════════════════════════════════════
+
 function saveToLS(){
   try{
     const data={projects,notices,campaigns,meetings,gcClientId,teamMembers};
     localStorage.setItem(LS_KEY,JSON.stringify(data));
+    // [v51.5 패치②] 회의 안전 백업 — Firebase 실패와 무관하게 이 PC에 일자별 보관 (7일치)
+    safeBackupMeetings();
     // Drive 자동 동기화 예약
     scheduleDriveSync();
   }catch(e){
