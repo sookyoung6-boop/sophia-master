@@ -1668,6 +1668,14 @@ function projListInner(p){
     }).join('')||`<div style="padding:10px 14px;font-size:14px;color:var(--text3)">태스크 없음</div>`;
 
     const cls=STC[s.status]||'st-pending';
+    // [v51.5+] 각 스케줄 그룹 끝에 빠른 추가 입력칸 — v51에서 스케줄 페이지 진입점을 막으면서 빠진 추가 경로 복원
+    const quickAddRow=`<div style="display:flex;gap:7px;align-items:center;padding:8px 14px;background:rgba(0,0,0,0.02);border-top:1px dashed var(--border)">
+      <input id="qa-name-${p.id}-${s.id}" class="fi" placeholder="+ 태스크 추가 (Enter)" style="flex:1;font-size:14px;padding:5px 8px;min-width:120px"
+        onkeydown="if(event.key==='Enter')tbQuickAdd('${p.id}','${s.id}')">
+      <input id="qa-meta-${p.id}-${s.id}" class="fi" placeholder="담당자" style="width:80px;font-size:14px;padding:5px 8px">
+      <input id="qa-due-${p.id}-${s.id}" type="date" class="fi" style="font-size:14px;padding:5px 8px">
+      <button class="btn xs" onclick="tbQuickAdd('${p.id}','${s.id}')">추가</button>
+    </div>`;
     return `<div data-sched-id="${s.id}" style="border-bottom:2px solid var(--border)">
       <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface2)">
         <div style="width:8px;height:8px;border-radius:50%;background:${c.dot}"></div>
@@ -1676,6 +1684,7 @@ function projListInner(p){
         <span style="font-size:14px;color:var(--text3);font-family:var(--mono)">${dc}/${s.tasks.length}</span>
       </div>
       ${rows}
+      ${quickAddRow}
     </div>`;
   }).join('');
 }
@@ -8536,7 +8545,12 @@ function tbQuickAdd(pid,sid){
   if(!s)return;
   s.tasks.push({id:uid(),name:nameEl.value.trim(),done:false,meta:metaEl?.value.trim()||'',
     dueDate:dueEl?.value||'',startDate:'',taskStatus:'예정',progress:0,memo:'',output:''});
-  saveToLS();document.getElementById('tb-body').innerHTML=tbBodyHTML();
+  saveToLS();
+  // [v51.5+] 호출 컨텍스트에 따라 적절한 영역만 다시 그림 — 두 곳에서 호출 가능
+  const tbBody=document.getElementById('tb-body');
+  const ptabBody=document.getElementById('ptab-body');
+  if(tbBody){ tbBody.innerHTML=tbBodyHTML(); }
+  else if(ptabBody){ ptabBody.innerHTML=projTasksHTML(p); }
   toast('태스크가 추가됐습니다');
 }
 
