@@ -1653,7 +1653,8 @@ function projListInner(p){
         const lbl=t.done?'완료':diff<0?`D+${-diff}`:diff===0?'오늘':`D-${diff}`;
         dueBadge=`<span class="sbadge ${cls}" style="font-size:14px;padding:2px 7px">${lbl}</span>`;
       }
-      return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);transition:background .12s" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
+      // [v51.5+] .task-item 클래스로 호버 시 삭제·복제 버튼 표시 (원래 스케줄 페이지에 있던 것 복원)
+      return `<div class="task-item" style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);transition:background .12s" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
         <div class="chk${t.done?' on':''}" onclick="pkToggleTask('${p.id}','${s.id}','${t.id}')" style="flex-shrink:0;margin-top:1px">${t.done?'✓':''}</div>
         <div style="flex:1;min-width:0;cursor:pointer" onclick="openSidePanel('${p.id}','${s.id}','${t.id}')">
           <div style="font-size:14px;font-weight:500;color:var(--text);${t.done?'text-decoration:line-through;color:var(--text3)':''}">${t.name}</div>
@@ -1664,17 +1665,38 @@ function projListInner(p){
             ${(t.comments||[]).length?`<span style="font-size:14px;color:var(--text3)">💬 ${t.comments.length}</span>`:''}
           </div>
         </div>
+        <button class="tdel" title="태스크 복제" onclick="event.stopPropagation();duplicateTask('${p.id}','${s.id}','${t.id}')" style="color:var(--text3)">⧉</button>
+        <button class="tdel" title="태스크 삭제" onclick="event.stopPropagation();deleteTask('${p.id}','${s.id}','${t.id}')">✕</button>
       </div>`;
     }).join('')||`<div style="padding:10px 14px;font-size:14px;color:var(--text3)">태스크 없음</div>`;
 
     const cls=STC[s.status]||'st-pending';
-    // [v51.5+] 각 스케줄 그룹 끝에 빠른 추가 입력칸 — v51에서 스케줄 페이지 진입점을 막으면서 빠진 추가 경로 복원
-    const quickAddRow=`<div style="display:flex;gap:7px;align-items:center;padding:8px 14px;background:rgba(0,0,0,0.02);border-top:1px dashed var(--border)">
-      <input id="qa-name-${p.id}-${s.id}" class="fi" placeholder="+ 태스크 추가 (Enter)" style="flex:1;font-size:14px;padding:5px 8px;min-width:120px"
-        onkeydown="if(event.key==='Enter')tbQuickAdd('${p.id}','${s.id}')">
-      <input id="qa-meta-${p.id}-${s.id}" class="fi" placeholder="담당자" style="width:80px;font-size:14px;padding:5px 8px">
-      <input id="qa-due-${p.id}-${s.id}" type="date" class="fi" style="font-size:14px;padding:5px 8px">
-      <button class="btn xs" onclick="tbQuickAdd('${p.id}','${s.id}')">추가</button>
+    // [v51.5+ B안] 풀 폼 — 평소엔 숨김(display:none), [+ 추가] 클릭 시에만 펼침
+    const addFormId=`addform-${p.id}-${s.id}`;
+    const memberSelectId=`new-asn-${p.id}-${s.id}`;
+    const addForm=`<div id="${addFormId}" style="display:none;padding:14px;background:var(--surface2);border-top:1px solid var(--border)">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div style="flex:1;min-width:180px">
+          <div style="font-size:14px;color:var(--text3);margin-bottom:4px">태스크명</div>
+          <input id="qa-name-${p.id}-${s.id}" class="fi" placeholder="태스크 이름" style="padding:7px 10px;font-size:14px"
+            onkeydown="if(event.key==='Enter')tbQuickAdd('${p.id}','${s.id}')">
+        </div>
+        <div style="min-width:120px">
+          <div style="font-size:14px;color:var(--text3);margin-bottom:4px">담당자</div>
+          ${memberMultiSelectHTML(memberSelectId,'','font-size:14px')}
+        </div>
+        <div style="min-width:130px">
+          <div style="font-size:14px;color:var(--text3);margin-bottom:4px">시작일</div>
+          <input id="qa-start-${p.id}-${s.id}" class="fi" type="date" style="padding:7px 10px;font-size:14px">
+        </div>
+        <div style="min-width:130px">
+          <div style="font-size:14px;color:var(--text3);margin-bottom:4px">마감일</div>
+          <input id="qa-due-${p.id}-${s.id}" class="fi" type="date" style="padding:7px 10px;font-size:14px">
+        </div>
+        <button class="btn sm pri" onclick="pkAddTaskFull('${p.id}','${s.id}')" style="flex-shrink:0;margin-bottom:1px">+ 추가</button>
+        <button class="btn sm ghost" onclick="document.getElementById('${addFormId}').style.display='none'" style="flex-shrink:0;margin-bottom:1px">취소</button>
+      </div>
+      <input type="hidden" id="qa-meta-${p.id}-${s.id}">
     </div>`;
     return `<div data-sched-id="${s.id}" style="border-bottom:2px solid var(--border)">
       <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface2)">
@@ -1682,11 +1704,72 @@ function projListInner(p){
         <span style="font-size:14px;font-weight:700;color:var(--text);flex:1">${s.name}</span>
         <span class="sbadge ${cls}" style="font-size:14px">${s.status}</span>
         <span style="font-size:14px;color:var(--text3);font-family:var(--mono)">${dc}/${s.tasks.length}</span>
+        <button class="btn xs" onclick="toggleProjAddForm('${addFormId}','${p.id}','${s.id}')" style="font-size:14px;padding:3px 9px">+ 태스크</button>
       </div>
       ${rows}
-      ${quickAddRow}
+      ${addForm}
     </div>`;
   }).join('');
+}
+
+// [v51.5+ B안] 추가 폼 펼침/접힘 토글 + 펼침 시 입력칸에 자동 포커스
+function toggleProjAddForm(formId, pid, sid){
+  const el=document.getElementById(formId);
+  if(!el) return;
+  const isHidden=el.style.display==='none' || !el.style.display;
+  el.style.display=isHidden?'block':'none';
+  if(isHidden){
+    setTimeout(()=>{
+      const inp=document.getElementById('qa-name-'+pid+'-'+sid);
+      if(inp) inp.focus();
+    },50);
+  }
+}
+
+// [v51.5+ B안] 풀 폼에서 태스크 추가 — 시작일·마감일·담당자(멀티) 모두 처리
+function pkAddTaskFull(pid, sid){
+  const nameEl=document.getElementById('qa-name-'+pid+'-'+sid);
+  const startEl=document.getElementById('qa-start-'+pid+'-'+sid);
+  const dueEl=document.getElementById('qa-due-'+pid+'-'+sid);
+  const memberSelectId='new-asn-'+pid+'-'+sid;
+  const memberInput=document.getElementById(memberSelectId);
+  if(!nameEl||!nameEl.value.trim()) return;
+  const p=projects.find(x=>x.id===pid);
+  const s=p?.schedules.find(x=>x.id===sid);
+  if(!s) return;
+  const meta=memberInput?.value.trim()||'';
+  s.tasks.push({id:uid(),name:nameEl.value.trim(),done:false,meta,
+    startDate:startEl?.value||'', dueDate:dueEl?.value||'',
+    taskStatus:'예정',progress:0,memo:'',output:''});
+  saveToLS();
+  // 추가 후 폼 닫기 + 페이지 다시 그림
+  const formId='addform-'+pid+'-'+sid;
+  const formEl=document.getElementById(formId);
+  if(formEl) formEl.style.display='none';
+  const ptabBody=document.getElementById('ptab-body');
+  if(ptabBody) ptabBody.innerHTML=projTasksHTML(p);
+  toast('태스크가 추가됐습니다');
+}
+
+// [v51.5+] 태스크 복제 — 기존에 없던 신규 기능
+function duplicateTask(pid, sid, tid){
+  const p=projects.find(x=>x.id===pid);
+  const s=p?.schedules.find(x=>x.id===sid);
+  const t=s?.tasks.find(x=>x.id===tid);
+  if(!t) return;
+  // 깊은 복사 + 새 id + 이름에 "(복사본)" 표시
+  const dup=JSON.parse(JSON.stringify(t));
+  dup.id=uid();
+  dup.name=t.name+' (복사본)';
+  dup.done=false; // 복사본은 미완료로
+  if(dup.comments) dup.comments=[]; // 댓글은 안 복사
+  // 원본 바로 다음 위치에 삽입
+  const idx=s.tasks.findIndex(x=>x.id===tid);
+  s.tasks.splice(idx+1, 0, dup);
+  saveToLS();
+  const ptabBody=document.getElementById('ptab-body');
+  if(ptabBody) ptabBody.innerHTML=projTasksHTML(p);
+  toast('태스크가 복제됐습니다');
 }
 
 function projKanbanInner(p){
