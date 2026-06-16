@@ -903,7 +903,8 @@ function cfm(title,msg,onYes,yesLabel,noLabel){
 
 function prog(p){
   if(!p||!p.schedules)return 0;
-  const a=p.schedules.flatMap(s=>(s.tasks||[]));
+  // [v52] 아카이브된 스케줄은 진행률 계산에서 제외 — 화면에서 숨긴 것과 일관성
+  const a=p.schedules.filter(s=>!s.archived).flatMap(s=>(s.tasks||[]));
   return a.length?Math.round(a.filter(t=>t&&t.done).length/a.length*100):0;
 }
 function showView(id){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById(id).classList.add('active')}
@@ -1102,6 +1103,34 @@ function unarchiveProj(id){
   goArchive();updateSb();
 }
 
+// [v52] 스케줄 아카이브 — 프로젝트는 진행 중인데 그 안의 어떤 스케줄만 끝났을 때
+function archiveSched(pid, sid){
+  const p=projects.find(x=>x.id===pid);
+  const s=p?.schedules.find(x=>x.id===sid);
+  if(!s) return;
+  s.archived=true;
+  saveToLS();
+  toast(`"${s.name}" 스케줄이 아카이브됐습니다`);
+  // 현재 보고 있는 프로젝트 페이지가 그 프로젝트면 다시 그림
+  if(curProj && curProj.id===pid) renderProj();
+}
+
+// [v52] 스케줄 복원
+function unarchiveSched(pid, sid){
+  const p=projects.find(x=>x.id===pid);
+  const s=p?.schedules.find(x=>x.id===sid);
+  if(!s) return;
+  s.archived=false;
+  saveToLS();
+  toast(`"${s.name}" 스케줄이 복원됐습니다`);
+  // 아카이브 페이지에서 호출됐으면 그 페이지 다시 그림
+  if(document.querySelector('#v-archive.active') || document.getElementById('nav-archive')?.classList.contains('active')){
+    goArchive();
+  } else if(curProj && curProj.id===pid){
+    renderProj();
+  }
+}
+
 function quickAddTask(pid, sid){
   const inp=document.getElementById(`qt-${sid}`);
   if(!inp||!inp.value.trim()) return;
@@ -1184,32 +1213,65 @@ function goArchive(){
   setBc([{label:'아카이브'}]);
   document.getElementById('topbar-actions').innerHTML='';
   const archived=projects.filter(p=>p.archived);
+  // [v52] 아카이브된 스케줄 모음 — 프로젝트는 active지만 그 안의 스케줄만 아카이브된 것
+  const archivedScheds=[];
+  projects.filter(p=>!p.archived).forEach(p=>{
+    (p.schedules||[]).filter(s=>s.archived).forEach(s=>{
+      archivedScheds.push({proj:p,sched:s});
+    });
+  });
   if(!document.getElementById('proj-grid')){const kb=document.getElementById('kanban-board');if(kb){const d=document.createElement('div');d.id='proj-grid';d.className='proj-grid';kb.replaceWith(d);}}
   const grid=document.getElementById('proj-grid');
   grid.className='proj-grid';
   grid.removeAttribute('ondragover');grid.removeAttribute('ondrop');
-  if(!archived.length){
-    grid.innerHTML=`<div style="padding:40px;text-align:center;color:var(--text3);font-size:14px;grid-column:1/-1">아카이브된 프로젝트가 없습니다</div>`;
+  if(!archived.length && !archivedScheds.length){
+    grid.innerHTML=`<div style="padding:40px;text-align:center;color:var(--text3);font-size:14px;grid-column:1/-1">아카이브된 항목이 없습니다</div>`;
   } else {
-    grid.innerHTML=archived.map(p=>{
-      const c=COLORS[p.color],pr=prog(p);
-      const allT=p.schedules.flatMap(s=>s.tasks);
-      return `<div class="proj-card" style="opacity:.75" onclick="openProj('${p.id}')">
-        <span class="ptag" style="background:${c.tag};color:${c.tagT}">${p.tag}</span>
-        <span style="font-size:14px;color:var(--text3);float:right;margin-top:2px">📦 아카이브</span>
-        <div class="ptitle">${p.name}</div>
-        <div class="pdesc">${p.desc}</div>
-        <div class="pmeta"><span>${p.start} – ${p.end}</span><span>${p.departments.length}개 파트</span></div>
-        <div class="pb"><div class="pbf" style="width:${pr}%;background:${c.dot}"></div></div>
-        <div class="pb-pct">${pr}% · ${allT.filter(t=>t.done).length}/${allT.length}</div>
-        <div class="btn-row" style="margin-top:10px">
-          <button class="btn xs" onclick="event.stopPropagation();unarchiveProj('${p.id}')">↩ 복원</button>
-          <button class="btn xs danger" onclick="event.stopPropagation();deleteProj('${p.id}')">삭제</button>
-        </div>
-      </div>`;
-    }).join('');
+    let html='';
+    // 아카이브된 프로젝트
+    if(archived.length){
+      html+=`<div style="grid-column:1/-1;font-size:14px;font-weight:600;color:var(--text2);margin-bottom:6px;padding-top:4px">📦 프로젝트 (${archived.length})</div>`;
+      html+=archived.map(p=>{
+        const c=COLORS[p.color],pr=prog(p);
+        const allT=p.schedules.flatMap(s=>s.tasks);
+        return `<div class="proj-card" style="opacity:.75" onclick="openProj('${p.id}')">
+          <span class="ptag" style="background:${c.tag};color:${c.tagT}">${p.tag}</span>
+          <span style="font-size:14px;color:var(--text3);float:right;margin-top:2px">📦 아카이브</span>
+          <div class="ptitle">${p.name}</div>
+          <div class="pdesc">${p.desc}</div>
+          <div class="pmeta"><span>${p.start} – ${p.end}</span><span>${p.departments.length}개 파트</span></div>
+          <div class="pb"><div class="pbf" style="width:${pr}%;background:${c.dot}"></div></div>
+          <div class="pb-pct">${pr}% · ${allT.filter(t=>t.done).length}/${allT.length}</div>
+          <div class="btn-row" style="margin-top:10px">
+            <button class="btn xs" onclick="event.stopPropagation();unarchiveProj('${p.id}')">↩ 복원</button>
+            <button class="btn xs danger" onclick="event.stopPropagation();deleteProj('${p.id}')">삭제</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+    // [v52] 아카이브된 스케줄
+    if(archivedScheds.length){
+      html+=`<div style="grid-column:1/-1;font-size:14px;font-weight:600;color:var(--text2);margin-top:16px;margin-bottom:6px">📦 스케줄 (${archivedScheds.length})</div>`;
+      html+=archivedScheds.map(({proj:p,sched:s})=>{
+        const c=COLORS[p.color];
+        const dc=s.tasks.filter(t=>t.done).length;
+        return `<div class="proj-card" style="opacity:.75">
+          <span class="ptag" style="background:${c.tag};color:${c.tagT}">${p.tag}</span>
+          <span style="font-size:14px;color:var(--text3);float:right;margin-top:2px">📦 스케줄</span>
+          <div class="ptitle" style="font-size:15px">${s.name}</div>
+          <div class="pdesc" style="font-size:14px;color:var(--text3)">소속: ${p.name}</div>
+          <div class="pmeta" style="margin-top:6px"><span>${s.status}</span><span>${dc}/${s.tasks.length} 완료</span></div>
+          <div class="btn-row" style="margin-top:10px">
+            <button class="btn xs" onclick="unarchiveSched('${p.id}','${s.id}')">↩ 복원</button>
+            <button class="btn xs ghost" onclick="openProj('${p.id}')">프로젝트 열기</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+    grid.innerHTML=html;
   }
-  document.getElementById('list-sub').textContent=`아카이브 ${archived.length}개`;
+  const totalCount=archived.length+archivedScheds.length;
+  document.getElementById('list-sub').textContent=`아카이브 ${totalCount}개`;
   showView('v-list');
 }
 
@@ -1639,9 +1701,11 @@ function projTaskViewBody(p){
 }
 
 function projListInner(p){
-  if(!p.schedules.length) return '<div class="empty" style="padding:24px">스케줄이 없습니다</div>';
+  // [v52] 아카이브된 스케줄 제외
+  const visibleScheds=p.schedules.filter(s=>!s.archived);
+  if(!visibleScheds.length) return '<div class="empty" style="padding:24px">스케줄이 없습니다</div>';
   const today=new Date();today.setHours(0,0,0,0);
-  return p.schedules.map(s=>{
+  return visibleScheds.map(s=>{
     const c=COLORS[p.color];
     const sorted=sortTasks(s.tasks, taskSort);
     const dc=s.tasks.filter(t=>t.done).length;
@@ -1705,6 +1769,7 @@ function projListInner(p){
         <span class="sbadge ${cls}" style="font-size:14px">${s.status}</span>
         <span style="font-size:14px;color:var(--text3);font-family:var(--mono)">${dc}/${s.tasks.length}</span>
         <button class="btn xs" onclick="toggleProjAddForm('${addFormId}','${p.id}','${s.id}')" style="font-size:14px;padding:3px 9px">+ 태스크</button>
+        <button class="btn xs ghost" onclick="archiveSched('${p.id}','${s.id}')" title="스케줄 아카이브" style="font-size:14px;padding:3px 7px">📦</button>
       </div>
       ${rows}
       ${addForm}
@@ -1796,7 +1861,8 @@ function projTimelineInner(p){
   for(let i=0;i<=totalDays;i+=step){const d=new Date(minD);d.setDate(d.getDate()+i);const isT=d.toDateString()===today.toDateString();dayLabels+=`<div style="position:absolute;left:${(i/totalDays)*100}%;font-size:14px;color:${isT?'var(--red)':'var(--text3)'};font-family:var(--mono);font-weight:${isT?700:400};white-space:nowrap">${d.getMonth()+1}/${d.getDate()}</div>`;}
 
   // group by schedule
-  const groups=p.schedules.map(s=>{
+  // [v52] 아카이브된 스케줄 제외
+  const groups=p.schedules.filter(s=>!s.archived).map(s=>{
     const tasks=allTasks.filter(t=>t.schedId===s.id&&(t.startDate||t.dueDate));
     if(!tasks.length)return'';
     const rows=tasks.map(t=>{
@@ -1835,8 +1901,10 @@ function projTimelineInner(p){
 
 function projProcessInner(p){
   // show process table grouped by schedule
-  if(!p.schedules.length) return '<div class="empty" style="padding:24px">스케줄이 없습니다</div>';
-  return p.schedules.map(s=>{
+  // [v52] 아카이브된 스케줄 제외
+  const visibleScheds=p.schedules.filter(s=>!s.archived);
+  if(!visibleScheds.length) return '<div class="empty" style="padding:24px">스케줄이 없습니다</div>';
+  return visibleScheds.map(s=>{
     if(!s.tasks.length) return '';
     const c=COLORS[p.color];
     const table=processTableHTML(p,s);
@@ -3129,11 +3197,13 @@ function deptChipsHTML(p){
   return p.departments.map(d=>`<span class="chip">${d}<button class="chip-del" onclick="removeDept('${p.id}','${d}')">×</button></span>`).join('');
 }
 function schedListHTML(p,c){
-  if(!p.schedules.length) return '<div class="empty">스케줄이 없습니다</div>';
+  // [v52] 아카이브된 스케줄 제외 — 화면에서 숨김
+  const visibleScheds=p.schedules.filter(s=>!s.archived);
+  if(!visibleScheds.length) return '<div class="empty">스케줄이 없습니다</div>';
   const STATUS_SEQ=['예정','진행중','검토중','완료'];
   const statusMap={예정:'#a8a49e',진행중:'#185fa5',검토중:'#854f0b',완료:'#27ae60'};
   const statusBg={예정:'#f5f4f0',진행중:'#e6f1fb',검토중:'#faeeda',완료:'#eaf3de'};
-  return p.schedules.map(s=>{
+  return visibleScheds.map(s=>{
     const dc=s.tasks.filter(t=>t.done).length;
     const sc=statusMap[s.status]||'#a8a49e';
     const sb=statusBg[s.status]||'#f5f4f0';
@@ -3156,6 +3226,7 @@ function schedListHTML(p,c){
           <button class="btn xs ghost" style="padding:5px 8px" title="스케줄 복제" onclick="duplicateSched('${p.id}','${s.id}')">⧉</button>
           <button class="btn xs ghost" style="padding:5px 8px" title="다른 프로젝트로 이동" onclick="moveSchedModal('${p.id}','${s.id}')">↗</button>
           <button class="btn xs ghost" style="padding:5px 8px" onclick="openSched('${p.id}','${s.id}')">›</button>
+          <button class="btn xs ghost" style="padding:5px 8px" title="스케줄 아카이브" onclick="archiveSched('${p.id}','${s.id}')">📦</button>
           <button class="btn danger xs" onclick="deleteSched('${p.id}','${s.id}')">✕</button>
         </div>
       </div>
