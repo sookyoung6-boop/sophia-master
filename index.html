@@ -1699,7 +1699,7 @@ function projListInner(p){
       <input type="hidden" id="qa-meta-${p.id}-${s.id}">
     </div>`;
     return `<div data-sched-id="${s.id}" style="border-bottom:2px solid var(--border)">
-      <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface2)">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#E5DFD2;border-top:1px solid var(--border2)">
         <div style="width:8px;height:8px;border-radius:50%;background:${c.dot}"></div>
         <span style="font-size:14px;font-weight:700;color:var(--text);flex:1">${s.name}</span>
         <span class="sbadge ${cls}" style="font-size:14px">${s.status}</span>
@@ -7114,9 +7114,10 @@ function memberSelectHTML(id, value='', style='', onchange=''){
 }
 
 // 팀원 멀티 선택 (쉼표 구분)
-function memberMultiSelectHTML(id, value='', style=''){
+function memberMultiSelectHTML(id, value='', style='', onChange=''){
   const selected=value?value.split(/[,+·]/).map(s=>s.trim()).filter(Boolean):[];
-  return `<div id="${id}-wrap" style="${style}">
+  // [v52] onChange 콜백 — 칩 추가/제거 시 자동 호출 (사이드 패널 인라인 편집 등에서 활용)
+  return `<div id="${id}-wrap" data-onchange="${onChange.replace(/"/g,'&quot;')}" style="${style}">
     <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:5px" id="${id}-chips">
       ${selected.map(m=>`<span style="font-size:14px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:2px 8px;display:flex;align-items:center;gap:4px">
         ${m}<button onclick="removeMemberChip('${id}','${m}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:0;line-height:1">×</button>
@@ -7128,6 +7129,18 @@ function memberMultiSelectHTML(id, value='', style=''){
     </select>
     <input type="hidden" id="${id}" value="${selected.join(', ')}">
   </div>`;
+}
+// [v52] 칩 변경 후 wrap의 data-onchange를 실행 (인라인 편집 자동 저장 지원)
+function _triggerMemberChipChange(id){
+  const wrap=document.getElementById(id+'-wrap');
+  const onchangeCode=wrap?.getAttribute('data-onchange');
+  if(onchangeCode){
+    try{
+      const hidden=document.getElementById(id);
+      const fn=new Function('value', onchangeCode);
+      fn(hidden?.value||'');
+    }catch(e){ console.warn('member chip onChange error:', e); }
+  }
 }
 function addMemberChip(id, sel){
   if(!sel.value)return;
@@ -7146,6 +7159,8 @@ function addMemberChip(id, sel){
   const s=wrap.querySelector('select');
   s.innerHTML='<option value="">+ 담당자 추가</option>'+teamMembers.filter(m=>!cur.includes(m)).map(m=>`<option value="${m}">${m}</option>`).join('');
   s.value='';
+  // [v52] onChange 콜백 자동 호출 (인라인 편집 저장 트리거)
+  _triggerMemberChipChange(id);
 }
 function removeMemberChip(id,name){
   const hidden=document.getElementById(id);
@@ -7159,6 +7174,8 @@ function removeMemberChip(id,name){
   </span>`).join('');
   const s=wrap.querySelector('select');
   s.innerHTML='<option value="">+ 담당자 추가</option>'+teamMembers.filter(m=>!cur.includes(m)).map(m=>`<option value="${m}">${m}</option>`).join('');
+  // [v52] onChange 콜백 자동 호출
+  _triggerMemberChipChange(id);
 }
 
 // 팀원 관리 모달
@@ -7899,6 +7916,7 @@ function renderTaskBoard(){
           ${tbFilter!=='전체'?`<span style="font-size:14px;background:var(--surface2);color:var(--text2);padding:3px 9px;border-radius:10px">🏷 ${tbFilter}</span>`:''}
           ${overdueCount?`<span onclick="openOverdueModal()" style="font-size:14px;background:#fdf2f2;color:var(--red);padding:3px 9px;border-radius:10px;font-weight:600;cursor:pointer;transition:opacity .15s" onmouseenter="this.style.opacity='.7'" onmouseleave="this.style.opacity='1'" title="클릭하면 초과 태스크 목록 보기">⚠️ 초과 ${overdueCount}건</span>`:''}
           <span style="font-size:14px;color:var(--text3)">${activeCount}개 태스크</span>
+          <button class="btn sm pri" onclick="openTbAddTaskModal({})" style="margin-left:4px">+ 태스크 추가</button>
         </div>
       </div>
       <div class="tb-body" id="tb-body">${tbBodyHTML()}</div>
@@ -8179,7 +8197,9 @@ function statusBoardHTML(){
         <span class="bv-col-name" style="color:${st.color}">${st.label}</span>
         <span class="bv-col-count" style="background:${st.bg};color:${st.color}">${tasks.length}</span>
       </div>
-      <div class="bv-cards" id="status-col-${st.key}">${cards||`<div style="font-size:14px;color:var(--text3);padding:10px 6px;text-align:center;border:2px dashed var(--border);border-radius:6px;margin:4px">비어 있음</div>`}</div>
+      <div class="bv-cards" id="status-col-${st.key}">${cards||`<div style="font-size:14px;color:var(--text3);padding:10px 6px;text-align:center;border:2px dashed var(--border);border-radius:6px;margin:4px">비어 있음</div>`}
+        <div class="bv-add-card" onclick="openTbAddTaskModal({taskStatus:'${st.key}'})" style="border:1.5px dashed var(--border2);border-radius:8px;padding:14px;text-align:center;color:var(--text3);font-size:14px;cursor:pointer;margin-top:8px;transition:all .15s" onmouseover="this.style.background='var(--surface2)';this.style.color='var(--text2)'" onmouseout="this.style.background='';this.style.color='var(--text3)'">+ 태스크 추가</div>
+      </div>
     </div>`;
   }).join('');
 
@@ -8270,7 +8290,9 @@ function boardViewHTML(){
         <span class="bv-col-name">👤 ${tbPersonFilter}의 태스크</span>
         <span class="bv-col-count">${tasks.length}</span>
       </div>
-      <div class="bv-cards">${cards||`<div style="font-size:14px;color:var(--text3);padding:10px 6px;text-align:center">✓ 모두 완료</div>`}</div>
+      <div class="bv-cards">${cards||`<div style="font-size:14px;color:var(--text3);padding:10px 6px;text-align:center">✓ 모두 완료</div>`}
+        <div class="bv-add-card" onclick='openTbAddTaskModal(${JSON.stringify({assignee:tbPersonFilter}).replace(/'/g,"&#39;")})' style="border:1.5px dashed var(--border2);border-radius:8px;padding:14px;text-align:center;color:var(--text3);font-size:14px;cursor:pointer;margin-top:8px;transition:all .15s" onmouseover="this.style.background='var(--surface2)';this.style.color='var(--text2)'" onmouseout="this.style.background='';this.style.color='var(--text3)'">+ 태스크 추가</div>
+      </div>
     </div></div>`;
   }
 
@@ -8314,7 +8336,9 @@ function boardViewHTML(){
         </div>
         <span class="bv-col-count">${tasks.length}</span>
       </div>
-      <div class="bv-cards">${cards||`<div style="font-size:14px;color:var(--text3);padding:10px 6px;text-align:center">✓ 모두 완료</div>`}</div>
+      <div class="bv-cards">${cards||`<div style="font-size:14px;color:var(--text3);padding:10px 6px;text-align:center">✓ 모두 완료</div>`}
+        <div class="bv-add-card" onclick="openTbAddTaskModal({})" style="border:1.5px dashed var(--border2);border-radius:8px;padding:14px;text-align:center;color:var(--text3);font-size:14px;cursor:pointer;margin-top:8px;transition:all .15s" onmouseover="this.style.background='var(--surface2)';this.style.color='var(--text2)'" onmouseout="this.style.background='';this.style.color='var(--text3)'">+ 태스크 추가</div>
+      </div>
     </div>`;
   }).join('');
   return `<div class="bv-cols">${cols}</div>`;
@@ -8636,6 +8660,106 @@ function tbQuickAdd(pid,sid){
   else if(ptabBody){ ptabBody.innerHTML=projTasksHTML(p); }
   toast('태스크가 추가됐습니다');
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// [v52] 태스크 보드 + 추가 모달 — A안 (프로젝트·스케줄 선택)
+// prefill 옵션:
+//   - assignee: 담당자 미리 채움 (파트별 컬럼에서 호출 시)
+//   - taskStatus: 상태 미리 채움 (상태별 컬럼에서 호출 시)
+//   - projId / schedId: 특정 위치 미리 선택
+// ═══════════════════════════════════════════════════════════════════
+function openTbAddTaskModal(prefill){
+  prefill = prefill || {};
+  const activeProjects = projects.filter(p => !p.archived);
+  if(!activeProjects.length){
+    toast('프로젝트가 없습니다. 먼저 프로젝트를 만들어주세요.');
+    return;
+  }
+  // 컨텍스트 추론 — 필터된 담당자가 있으면 자동 채움
+  const defaultAssignee = prefill.assignee || (tbPersonFilter !== '전체' ? tbPersonFilter : '');
+  const defaultProjId = prefill.projId || activeProjects[0].id;
+  const defaultProj = activeProjects.find(p => p.id === defaultProjId) || activeProjects[0];
+  const defaultSched = prefill.schedId || (defaultProj.schedules[0]?.id || '');
+
+  modal(`<div class="m-title">+ 태스크 추가</div>
+    <div class="frow"><label class="fl">태스크명</label>
+      <input class="fi" id="tbam-name" placeholder="태스크 이름" autofocus>
+    </div>
+    <div class="frow"><label class="fl">프로젝트</label>
+      <select class="fi" id="tbam-proj" onchange="tbamUpdateScheds()">
+        ${activeProjects.map(p => `<option value="${p.id}"${p.id===defaultProjId?' selected':''}>${p.name}</option>`).join('')}
+      </select>
+    </div>
+    <div class="frow"><label class="fl">스케줄</label>
+      <select class="fi" id="tbam-sched">
+        ${defaultProj.schedules.map(s => `<option value="${s.id}"${s.id===defaultSched?' selected':''}>${s.name}</option>`).join('') || '<option value="">(스케줄 없음)</option>'}
+      </select>
+    </div>
+    <div class="frow"><label class="fl">담당자</label>
+      ${memberMultiSelectHTML('tbam-assignee', defaultAssignee, '')}
+    </div>
+    <div class="frow"><label class="fl">시작일</label>
+      <input class="fi" id="tbam-start" type="date">
+    </div>
+    <div class="frow"><label class="fl">마감일</label>
+      <input class="fi" id="tbam-due" type="date">
+    </div>
+    <div class="btn-row" style="margin-top:14px">
+      <button class="btn sm" onclick="closeModal()">취소</button>
+      <button class="btn sm pri" onclick="tbamSubmit('${prefill.taskStatus||''}')">+ 추가</button>
+    </div>`);
+  // 포커스 — autofocus 백업
+  setTimeout(()=>{
+    const inp=document.getElementById('tbam-name');
+    if(inp) inp.focus();
+  }, 100);
+}
+
+// 프로젝트 변경 시 스케줄 드롭다운 동적 갱신
+function tbamUpdateScheds(){
+  const projId = document.getElementById('tbam-proj')?.value;
+  if(!projId) return;
+  const proj = projects.find(p => p.id === projId);
+  const sel = document.getElementById('tbam-sched');
+  if(!sel) return;
+  sel.innerHTML = proj?.schedules.map(s => `<option value="${s.id}">${s.name}</option>`).join('') || '<option value="">(스케줄 없음)</option>';
+}
+
+// 모달에서 추가 버튼 클릭
+function tbamSubmit(presetStatus){
+  const name = document.getElementById('tbam-name')?.value.trim();
+  if(!name){ toast('태스크명을 입력해주세요'); return; }
+  const projId = document.getElementById('tbam-proj')?.value;
+  const schedId = document.getElementById('tbam-sched')?.value;
+  if(!schedId){ toast('스케줄을 선택해주세요 (해당 프로젝트에 스케줄이 없는 듯)'); return; }
+  const assignee = document.getElementById('tbam-assignee')?.value || '';
+  const start = document.getElementById('tbam-start')?.value || '';
+  const due = document.getElementById('tbam-due')?.value || '';
+
+  const p = projects.find(x => x.id === projId);
+  const s = p?.schedules.find(x => x.id === schedId);
+  if(!s){ toast('스케줄을 찾을 수 없습니다'); return; }
+
+  s.tasks.push({
+    id: uid(),
+    name,
+    done: false,
+    meta: assignee,
+    startDate: start,
+    dueDate: due,
+    taskStatus: presetStatus || '예정',
+    progress: 0,
+    memo: '',
+    output: ''
+  });
+  saveToLS();
+  closeModal();
+  // 태스크 보드 다시 그림 (현재 화면이 태스크 보드면)
+  const tbBody = document.getElementById('tb-body');
+  if(tbBody) tbBody.innerHTML = tbBodyHTML();
+  toast(`태스크가 "${p.name} / ${s.name}"에 추가됐습니다`);
+}
+// ═══════════════════════════════════════════════════════════════════
 
 // ── TASK BOARD HELPERS ───────────────────────────────────────
 function toggleTaskByRef(pid,sid,tid){
@@ -9469,18 +9593,8 @@ function openSidePanel(pid,sid,tid){
       </div>
       <div class="tsp-field" style="align-items:flex-start;padding-top:4px">
         <span class="tsp-label" style="padding-top:6px">담당자</span>
-        <div style="flex:1;display:flex;flex-direction:column;gap:4px">
-          <select id="tsp-meta-sel" style="font-size:14px;border:1px solid var(--border);border-radius:var(--rsm);padding:4px 8px;background:var(--surface);color:var(--text);outline:none;width:100%"
-            onchange="tspHandleMetaSel(this.value)">
-            <option value="">-- 선택 --</option>
-            ${(teamMembers||Object.keys(MEMBER_DEPT)).map(m=>`<option value="${m}"${t.meta===m?' selected':''}>${m}${MEMBER_DEPT[m]?' ('+MEMBER_DEPT[m]+')':''}</option>`).join('')}
-            <option value="__custom__"${!(teamMembers||Object.keys(MEMBER_DEPT)).includes(t.meta)&&t.meta?' selected':''}>직접 입력...</option>
-          </select>
-          <input id="tsp-meta-custom" type="text"
-            placeholder="직접 입력 (외주, 복수 담당자 등)"
-            value="${!(teamMembers||Object.keys(MEMBER_DEPT)).includes(t.meta)?t.meta||'':''}"
-            style="font-size:14px;border:1px solid var(--border);border-radius:var(--rsm);padding:4px 8px;background:var(--surface);color:var(--text);outline:none;width:100%;box-sizing:border-box;display:${!Object.keys(MEMBER_DEPT).includes(t.meta)&&t.meta?'block':'none'}"
-            onblur="tspSaveField('meta',this.value)">
+        <div style="flex:1">
+          ${memberMultiSelectHTML('tsp-meta-multi', t.meta||'', 'font-size:14px', "tspSaveField('meta', value)")}
         </div>
       </div>
       <div class="tsp-field">
