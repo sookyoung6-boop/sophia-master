@@ -1085,7 +1085,7 @@ function projGridDragOver(e){
 function deleteProj(id){
   const p=projects.find(x=>x.id===id);
   cfm('프로젝트 삭제',`"${p.name}"을 삭제하면 복구할 수 없습니다.`,()=>{
-    projects=projects.filter(x=>x.id!==id);saveToLS();toast('프로젝트가 삭제됐습니다');renderList();
+    _deletedProjIds.add(id);projects=projects.filter(x=>x.id!==id);saveToLS();toast('프로젝트가 삭제됐습니다');renderList();
   });
 }
 
@@ -5030,7 +5030,7 @@ function noticeListHTML(){
   <div id="nb-${n.id}" style="display:none;padding:10px 20px 14px 39px;font-size:14px;color:var(--text2);line-height:1.7;background:var(--surface2);border-bottom:1px solid var(--border)">${n.body}</div>`).join('');
 }
 function toggleNotice(id){const el=document.getElementById('nb-'+id);if(el)el.style.display=el.style.display==='block'?'none':'block'}
-function deleteNotice(id){cfm('공지 삭제','이 공지를 삭제합니다.',()=>{notices=notices.filter(x=>x.id!==id);saveToLS();document.getElementById('notice-list').innerHTML=noticeListHTML();toast('삭제됐습니다')})}
+function deleteNotice(id){cfm('공지 삭제','이 공지를 삭제합니다.',()=>{_deletedNoticeIds.add(id);notices=notices.filter(x=>x.id!==id);saveToLS();document.getElementById('notice-list').innerHTML=noticeListHTML();toast('삭제됐습니다')})}
 function openAddNotice(){
   modal(`<div class="m-title">새 공지 작성</div>
   <div class="frow"><label class="fl">제목</label><input class="fi" id="mn-title" placeholder="공지 제목"></div>
@@ -5551,7 +5551,7 @@ function weeklyGanttHTMLWithOffset(weekOffset){
 // CAMPAIGN
 function setCampFilter(f){campFilter=f;document.getElementById('camp-table').innerHTML=campTableHTML();document.querySelectorAll('.filt-btn').forEach(el=>el.classList.toggle('on',el.textContent===f))}
 function saveCamp(id,k,v){const c=campaigns.find(x=>x.id===id);if(c&&v.trim()&&v!=='—'){c[k]=v.trim();saveToLS();}}
-function deleteCamp(id){const c=campaigns.find(x=>x.id===id);cfm('캠페인 삭제',`"${c.name}"을 삭제합니다.`,()=>{campaigns=campaigns.filter(x=>x.id!==id);saveToLS();document.getElementById('camp-table').innerHTML=campTableHTML();toast('삭제됐습니다')})}
+function deleteCamp(id){const c=campaigns.find(x=>x.id===id);cfm('캠페인 삭제',`"${c.name}"을 삭제합니다.`,()=>{_deletedCampIds.add(id);campaigns=campaigns.filter(x=>x.id!==id);saveToLS();document.getElementById('camp-table').innerHTML=campTableHTML();toast('삭제됐습니다')})}
 function openAddCampaign(){
   modal(`<div class="m-title">새 캠페인 추가</div>
   <div class="two-col"><div class="frow"><label class="fl">캠페인명</label><input class="fi" id="mc-name" placeholder="SNS 런칭 캠페인"></div><div class="frow"><label class="fl">단계</label><input class="fi" id="mc-stage" placeholder="기획"></div></div>
@@ -6815,6 +6815,120 @@ const _deviceId=(()=>{
 })();
 const MAX_FB_RETRY=3;
 
+// ═══════════════════════════════════════════════════════════════════
+// [v52] 머지 가드 + 인트라데이 버전 백업
+// 사고 원인: projects 전체를 한 덩어리로 set() → 오래된 기기가 저장하면
+// 다른 기기가 새로 만든 프로젝트를 통째로 덮어써 삭제(2026-06 17개 증발).
+// 해결: ① 저장을 트랜잭션으로 바꿔 "서버 최신본을 읽어 머지 후 원자적 기록"
+//        — 내가 모르는(=다른 기기가 추가한) 프로젝트는 삭제하지 않고 합침.
+//        단, 내가 '의도적으로 삭제'한 것은 톰스톤으로 구분해 되살리지 않음.
+//      ② 로컬에 최근 버전을 타임스탬프로 다수 보관 → 만일 뚫려도 복구 가능.
+// ═══════════════════════════════════════════════════════════════════
+// 이 기기에서 '의도적으로 삭제'한 id — 머지 때 되살리지 않기 위한 표시(톰스톤)
+const _deletedProjIds=new Set();
+const _deletedNoticeIds=new Set();
+const _deletedCampIds=new Set();
+
+// id 기준 머지: 로컬 우선, 로컬에 없는 원격 항목은 (내가 지운 게 아니면) 보존
+function _mergeById(localArr, remoteArr, tombstones){
+  const local=toArr(localArr);
+  const remote=toArr(remoteArr);
+  const localIds=new Set(local.map(x=>x&&x.id).filter(v=>v!=null));
+  const merged=local.slice();
+  remote.forEach(r=>{
+    if(!r||r.id==null) return;
+    if(localIds.has(r.id)) return;                 // 양쪽에 있음 → 로컬본 사용(이미 포함)
+    if(tombstones&&tombstones.has(r.id)) return;   // 내가 의도적으로 삭제 → 되살리지 않음
+    merged.push(r);                                // 다른 기기가 추가한 것 → 보존
+  });
+  return merged;
+}
+
+// 트랜잭션 기반 메인 저장 — 읽기-머지-쓰기를 원자적으로 수행(레이스 차단)
+function _mergeProjectsSave(payload){
+  return fbDB.ref('spextrum').transaction(function(remote){
+    if(remote===null||remote===undefined) return payload; // 서버에 아직 없음 → 그대로 기록
+    remote.projects    = _mergeById(payload.projects,  remote.projects,  _deletedProjIds);
+    remote.notices     = _mergeById(payload.notices,   remote.notices,   _deletedNoticeIds);
+    remote.campaigns   = _mergeById(payload.campaigns, remote.campaigns, _deletedCampIds);
+    remote.teamMembers = (payload.teamMembers&&payload.teamMembers.length)?payload.teamMembers:toArr(remote.teamMembers);
+    if(payload.gcClientId) remote.gcClientId=payload.gcClientId;
+    remote._savedAt  = payload._savedAt;
+    remote._deviceId = payload._deviceId;
+    return remote;
+  }, undefined, false /* applyLocally=false: 로컬 에코/깜빡임 방지 */)
+  .then(function(res){
+    // 머지 결과(다른 기기가 추가한 프로젝트 포함)를 로컬에도 반영
+    try{
+      if(res&&res.committed&&res.snapshot){
+        const merged=res.snapshot.val();
+        if(merged){
+          applyFirebaseData(merged); // projects/notices/campaigns/teamMembers + localStorage 갱신
+          _lastSavedMainHash=_quickHash({projects,notices,campaigns,gcClientId,teamMembers});
+          if(typeof updateSb==='function') updateSb(); // 사이드바 카운트만 — 입력 중 필드는 안 건드림
+        }
+      }
+    }catch(e){console.warn('[v52] merge-sync error:',e);}
+    return res;
+  });
+}
+
+// ── 인트라데이 프로젝트 버전 백업(로컬) ──────────────────────────────
+let _lastProjBackupTs=0;
+const PROJ_BACKUP_MAX=15;        // 최근 15개 버전 보관
+const PROJ_BACKUP_MIN_GAP=90000; // 90초에 1회(과도한 쓰기 방지)
+function _writeProjVersion(key, obj){
+  // 용량 초과(QuotaExceeded) 시 가장 오래된 버전부터 지우며 재시도
+  for(let attempt=0; attempt<8; attempt++){
+    try{ localStorage.setItem(key, JSON.stringify(obj)); return true; }
+    catch(e){
+      try{
+        const idx=JSON.parse(localStorage.getItem('spx_proj_versions_idx')||'[]');
+        if(idx.length){ const old=idx.shift(); localStorage.removeItem(old.key); localStorage.setItem('spx_proj_versions_idx',JSON.stringify(idx)); }
+        else return false;
+      }catch(_){ return false; }
+    }
+  }
+  return false;
+}
+function safeBackupProjects(){
+  const now=Date.now();
+  if(now-_lastProjBackupTs<PROJ_BACKUP_MIN_GAP) return;
+  _lastProjBackupTs=now;
+  try{
+    let idx=[]; try{idx=JSON.parse(localStorage.getItem('spx_proj_versions_idx')||'[]');}catch(e){idx=[];}
+    const verKey='spx_proj_ver_'+now;
+    const tsStr=new Date().toLocaleString('ko-KR');
+    if(_writeProjVersion(verKey, {ts:now, tsStr, count:projects.length, projects})){
+      idx.push({key:verKey, ts:now, tsStr, count:projects.length});
+      while(idx.length>PROJ_BACKUP_MAX){ const old=idx.shift(); try{localStorage.removeItem(old.key);}catch(e){} }
+      try{localStorage.setItem('spx_proj_versions_idx', JSON.stringify(idx));}catch(e){}
+    }
+  }catch(e){ console.warn('[v52] 프로젝트 버전 백업 실패:',e); }
+}
+// 복구용 콘솔 헬퍼 — F12 콘솔에서 호출
+window.spxListProjVersions=function(){
+  let idx=[]; try{idx=JSON.parse(localStorage.getItem('spx_proj_versions_idx')||'[]');}catch(e){}
+  console.log('프로젝트 버전 백업 (최신순):');
+  idx.slice().reverse().forEach(v=>console.log(`  ${v.tsStr} — ${v.count}개   복원: spxRestoreProjVersion(${v.ts})`));
+  if(!idx.length) console.log('  (저장된 버전 없음)');
+  return idx;
+};
+window.spxRestoreProjVersion=function(ts){
+  const raw=localStorage.getItem('spx_proj_ver_'+ts);
+  if(!raw){ console.warn('해당 버전 없음:',ts); return false; }
+  try{
+    const v=JSON.parse(raw);
+    if(!confirm(`프로젝트를 ${v.tsStr} 시점으로 복원합니다.\n현재 ${projects.length}개 → 이 버전 ${v.count}개\n\n참고: 이 버전 이후 다른 사람이 추가한 프로젝트는 머지 가드가 보존합니다(삭제되지 않음).\n계속하시겠습니까?`)) return false;
+    projects=v.projects;
+    saveToLS();
+    if(typeof refreshCurrentView==='function') refreshCurrentView();
+    if(typeof updateSb==='function') updateSb();
+    if(typeof toast==='function') toast(`✅ 프로젝트 ${v.count}개 복원 시도됨`);
+    return true;
+  }catch(e){ console.warn('복원 실패:',e); return false; }
+};
+
 function setSaveStatus(state){
   const el=document.getElementById('save-status');
   if(!el)return;
@@ -6944,12 +7058,11 @@ function fbSaveData(){
     }
     // 가지별로 변경된 것만 저장
     const savePromises=[];
-    if(mainChanged) savePromises.push(fbDB.ref('spextrum').set(payload));
+    if(mainChanged) savePromises.push(_mergeProjectsSave(payload)); // [v52] set()→트랜잭션 머지(덮어쓰기 방지)
     if(meetingsChanged) savePromises.push(fbDB.ref('spextrum_meetings').set({list:meetings,_savedAt:now,_deviceId}));
     Promise.all(savePromises)
       .then(()=>{
-        // 저장 성공 → 해시 갱신
-        if(mainChanged) _lastSavedMainHash=mainHash;
+        // 저장 성공 → 해시 갱신 (메인은 _mergeProjectsSave가 머지된 결과로 이미 갱신함)
         if(meetingsChanged) _lastSavedMeetingsHash=meetingsHash;
         _fbRetryCount=0;
         _fbSaving=false;
@@ -7149,6 +7262,8 @@ function saveToLS(){
     localStorage.setItem(LS_KEY,JSON.stringify(data));
     // [v51.5 패치②] 회의 안전 백업 — Firebase 실패와 무관하게 이 PC에 일자별 보관 (7일치)
     safeBackupMeetings();
+    // [v52] 프로젝트 버전 백업 — 인트라데이 다수 버전 보관(30분 스냅샷이 못 잡는 구간 대비)
+    safeBackupProjects();
     // Drive 자동 동기화 예약
     scheduleDriveSync();
   }catch(e){
