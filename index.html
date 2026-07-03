@@ -6899,7 +6899,8 @@ function safeBackupProjects(){
     let idx=[]; try{idx=JSON.parse(localStorage.getItem('spx_proj_versions_idx')||'[]');}catch(e){idx=[];}
     const verKey='spx_proj_ver_'+now;
     const tsStr=new Date().toLocaleString('ko-KR');
-    if(_writeProjVersion(verKey, {ts:now, tsStr, count:projects.length, projects})){
+    const slimProjects=projects.map(p=>({...p, images:[]})); // [v53 Phase0-B] 이미지 제외
+    if(_writeProjVersion(verKey, {ts:now, tsStr, count:projects.length, projects:slimProjects})){
       idx.push({key:verKey, ts:now, tsStr, count:projects.length});
       while(idx.length>PROJ_BACKUP_MAX){ const old=idx.shift(); try{localStorage.removeItem(old.key);}catch(e){} }
       try{localStorage.setItem('spx_proj_versions_idx', JSON.stringify(idx));}catch(e){}
@@ -7109,6 +7110,32 @@ function fbSaveData(){
 function fbLoadData(){
   if(!fbConnected||!fbDB) return;
 
+  // [v53 Phase0-E] 가져오기 직후: Firebase에서 내려받지 않고, 가져온 로컬 데이터를 서버에 업로드
+  if(localStorage.getItem('spx_import_pending')==='1'){
+    localStorage.removeItem('spx_import_pending');
+    const nowI=Date.now();
+    _localSavedAt=nowI;
+    Promise.all([
+      fbDB.ref('spextrum').set({projects,notices,campaigns,gcClientId,teamMembers,_savedAt:nowI,_deviceId}),
+      fbDB.ref('spextrum_meetings').set({list:meetings,_savedAt:nowI,_deviceId})
+    ]).then(()=>{
+      _lastSavedMainHash=_quickHash({projects,notices,campaigns,gcClientId,teamMembers});
+      _lastSavedMeetingsHash=_quickHash(meetings);
+      fbInitDone=true;
+      hideFbLoading();
+      setSaveStatus('saved');
+      updateSb();
+      toast('✅ 가져온 데이터가 서버에 반영됐습니다');
+    }).catch(e=>{
+      console.warn('[v53] import 업로드 실패:',e);
+      fbInitDone=true;
+      hideFbLoading();
+      setSaveStatus('error');
+      toast('⚠️ 서버 반영 실패 — 긴급 백업 후 재시도하세요');
+    });
+    return;
+  }
+
   // ★ Firebase = 진짜 source of truth
   // 항상 Firebase를 먼저 읽고, 데이터가 있으면 Firebase로 화면을 채움
   // [v50 2단계-1차] 메인 가지 + 회의 가지를 함께 읽음
@@ -7256,22 +7283,42 @@ window.spxRestoreMeetings=function(dateKey){
 };
 // ═══════════════════════════════════════════════════════════════════
 
+// [v53 Phase0-A] localStorage용 경량 페이로드 — 이미지(base64) 제외
+// 이미지는 메모리 + Firebase에만 존재. localStorage는 캐시 역할만.
+function _lsPayload(){
+  const slim=projects.map(p=>({...p, images:[]}));
+  return JSON.stringify({projects:slim,notices,campaigns,meetings,gcClientId,teamMembers});
+}
+
+// [v53 Phase0-A] localStorage 실패 시 하단 고정 배너 + 긴급 백업 유도
+let _lsFailBannerShown=false;
+function showLsFailBanner(err){
+  setSaveStatus('error');
+  if(_lsFailBannerShown) return;
+  _lsFailBannerShown=true;
+  const isQuota=String(err&&err.name||'').toLowerCase().includes('quota');
+  const b=document.createElement('div');
+  b.id='spx-ls-fail-banner';
+  b.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#c0392b;color:#fff;padding:12px 16px;font-size:14px;display:flex;align-items:center;gap:12px;justify-content:center;flex-wrap:wrap;box-shadow:0 -2px 12px rgba(0,0,0,.25)';
+  b.innerHTML='<span style="font-weight:700">⚠️ 이 기기의 로컬 저장이 실패하고 있습니다'+(isQuota?' (저장 공간 초과)':'')+'</span>'
+    +'<span>창을 닫거나 새로고침하기 전에 즉시 백업을 받으세요.</span>'
+    +'<button onclick="exportData()" style="background:#fff;color:#c0392b;border:none;border-radius:6px;padding:8px 16px;font-weight:700;cursor:pointer;font-family:inherit">🚨 지금 긴급 백업</button>';
+  document.body.appendChild(b);
+}
+
+// [v53 Phase0-A] 핵심 수정: localStorage 실패해도 Firebase 저장은 반드시 실행
 function saveToLS(){
   try{
-    const data={projects,notices,campaigns,meetings,gcClientId,teamMembers};
-    localStorage.setItem(LS_KEY,JSON.stringify(data));
-    // [v51.5 패치②] 회의 안전 백업 — Firebase 실패와 무관하게 이 PC에 일자별 보관 (7일치)
+    localStorage.setItem(LS_KEY,_lsPayload());
     safeBackupMeetings();
-    // [v52] 프로젝트 버전 백업 — 인트라데이 다수 버전 보관(30분 스냅샷이 못 잡는 구간 대비)
     safeBackupProjects();
-    // Drive 자동 동기화 예약
     scheduleDriveSync();
   }catch(e){
     console.error('로컬 저장 실패:',e);
-    setSaveStatus('error');
-    return;
+    showLsFailBanner(e);
+    // [v53] return 제거 — 아래 fbSaveData()가 반드시 실행되게 함
   }
-  fbSaveData(); // Firebase 백그라운드 저장
+  fbSaveData(); // localStorage 성패와 무관하게 항상 서버 저장 시도
 }
 
 function loadFromLS(){
@@ -9370,6 +9417,7 @@ function openDataPanel(){
     +'</div>'
     +'<div class="btn-row">'
       +'<button class="btn sm danger-full" onclick="cfm(\'데이터 초기화\',\'모든 데이터가 삭제됩니다.\',()=>{localStorage.removeItem(\''+LS_KEY+'\');location.reload()})">초기화</button>'
+      +'<button class="btn sm" onclick="exportData()" style="background:#fdf2f2;color:#c0392b;border-color:#c0392b;font-weight:600">🚨 긴급 백업</button>'
       +'<button class="btn sm pri" onclick="openSnapshotPanel()">🕐 백업 복구</button>'
       +'<button class="btn sm" onclick="closeModal()">닫기</button>'
     +'</div>'
@@ -9423,8 +9471,14 @@ function restoreSnapshot(key){
 
 
 function exportData(){
-  saveToLS();
-  const data=localStorage.getItem(LS_KEY)||'{}';
+  // [v53 Phase0-C] localStorage를 거치지 않고 메모리에서 직접 내보내기 (이미지 포함 완전본)
+  let data;
+  try{
+    data=JSON.stringify({projects,notices,campaigns,meetings,gcClientId,teamMembers,_exportedAt:new Date().toISOString()});
+  }catch(e){
+    toast('❌ 내보내기 실패: '+e.message);
+    return;
+  }
   const now=new Date();
   const stamp=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
   const blob=new Blob([data],{type:'application/json'});
@@ -9433,7 +9487,8 @@ function exportData(){
   a.href=url;a.download=`spextrum_${stamp}.json`;
   document.body.appendChild(a);a.click();
   document.body.removeChild(a);URL.revokeObjectURL(url);
-  toast('✅ 파일로 내보냈습니다');
+  try{saveToLS();}catch(e){} // [v53] 저장도 함께 시도 (실패해도 내보내기는 이미 완료)
+  toast('✅ 파일로 내보냈습니다 (메모리 원본)');
 }
 
 function importData(input){
@@ -9446,6 +9501,7 @@ function importData(input){
       if(!parsed.projects) throw new Error('올바른 Spextrum 데이터 파일이 아닙니다');
       cfm('데이터 가져오기',`프로젝트 ${parsed.projects.length}개, 태스크 ${parsed.projects.flatMap(p=>p.schedules?.flatMap(s=>s.tasks)||[]).length}개가 포함되어 있습니다.\n\n현재 데이터를 덮어씁니다. 계속하시겠습니까?`,()=>{
         localStorage.setItem(LS_KEY,e.target.result);
+        localStorage.setItem('spx_import_pending','1'); // [v53 Phase0-E] 새로고침 후 서버에 업로드하도록 표시
         toast('✅ 가져오기 완료! 새로고침합니다...');
         setTimeout(()=>location.reload(),900);
       });
