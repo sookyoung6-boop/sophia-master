@@ -3092,18 +3092,16 @@ function imgGridHTML(p){
   </div>`).join('')}</div>`;
 }
 function addProjImages(pid,files){
-  const p=projects.find(x=>x.id===pid);
-  if(!p.images)p.images=[];
-  let loaded=0;
-  Array.from(files).forEach(f=>{
-    const reader=new FileReader();
-    reader.onload=e=>{
-      p.images.push({id:uid(),name:f.name,data:e.target.result});
-      loaded++;
-      if(loaded===files.length){saveToLS();const el=document.getElementById('img-grid');if(el)el.innerHTML=imgGridHTML(p);toast(files.length+'개 이미지 추가됐습니다');}
-    };
-    reader.readAsDataURL(f);
-  });
+  // [v54.1] 이미지 직접 업로드 차단 — 용량·트래픽 보호 방침
+  // 이미지는 Drive/Figma에 올리고 "Figma / URL 임베드" 또는 링크로 첨부해주세요.
+  modal('<div class="m-title">🖼 이미지 직접 업로드는 사용하지 않습니다</div>'
+    +'<div style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:16px">'
+    +'시스템 안정성을 위해 이미지 파일 업로드 대신 링크 첨부를 사용합니다.<br><br>'
+    +'<b>1.</b> 이미지를 Google Drive 또는 Figma에 업로드<br>'
+    +'<b>2.</b> 공유 링크 복사<br>'
+    +'<b>3.</b> 아래 "Figma / URL 임베드"의 <b>+ URL</b> 버튼으로 첨부'
+    +'</div>'
+    +'<div class="btn-row"><button class="btn sm pri" onclick="closeModal()">확인</button></div>');
 }
 function delProjImage(pid,iid){
   const p=projects.find(x=>x.id===pid);
@@ -6661,7 +6659,6 @@ let fbInitDone=false; // 초기 로드 완료 후에만 실시간 반영
 
 function initFirebase(){
   try{
-    // 이미 초기화된 경우 재사용
     if(firebase.apps.length){
       fbApp=firebase.apps[0];
     } else {
@@ -6672,64 +6669,28 @@ function initFirebase(){
     updateFbStatus('연결 중...');
     fbDB.ref('.info/connected').on('value',snap=>{
       if(snap.val()===true){
-        updateFbStatus('✅ Firebase 연결됨');
-        fbLoadData();
+        updateFbStatus('✅ Firebase 연결됨 (v2)');
+        if(!fbInitDone){
+          fbLoadData();
+        } else {
+          // [v54] 재접속: 오프라인 동안의 원격 변경을 병합하고, 내 오프라인 변경을 푸시
+          fbDB.ref(FB_ROOT).once('value').then(s=>{
+            try{_mergeRemote(s.val());}catch(e){console.warn('[v54] reconnect merge:',e);}
+            _fbSyncNow();
+          }).catch(()=>{});
+        }
       } else {
         updateFbStatus('⚠️ 오프라인');
+        if(fbInitDone) setSaveStatus('offline');
       }
     });
-    // 실시간 변경 감지 — 다른 기기에서 저장한 것만 적용
-    fbDB.ref('spextrum').on('value',snap=>{
-      if(!fbInitDone) return; // 초기 업로드 완료 전엔 무시
-      if(_fbSaving){
-        // [v49 패치③] 내가 저장 중일 때 도착한 남의 변경 — 버리지 않고 표시만
-        // 저장 완료 후 fbSaveData가 이 플래그를 보고 최신 데이터를 다시 받아옴
-        _pendingRemoteChange=true;
-        return;
-      }
-      const d=snap.val();
-      if(!d) return;
-      // 내 기기에서 온 변경이면 무시 (에코 방지)
-      if(d._deviceId&&d._deviceId===_deviceId) return;
-      // 다른 기기의 변경 → 적용
-      try{
-        applyFirebaseData(d);
-        _localSavedAt=d._savedAt||Date.now();
-        // [v51] 받은 데이터를 "이미 저장된 상태"로 표시 (이걸 그대로 다시 저장하지 않도록)
-        _lastSavedMainHash=_quickHash({projects,notices,campaigns,gcClientId,teamMembers});
-        const active=projects.filter(p=>!p.archived);
-        const el1=document.getElementById('nav-total');
-        const el2=document.getElementById('nav-c1');
-        const el3=document.getElementById('nav-c2');
-        const el4=document.getElementById('nav-c3');
-        if(el1) el1.textContent=active.length;
-        if(el2) el2.textContent=active.filter(p=>p.schedules.some(s=>s.status==='진행중')).length||'';
-        if(el3) el3.textContent=active.filter(p=>p.schedules.some(s=>s.status==='예정')).length||'';
-        if(el4) el4.textContent=active.filter(p=>p.schedules.every(s=>s.status==='완료')).length||'';
-      }catch(e){console.warn('Firebase sync error:',e);}
-    });
-
-    // [v50 2단계-1차] 회의 가지 독립 구독 — 다른 기기의 회의 변경만 별도로 수신
-    // 메인 가지와 분리돼 있어, 회의 변경이 다른 영역 작업과 충돌하지 않음
-    fbDB.ref('spextrum_meetings').on('value',snap=>{
+    // [v54 Phase1] 실시간 수신 — 통짜 교체 없음. 엔티티 단위 3-way 병합.
+    // 로컬에 저장 안 된 변경이 있는 엔티티는 원격이 절대 덮지 못함.
+    fbDB.ref(FB_ROOT).on('value',snap=>{
       if(!fbInitDone) return;
-      if(_fbSaving){ _pendingRemoteChange=true; return; }
-      const md=snap.val();
-      if(!md) return;
-      if(md._deviceId&&md._deviceId===_deviceId) return; // 내 변경 에코 무시
-      try{
-        if(md.list!==undefined&&md.list!==null){
-          meetings=toArr(md.list);
-          // [v51] 받은 데이터를 "이미 저장된 상태"로 표시
-          _lastSavedMeetingsHash=_quickHash(meetings);
-          try{localStorage.setItem(LS_KEY,JSON.stringify({projects,notices,campaigns,meetings,gcClientId,teamMembers}));}catch(e){}
-          // 회의 섹션이 화면에 떠 있으면 그 부분만 다시 그림
-          const meetEl=document.getElementById('meet-list');
-          if(meetEl && typeof meetListHTML==='function') meetEl.innerHTML=meetListHTML();
-          // 홈 KPI의 '이번 달 회의' 숫자도 갱신
-          if(typeof refreshHomeKPI==='function') refreshHomeKPI();
-        }
-      }catch(e){console.warn('회의 sync error:',e);}
+      const v=snap.val();
+      if(!v) return;
+      try{_mergeRemote(v);}catch(e){console.warn('[v54] merge error:',e);}
     });
   }catch(e){
     console.warn('Firebase 초기화 실패:', e);
@@ -7033,165 +6994,353 @@ function fbSaveSnapshot(){
   });
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// [v54 Phase1] 개별 경로 동기화 엔진
+// 원칙 1: 전체 트리를 통째로 쓰지 않는다 — 바뀐 엔티티의 경로에만 쓴다.
+//   두 기기가 서로 다른 태스크를 고치면 쓰는 경로가 달라 충돌 자체가 불가능.
+// 원칙 2: 삭제는 없다, 이동만 있다 — trash/에 30일 보관 후 정리.
+// 원칙 3: 수신은 3-way 병합 — 로컬 미저장 변경은 원격이 절대 덮지 못한다.
+// ═══════════════════════════════════════════════════════════════════
+const FB_ROOT='spextrum_v2';
+let _shadow={};                 // path → JSON 문자열 (서버에 반영됐다고 아는 상태)
+let _syncInFlight=false,_syncQueued=false;
+
+// [v54] 정규화 — Firebase는 빈 배열/빈 객체/null을 저장하지 않고 버리므로,
+// 로컬도 같은 형태로 맞춰야 해시 비교가 안정된다. 키도 정렬해 순서 비결정성 제거.
+function _stripEmpty(v){
+  if(Array.isArray(v)){
+    return v.map(_stripEmpty).filter(x=>x!==null&&x!==undefined);
+  }
+  if(v&&typeof v==='object'){
+    const r={};
+    for(const k of Object.keys(v).sort()){
+      const c=_stripEmpty(v[k]);
+      if(c===null||c===undefined) continue;
+      if(Array.isArray(c)&&c.length===0) continue;
+      if(c&&typeof c==='object'&&!Array.isArray(c)&&Object.keys(c).length===0) continue;
+      r[k]=c;
+    }
+    return r;
+  }
+  return v;
+}
+function _cleanObj(o){ return _stripEmpty(JSON.parse(JSON.stringify(o))); }
+
+function _normTask(t){
+  if(!t) return t;
+  return {...t, comments:toArr(t.comments), links:toArr(t.links), tags:toArr(t.tags)};
+}
+function _normProjMeta(pm){
+  if(!pm) return pm;
+  return {...pm,
+    departments:toArr(pm.departments), blocks:toArr(pm.blocks),
+    weeklyGoals:toArr(pm.weeklyGoals).map(w=>w?{...w,goals:toArr(w.goals)}:null).filter(Boolean),
+    links:toArr(pm.links), relatedProjects:toArr(pm.relatedProjects),
+    images:toArr(pm.images), figmas:toArr(pm.figmas), refFiles:toArr(pm.refFiles),
+    workAreas:toArr(pm.workAreas).map(wa=>wa?{...wa,deliverables:toArr(wa.deliverables)}:null).filter(Boolean),
+    history:toArr(pm.history), autoLog:toArr(pm.autoLog)
+  };
+}
+
+// 메모리(배열 구조) → 경로 맵
+function _flattenLocal(){
+  const m={};
+  (projects||[]).forEach((p,pi)=>{
+    if(!p||!p.id) return;
+    const {schedules:scheds,...meta}=p; meta.ord=pi;
+    m['projects/'+p.id]=meta;
+    (scheds||[]).forEach((s,si)=>{
+      if(!s||!s.id) return;
+      const {tasks,...sm}=s; sm.ord=si;
+      m['schedules/'+p.id+'/'+s.id]=sm;
+      (tasks||[]).forEach((t,ti)=>{
+        if(!t||!t.id) return;
+        m['tasks/'+p.id+'/'+s.id+'/'+t.id]={...t,ord:ti};
+      });
+    });
+  });
+  (notices||[]).forEach((n,i)=>{ if(n&&n.id) m['notices/'+n.id]={...n,ord:i}; });
+  (campaigns||[]).forEach((c,i)=>{ if(c&&c.id) m['campaigns/'+c.id]={...c,ord:i}; });
+  (meetings||[]).forEach((mt,i)=>{ if(mt&&mt.id) m['meetings/'+mt.id]={...mt,ord:i}; });
+  m['meta/teamMembers']=teamMembers||[];
+  if(gcClientId) m['meta/gcClientId']=gcClientId;
+  return m;
+}
+
+// 서버 트리 → 경로 맵
+function _flattenServer(root){
+  const m={};
+  if(!root) return m;
+  const P=root.projects||{},S=root.schedules||{},T=root.tasks||{};
+  Object.keys(P).forEach(pid=>{ if(P[pid]) m['projects/'+pid]=P[pid]; });
+  Object.keys(S).forEach(pid=>{
+    const g=S[pid]||{};
+    Object.keys(g).forEach(sid=>{ if(g[sid]) m['schedules/'+pid+'/'+sid]=g[sid]; });
+  });
+  Object.keys(T).forEach(pid=>{
+    const g=T[pid]||{};
+    Object.keys(g).forEach(sid=>{
+      const gg=g[sid]||{};
+      Object.keys(gg).forEach(tid=>{ if(gg[tid]) m['tasks/'+pid+'/'+sid+'/'+tid]=gg[tid]; });
+    });
+  });
+  ['notices','campaigns','meetings'].forEach(k=>{
+    const g=root[k]||{};
+    Object.keys(g).forEach(id=>{ if(g[id]) m[k+'/'+id]=g[id]; });
+  });
+  if(root.meta){
+    if(root.meta.teamMembers) m['meta/teamMembers']=toArr(root.meta.teamMembers);
+    if(root.meta.gcClientId) m['meta/gcClientId']=root.meta.gcClientId;
+  }
+  return m;
+}
+
+// 경로 맵 → 메모리(배열 구조) 재조립
+function _rebuildFromFlat(flat){
+  const byOrd=(a,b)=>((a&&a.ord)||0)-((b&&b.ord)||0);
+  const projMap={},schedMap={},taskMap={};
+  const newNotices=[],newCamps=[],newMeets=[];
+  for(const path in flat){
+    const v=flat[path]; if(v==null) continue;
+    const seg=path.split('/');
+    if(seg[0]==='projects') projMap[seg[1]]=v;
+    else if(seg[0]==='schedules'){ (schedMap[seg[1]]=schedMap[seg[1]]||{})[seg[2]]=v; }
+    else if(seg[0]==='tasks'){ const a=(taskMap[seg[1]]=taskMap[seg[1]]||{}); (a[seg[2]]=a[seg[2]]||{})[seg[3]]=v; }
+    else if(seg[0]==='notices') newNotices.push(v);
+    else if(seg[0]==='campaigns') newCamps.push(v);
+    else if(seg[0]==='meetings') newMeets.push(v);
+    else if(path==='meta/teamMembers'&&Array.isArray(v)&&v.length) teamMembers=v;
+    else if(path==='meta/gcClientId'&&v) gcClientId=v;
+  }
+  projects=Object.values(projMap).sort(byOrd).map(pm=>{
+    const p=_normProjMeta(pm);
+    const sg=schedMap[pm.id]||{};
+    p.schedules=Object.values(sg).sort(byOrd).map(sm=>{
+      const s={...sm};
+      const tg=(taskMap[pm.id]||{})[sm.id]||{};
+      s.tasks=Object.values(tg).sort(byOrd).map(_normTask);
+      return s;
+    });
+    return p;
+  });
+  notices=newNotices.sort(byOrd);
+  campaigns=newCamps.sort(byOrd);
+  meetings=newMeets.sort(byOrd);
+  try{localStorage.setItem(LS_KEY,_lsPayload());}catch(e){}
+}
+
+// [v54] 원격 수신 3-way 병합
+// 각 엔티티에 대해: 로컬≠shadow(내 미저장 변경) → 로컬 유지 / 그 외 → 원격 적용
+function _mergeRemote(rootVal){
+  const remote=_flattenServer(rootVal);
+  const local=_flattenLocal();
+  const merged={};
+  let applied=0;
+  const all=new Set([...Object.keys(remote),...Object.keys(local)]);
+  for(const p of all){
+    const lH=(p in local)?JSON.stringify(_cleanObj(local[p])):undefined;
+    const sH=_shadow[p];
+    const rH=(p in remote)?JSON.stringify(_cleanObj(remote[p])):undefined;
+    if(lH!==undefined&&lH!==sH){
+      merged[p]=local[p];                       // 내 미저장 변경 → 유지 (다음 저장 때 푸시)
+    } else if(rH!==undefined){
+      merged[p]=remote[p];
+      if(rH!==sH){applied++;_shadow[p]=rH;}     // 원격 변경 적용
+    } else {
+      if(sH!==undefined){applied++;delete _shadow[p];} // 원격에서 삭제됨
+    }
+  }
+  if(applied>0){
+    _rebuildFromFlat(merged);
+    refreshCurrentView();
+    updateSb();
+  }
+  return applied;
+}
+
+// [v54] 저장 실행 — 변경분만 멀티패스 update, 삭제는 휴지통 이동
+function _fbSyncNow(){
+  if(!fbConnected||!fbDB||!fbInitDone) return;
+  if(_syncInFlight){_syncQueued=true;return;}
+  const cur=_flattenLocal();
+  const patch={};
+  let nChg=0,nDel=0;
+  for(const path in cur){
+    const clean=_cleanObj(cur[path]);
+    const h=JSON.stringify(clean);
+    if(_shadow[path]!==h){patch[path]=clean;nChg++;}
+  }
+  const nowTs=Date.now();
+  for(const path in _shadow){
+    if(!(path in cur)){
+      if(path.indexOf('meta/')===0) continue;
+      try{
+        patch['trash/'+nowTs+'_'+path.replace(/\//g,'~')]={
+          path:path,deletedAt:nowTs,deletedBy:_deviceId,data:JSON.parse(_shadow[path])
+        };
+      }catch(e){}
+      patch[path]=null;nDel++;
+    }
+  }
+  if(!nChg&&!nDel){setSaveStatus('saved');return;}
+  patch['meta/_savedAt']=nowTs;
+  patch['meta/_deviceId']=_deviceId;
+  _syncInFlight=true;
+  fbDB.ref(FB_ROOT).update(patch).then(()=>{
+    for(const path in patch){
+      if(path.indexOf('trash/')===0||path==='meta/_savedAt'||path==='meta/_deviceId') continue;
+      if(patch[path]===null) delete _shadow[path];
+      else _shadow[path]=JSON.stringify(patch[path]);
+    }
+    _fbRetryCount=0;
+    setSaveStatus('saved');
+    updateFbStatus('✅ '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})+' · '+(nChg+nDel)+'건');
+    fbSaveSnapshot();
+  }).catch(e=>{
+    console.warn('[v54] 동기화 실패:',e);
+    _fbRetryCount++;
+    if(_fbRetryCount<=MAX_FB_RETRY){
+      setTimeout(_fbSyncNow, 2000*_fbRetryCount);
+      setSaveStatus('saving');
+    } else {
+      _fbRetryCount=0;
+      updateFbStatus('❌ 저장 실패');
+      setSaveStatus('error');
+      toast('⚠️ 저장에 실패했습니다. 데이터 패널에서 🚨 긴급 백업을 받아주세요.');
+    }
+  }).finally(()=>{
+    _syncInFlight=false;
+    if(_syncQueued){_syncQueued=false;setTimeout(_fbSyncNow,100);}
+  });
+}
+
 function fbSaveData(){
   if(!fbConnected||!fbDB) return;
-  if(!fbInitDone) return; // Firebase 로드 완료 전엔 절대 저장 금지
+  if(!fbInitDone) return; // 초기 로드 완료 전엔 절대 저장 금지
   clearTimeout(fbSaveTimer);
   setSaveStatus('saving');
-  fbSaveTimer=setTimeout(()=>{
-    _fbSaving=true;
-    const now=Date.now();
-    _localSavedAt=now;
-    // [v50 2단계-1차] meetings는 별도 가지(spextrum_meetings)로 분리 — 메인 payload에서 제외
-    // 이유: 회의 수정과 다른 영역 수정이 동시에 일어나도 서로 안 덮어쓰게 (가지가 다름)
-    const payload={projects,notices,campaigns,gcClientId,teamMembers,_savedAt:now,_deviceId};
-    // [v51] 변경 없으면 저장 스킵 — 트래픽 절감 (가장 큰 효과)
-    // _savedAt·_deviceId 제외하고 본 데이터만으로 해시 (메타 변경만으로 저장 안 트리거되게)
-    const mainHash=_quickHash({projects,notices,campaigns,gcClientId,teamMembers});
-    const meetingsHash=_quickHash(meetings);
-    const mainChanged=(mainHash!==_lastSavedMainHash);
-    const meetingsChanged=(meetingsHash!==_lastSavedMeetingsHash);
-    if(!mainChanged && !meetingsChanged){
-      // 변경 없음 → 저장 자체를 스킵
-      _fbSaving=false;
-      setSaveStatus('saved'); // UI는 그대로 '저장됨' 유지
-      return;
-    }
-    // 가지별로 변경된 것만 저장
-    const savePromises=[];
-    if(mainChanged) savePromises.push(_mergeProjectsSave(payload)); // [v52] set()→트랜잭션 머지(덮어쓰기 방지)
-    if(meetingsChanged) savePromises.push(fbDB.ref('spextrum_meetings').set({list:meetings,_savedAt:now,_deviceId}));
-    Promise.all(savePromises)
-      .then(()=>{
-        // 저장 성공 → 해시 갱신 (메인은 _mergeProjectsSave가 머지된 결과로 이미 갱신함)
-        if(meetingsChanged) _lastSavedMeetingsHash=meetingsHash;
-        _fbRetryCount=0;
-        _fbSaving=false;
-        updateFbStatus('✅ '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}));
-        setSaveStatus('saved');
-        fbSaveSnapshot(); // 스냅샷 백업 (30분마다)
-        // [v49 패치③] 저장하는 사이 다른 기기의 변경이 도착했었다면
-        // → Firebase 최신본을 다시 읽어 메모리를 동기화 (다음 저장 때 남의 변경을 덮지 않도록)
-        // 화면은 가볍게 카운트만 갱신 — 입력 중인 필드를 건드리지 않기 위해 전체 refresh는 안 함
-        if(_pendingRemoteChange){
-          _pendingRemoteChange=false;
-          Promise.all([
-            fbDB.ref('spextrum').once('value'),
-            fbDB.ref('spextrum_meetings').once('value')
-          ]).then(([snapMain,snapMeet])=>{
-            const d=snapMain.val();
-            if(d){
-              try{
-                applyFirebaseData(d);
-                const md=snapMeet.val();
-                if(md&&md.list!==undefined&&md.list!==null) meetings=toArr(md.list);
-                if(typeof updateSb==='function') updateSb();
-              }catch(e){console.warn('pending sync error:',e);}
-            }
-          }).catch(e=>console.warn('pending re-read failed:',e));
-        }
-      })
-      .catch(e=>{
-        _fbSaving=false;
-        _fbRetryCount++;
-        if(_fbRetryCount<=MAX_FB_RETRY){
-          setTimeout(fbSaveData, 2000*_fbRetryCount);
-          setSaveStatus('saving');
-        } else {
-          _fbRetryCount=0;
-          updateFbStatus('❌ 저장 실패');
-          setSaveStatus('error');
-          toast('⚠️ 저장에 실패했습니다. 데이터 패널에서 수동 저장해주세요.');
-        }
-      });
-  },500); // [v51] 300ms→500ms — 트래픽 감소(체감 영향 없음, 충돌 윈도우는 여전히 충분히 좁음)
+  fbSaveTimer=setTimeout(_fbSyncNow,500);
 }
 
 function fbLoadData(){
   if(!fbConnected||!fbDB) return;
 
-  // [v53 Phase0-E] 가져오기 직후: Firebase에서 내려받지 않고, 가져온 로컬 데이터를 서버에 업로드
+  // [v53 Phase0-E 유지] 가져오기 직후: 서버에서 내려받지 않고, 가져온 로컬 데이터를 서버에 반영
   if(localStorage.getItem('spx_import_pending')==='1'){
     localStorage.removeItem('spx_import_pending');
-    const nowI=Date.now();
-    _localSavedAt=nowI;
-    Promise.all([
-      fbDB.ref('spextrum').set({projects,notices,campaigns,gcClientId,teamMembers,_savedAt:nowI,_deviceId}),
-      fbDB.ref('spextrum_meetings').set({list:meetings,_savedAt:nowI,_deviceId})
-    ]).then(()=>{
-      _lastSavedMainHash=_quickHash({projects,notices,campaigns,gcClientId,teamMembers});
-      _lastSavedMeetingsHash=_quickHash(meetings);
-      fbInitDone=true;
-      hideFbLoading();
-      setSaveStatus('saved');
-      updateSb();
-      toast('✅ 가져온 데이터가 서버에 반영됐습니다');
-    }).catch(e=>{
-      console.warn('[v53] import 업로드 실패:',e);
-      fbInitDone=true;
-      hideFbLoading();
-      setSaveStatus('error');
-      toast('⚠️ 서버 반영 실패 — 긴급 백업 후 재시도하세요');
-    });
+    _shadow={}; // 전체를 변경으로 간주 → 전량 업로드
+    fbInitDone=true;
+    hideFbLoading();
+    _fbSyncNow();
+    toast('✅ 가져온 데이터를 서버에 반영하는 중...');
     return;
   }
 
-  // ★ Firebase = 진짜 source of truth
-  // 항상 Firebase를 먼저 읽고, 데이터가 있으면 Firebase로 화면을 채움
-  // [v50 2단계-1차] 메인 가지 + 회의 가지를 함께 읽음
-  Promise.all([
-    fbDB.ref('spextrum').once('value'),
-    fbDB.ref('spextrum_meetings').once('value')
-  ]).then(([snap,snapMeet])=>{
-    const d=snap.val();
-    const md=snapMeet.val();
-    if(d&&Object.keys(d).length>1){
-      // Firebase에 실제 데이터 있음 → Firebase 데이터 사용
-      try{
-        applyFirebaseData(d);
-        // [v50] 회의 데이터 처리 — 우선순위: 새 가지 > 기존 spextrum.meetings(마이그레이션)
-        if(md&&md.list!==undefined&&md.list!==null){
-          // 새 가지에 회의 데이터 있음 → 그걸 사용
-          meetings=toArr(md.list);
-        } else if(d.meetings!==undefined&&d.meetings!==null){
-          // 새 가지 없음 + 기존 위치에 회의 있음 → 마이그레이션 (한 번만 일어남)
-          meetings=toArr(d.meetings);
-          // 새 가지로 즉시 이전 + 기존 위치는 정리
-          const nowM=Date.now();
-          fbDB.ref('spextrum_meetings').set({list:meetings,_savedAt:nowM,_deviceId})
-            .then(()=>{
-              fbDB.ref('spextrum/meetings').remove(); // 기존 위치 제거 (중복 방지)
-              console.log('[v50] meetings 마이그레이션 완료: spextrum/meetings → spextrum_meetings');
-            })
-            .catch(e=>console.warn('[v50] meetings 마이그레이션 실패:',e));
-        }
-        // 둘 다 없으면 meetings는 메모리 기본값 그대로 유지
-        _localSavedAt=d._savedAt||Date.now();
-        refreshCurrentView();
-        updateSb();
-        setSaveStatus('saved');
-      }catch(e){console.warn('FB load error:',e);}
-    } else {
-      // Firebase 비어있음 → 현재 메모리(기본) 데이터 업로드
-      const now=Date.now();
-      _localSavedAt=now;
-      Promise.all([
-        fbDB.ref('spextrum').set({projects,notices,campaigns,gcClientId,teamMembers,_savedAt:now,_deviceId}),
-        fbDB.ref('spextrum_meetings').set({list:meetings,_savedAt:now,_deviceId})
-      ])
-        .then(()=>setSaveStatus('saved'))
-        .catch(e=>console.warn('[FB] 업로드 실패:',e));
+  fbDB.ref(FB_ROOT).once('value').then(snap=>{
+    const v2=snap.val();
+    const hasV2=v2&&(v2.projects||v2.meta);
+    if(hasV2){
+      // 초기 로드: 서버 = 진실 (페이지를 막 열었으므로 로컬 미저장 변경 없음)
+      const flat=_flattenServer(v2);
+      _shadow={};
+      for(const p in flat) _shadow[p]=JSON.stringify(_cleanObj(flat[p]));
+      _rebuildFromFlat(flat);
+      refreshCurrentView();
+      updateSb();
+      setSaveStatus('saved');
+      fbInitDone=true;
+      hideFbLoading();
+      _pruneTrash();
+      return;
     }
-    // [v51] 로드 직후 해시 초기화 — 같은 데이터를 다시 저장하지 않도록
-    _lastSavedMainHash=_quickHash({projects,notices,campaigns,gcClientId,teamMembers});
-    _lastSavedMeetingsHash=_quickHash(meetings);
-    fbInitDone=true;
-    hideFbLoading(); // 로딩 오버레이 제거
+    // v2 비어있음 → 구버전(spextrum + spextrum_meetings)에서 1회 마이그레이션
+    return Promise.all([
+      fbDB.ref('spextrum').once('value'),
+      fbDB.ref('spextrum_meetings').once('value')
+    ]).then(([s1,s2])=>{
+      const d=s1.val();
+      const md=s2.val();
+      if(d&&Object.keys(d).length>1){
+        applyFirebaseData(d);
+        if(md&&md.list!==undefined&&md.list!==null) meetings=toArr(md.list);
+        else if(d.meetings!==undefined&&d.meetings!==null) meetings=toArr(d.meetings);
+        toast('🔄 새 저장 구조(v2)로 이전 중... 구버전 데이터는 보존됩니다');
+      }
+      // (구버전도 비어있으면 현재 메모리 기본값을 업로드)
+      _shadow={};
+      fbInitDone=true;
+      hideFbLoading();
+      _fbSyncNow();
+    });
   }).catch(e=>{
     console.warn('FB load failed (offline mode):', e);
     fbInitDone=true;
     setSaveStatus('offline');
-    hideFbLoading(); // 오프라인이어도 오버레이 제거
+    hideFbLoading();
+  });
+}
+
+// [v54] 휴지통 — 30일 지난 항목 정리 (best-effort)
+function _pruneTrash(){
+  fbDB.ref(FB_ROOT+'/trash').once('value').then(s=>{
+    const t=s.val()||{};
+    const cutoff=Date.now()-30*864e5;
+    Object.keys(t).forEach(k=>{
+      if(((t[k]&&t[k].deletedAt)||0)<cutoff) fbDB.ref(FB_ROOT+'/trash/'+k).remove();
+    });
+  }).catch(()=>{});
+}
+
+// [v54] 휴지통 패널
+function openTrashPanel(){
+  if(!fbConnected||!fbDB){toast('Firebase 연결 후 사용 가능합니다');return;}
+  modal('<div class="m-title">🗑 휴지통 <span style="font-size:14px;color:var(--text3);font-weight:400">삭제 후 30일 보관</span></div>'
+    +'<div id="trash-list" style="max-height:380px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--rsm)">'
+    +'<div style="padding:20px;text-align:center;color:var(--text3)">로딩 중...</div></div>'
+    +'<div class="btn-row" style="margin-top:14px"><button class="btn sm" onclick="closeModal()">닫기</button></div>');
+  fbDB.ref(FB_ROOT+'/trash').once('value').then(s=>{
+    const t=s.val()||{};
+    const keys=Object.keys(t).sort().reverse();
+    const el=document.getElementById('trash-list');
+    if(!el) return;
+    if(!keys.length){
+      el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3)">휴지통이 비어 있습니다</div>';
+      return;
+    }
+    const typeLabel={projects:'프로젝트',schedules:'스케줄',tasks:'태스크',notices:'공지',campaigns:'캠페인',meetings:'회의'};
+    el.innerHTML=keys.map(k=>{
+      const e=t[k]||{};
+      const seg=(e.path||'').split('/');
+      const type=typeLabel[seg[0]]||seg[0]||'?';
+      const name=(e.data&&(e.data.name||e.data.title))||'(이름 없음)';
+      const when=e.deletedAt?new Date(e.deletedAt).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+      return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border)">'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:14px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+name+'</div>'
+        +'<div style="font-size:12px;color:var(--text3);margin-top:2px">'+type+' · '+when+'</div>'
+        +'</div>'
+        +'<button class="btn sm" onclick="spxTrashRestore(\''+k+'\')">↩ 복원</button>'
+        +'</div>';
+    }).join('');
+  }).catch(()=>{
+    const el=document.getElementById('trash-list');
+    if(el) el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3)">불러오기 실패</div>';
+  });
+}
+
+function spxTrashRestore(key){
+  fbDB.ref(FB_ROOT+'/trash/'+key).once('value').then(s=>{
+    const e=s.val();
+    if(!e||!e.path){toast('복원 대상을 찾을 수 없습니다');return;}
+    const patch={};
+    patch[e.path]=e.data;
+    patch['trash/'+key]=null;
+    fbDB.ref(FB_ROOT).update(patch).then(()=>{
+      // 서버 최신본을 다시 읽어 병합 (복원된 엔티티가 로컬에 반영됨)
+      fbDB.ref(FB_ROOT).once('value').then(sn=>{try{_mergeRemote(sn.val());}catch(err){}});
+      toast('↩ 복원됐습니다');
+      closeModal();
+    }).catch(()=>toast('복원 실패 — 다시 시도해주세요'));
   });
 }
 
@@ -9418,6 +9567,7 @@ function openDataPanel(){
     +'<div class="btn-row">'
       +'<button class="btn sm danger-full" onclick="cfm(\'데이터 초기화\',\'모든 데이터가 삭제됩니다.\',()=>{localStorage.removeItem(\''+LS_KEY+'\');location.reload()})">초기화</button>'
       +'<button class="btn sm" onclick="exportData()" style="background:#fdf2f2;color:#c0392b;border-color:#c0392b;font-weight:600">🚨 긴급 백업</button>'
+      +'<button class="btn sm" onclick="openTrashPanel()">🗑 휴지통</button>'
       +'<button class="btn sm pri" onclick="openSnapshotPanel()">🕐 백업 복구</button>'
       +'<button class="btn sm" onclick="closeModal()">닫기</button>'
     +'</div>'
@@ -9460,6 +9610,7 @@ function restoreSnapshot(key){
       const d=snap.val();
       if(!d){toast('스냅샷 데이터 없음');return;}
       applyFirebaseData(d);
+      if(d.meetings!==undefined&&d.meetings!==null) meetings=toArr(d.meetings); // [v54] 회의도 복원
       saveToLS();
       refreshCurrentView();
       updateSb();
