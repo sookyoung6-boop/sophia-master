@@ -301,6 +301,38 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
 .health-bad{background:#fdf2f2;color:#c0392b}
 .health-idle{background:var(--surface2);color:var(--text3)}
 
+/* ═══ [v56] 직원 모드 ═══ */
+body.spx-emp .sidebar,body.spx-emp .mob-nav,body.spx-emp .topbar{display:none!important}
+body.spx-emp .main{padding-bottom:70px!important}
+body.spx-emp .content,body.spx-emp .home-content{padding:16px 14px!important;max-width:100%!important}
+#spx-emp-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:62px;background:var(--surface);border-top:1px solid var(--border);z-index:300;grid-template-columns:repeat(4,1fr);align-items:center}
+body.spx-emp #spx-emp-nav{display:grid}
+.spx-nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 0;cursor:pointer;color:var(--text3);font-size:11px;-webkit-tap-highlight-color:transparent;transition:color .15s}
+.spx-nav-item.on{color:var(--text);font-weight:600}
+.spx-nav-item svg{width:21px;height:21px}
+.spx-hd{padding:16px 16px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface);position:sticky;top:0;z-index:20}
+.spx-hd-t{font-size:18px;font-weight:700;color:var(--text);line-height:1.3}
+.spx-hd-s{font-size:12px;color:var(--text3);margin-top:2px}
+.spx-sec{font-size:12px;font-weight:600;margin:18px 4px 8px;letter-spacing:.02em}
+.spx-row{display:flex;gap:11px;padding:12px 4px;border-bottom:1px solid var(--border);align-items:flex-start}
+.spx-ck{width:21px;height:21px;border-radius:50%;border:1.6px solid var(--border2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;transition:all .15s}
+.spx-ck.on{background:#27ae60;border-color:#27ae60;color:#fff}
+.spx-tn{font-size:15px;color:var(--text);line-height:1.45}
+.spx-tn.done{text-decoration:line-through;color:var(--text3)}
+.spx-tm{font-size:12px;color:var(--text3);margin-top:3px}
+.spx-pill{display:inline-block;font-size:11px;padding:2px 9px;border-radius:20px;font-weight:600}
+.spx-card{display:flex;align-items:center;gap:11px;padding:13px 4px;border-bottom:1px solid var(--border);cursor:pointer}
+.spx-btn-lg{width:100%;padding:14px;border-radius:10px;border:1.5px dashed var(--border2);background:transparent;color:var(--text2);font-size:14px;font-family:var(--sans);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:14px}
+.spx-btn-lg:hover{background:var(--surface2);border-color:var(--text3)}
+.spx-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:19}
+.spx-tab{flex:1;text-align:center;padding:12px 0;font-size:14px;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent}
+.spx-tab.on{color:var(--text);font-weight:600;border-bottom-color:var(--text)}
+#spx-gate{position:fixed;inset:0;z-index:99998;background:var(--bg);display:none;align-items:center;justify-content:center;padding:24px}
+#spx-gate.on{display:flex}
+.spx-name{padding:13px 8px;border:1px solid var(--border2);border-radius:10px;text-align:center;font-size:15px;cursor:pointer;color:var(--text);transition:all .12s}
+.spx-name:hover{background:var(--surface2)}
+.spx-name.on{border:2px solid var(--text);background:var(--surface2);font-weight:600}
+
 .tl-wrap{overflow-x:auto;margin-bottom:20px}
 .tl-inner{min-width:560px}
 .tl-header{display:flex;padding-left:160px;border-bottom:1px solid var(--border);margin-bottom:0}
@@ -794,10 +826,15 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2a4.5 4.5 0 0 1 4.5 4.5c0 2 .5 3.5 1 4H2.5c.5-.5 1-2 1-4A4.5 4.5 0 0 1 8 2z" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M6.5 13.5a1.5 1.5 0 0 0 3 0" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
         <div class="notif-badge" id="notif-badge" style="display:none"></div>
       </div>
+      <button class="btn sm" id="spx-to-emp" style="display:none" onclick="spxSetMode('emp')">👤 직원 모드</button>
       <div id="topbar-actions"><button class="btn sm pri" onclick="openNew()">+ 새 프로젝트</button></div>
       <div id="save-status" style="font-size:14px;color:var(--text3);display:flex;align-items:center;gap:4px;white-space:nowrap;padding:0 4px"></div>
     </div>
   </div>
+  <div class="view" id="v-my"><div class="content" id="my-content" style="max-width:640px;padding:0"></div></div>
+  <div class="view" id="v-eproj"><div class="content" id="eproj-content" style="max-width:640px;padding:0"></div></div>
+  <div class="view" id="v-board"><div class="content" id="board-content" style="max-width:760px;padding:0"></div></div>
+  <div class="view" id="v-more"><div class="content" id="more-content" style="max-width:640px;padding:0"></div></div>
   <div class="view" id="v-tasks"></div>
   <div class="view" id="v-deliv"><div class="content" id="deliv-content" style="max-width:1100px"></div></div>
   <div class="view" id="v-cal"><div class="content" id="cal-content" style="max-width:640px"></div></div>
@@ -887,7 +924,9 @@ let projects=[
 let curProj=null,curSched=null,filterStatus=null;
 let formDepts=[],formColor='teal',formScheds=[],formWAs=[];
 
-function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
+function toast(msg){
+  if(window._spxSilentToast) return; // [v55] 자동 커밋 중 토스트 억제
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
 
 function cfm(title,msg,onYes,yesLabel,noLabel){
   const ov=document.createElement('div');ov.className='c-overlay';
@@ -4005,10 +4044,10 @@ function deleteComment(pid,sid,tid,cid){
 }
 
 // SAVE FIELDS
-function saveSchedName(pid,sid,v){const p=projects.find(x=>x.id===pid),s=p.schedules.find(x=>x.id===sid);if(v.trim()){s.name=v.trim();toast('수정됐습니다')}}
+function saveSchedName(pid,sid,v){const p=projects.find(x=>x.id===pid),s=p.schedules.find(x=>x.id===sid);if(v.trim()){s.name=v.trim();saveToLS();toast('수정됐습니다')}} // [v55] saveToLS 누락 수정
 function saveSchedDate(pid,sid,v){const p=projects.find(x=>x.id===pid),s=p.schedules.find(x=>x.id===sid);if(v.trim())s.date=v.trim()}
-function saveTaskName(pid,sid,tid,v){const p=projects.find(x=>x.id===pid),s=p.schedules.find(x=>x.id===sid),t=s.tasks.find(x=>x.id===tid);if(t&&v.trim()){t.name=v.trim();toast('수정됐습니다')}}
-function saveWAName(pid,waid,v){const p=projects.find(x=>x.id===pid),wa=p.workAreas.find(x=>x.id===waid);if(wa&&v.trim()){wa.name=v.trim();toast('수정됐습니다')}}
+function saveTaskName(pid,sid,tid,v){const p=projects.find(x=>x.id===pid),s=p.schedules.find(x=>x.id===sid),t=s.tasks.find(x=>x.id===tid);if(t&&v.trim()){t.name=v.trim();saveToLS();toast('수정됐습니다')}} // [v55] saveToLS 누락 수정
+function saveWAName(pid,waid,v){const p=projects.find(x=>x.id===pid),wa=p.workAreas.find(x=>x.id===waid);if(wa&&v.trim()){wa.name=v.trim();saveToLS();toast('수정됐습니다')}} // [v55] saveToLS 누락 수정
 function saveDelName(pid,waid,did,v){
   const p=projects.find(x=>x.id===pid),wa=p.workAreas.find(x=>x.id===waid),d=wa.deliverables.find(x=>x.id===did);
   if(d&&v.trim()){d.name=v.trim();saveToLS();}
@@ -4640,17 +4679,7 @@ function renderHome(){
   if(!projects||!meetings||!campaigns) return;
   const thisMonthMeetings=(()=>{const n=new Date();const prefix=n.getFullYear()+'.'+String(n.getMonth()+1).padStart(2,'0');return (meetings||[]).filter(m=>m&&m.date&&m.date.startsWith(prefix)).length;})();
   document.getElementById('home-content').innerHTML=`
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
-    <div class="kpi-card" onclick="openKpiDetail('total')" style="background:var(--surface);border:1px solid var(--border);cursor:pointer;transition:box-shadow .15s" onmouseenter="this.style.boxShadow='0 2px 12px rgba(0,0,0,.08)'" onmouseleave="this.style.boxShadow=''"><div class="kpi-l">전체 프로젝트</div><div class="kpi-v">${(projects||[]).length}</div></div>
-    <div class="kpi-card" onclick="openKpiDetail('active')" style="background:var(--surface);border:1px solid var(--border);cursor:pointer;transition:box-shadow .15s" onmouseenter="this.style.boxShadow='0 2px 12px rgba(0,0,0,.08)'" onmouseleave="this.style.boxShadow=''"><div class="kpi-l">진행중 프로젝트</div><div class="kpi-v" style="color:#185fa5">${(projects||[]).filter(p=>p&&p.schedules&&p.schedules.some(s=>s.status==='진행중')).length}</div></div>
-    <div class="kpi-card" onclick="openKpiDetail('meeting')" style="background:var(--surface);border:1px solid var(--border);cursor:pointer;transition:box-shadow .15s" onmouseenter="this.style.boxShadow='0 2px 12px rgba(0,0,0,.08)'" onmouseleave="this.style.boxShadow=''"><div class="kpi-l">이번 달 회의</div><div class="kpi-v">${thisMonthMeetings}</div></div>
-    <div class="kpi-card" onclick="openKpiDetail('campaign')" style="background:var(--surface);border:1px solid var(--border);cursor:pointer;transition:box-shadow .15s" onmouseenter="this.style.boxShadow='0 2px 12px rgba(0,0,0,.08)'" onmouseleave="this.style.boxShadow=''"><div class="kpi-l">진행중 캠페인</div><div class="kpi-v" style="color:#854f0b">${(campaigns||[]).filter(c=>c&&c.status==='진행중').length}</div></div>
-  </div>
   <div id="home-sections" ondragover="homeSectionDragOver(event)" ondrop="event.preventDefault()">
-  <div class="h-section" data-section="notice">
-    <div class="h-sec-head"><span class="h-sec-title">공지</span><div style="display:flex;gap:8px;align-items:center"><button class="btn sm" onclick="openAddNotice()">+ 새 공지</button><span class="home-sec-handle" draggable="true" ondragstart="homeSectionDragStart(event)" ondragend="homeSectionDragEnd(event)" title="드래그로 순서 변경">⠿</span></div></div>
-    <div id="notice-list">${noticeListHTML()}</div>
-  </div>
   <div class="h-section" data-section="meeting">
     <div class="h-sec-head">
       <div style="display:flex;align-items:center;gap:10px">
@@ -4671,16 +4700,6 @@ function renderHome(){
       </div>
     </div>
     <div id="home-cal-body" style="padding:0 20px 20px"></div>
-  </div>
-  <div class="h-section" data-section="timeline">
-    <div class="h-sec-head">
-      <div style="display:flex;align-items:center;gap:10px"><span class="h-sec-title">프로젝트 타임라인</span><span class="home-sec-handle" draggable="true" ondragstart="homeSectionDragStart(event)" ondragend="homeSectionDragEnd(event)">⠿</span></div>
-      <div class="tb-view-toggle">
-        <button class="tb-vbtn${homeTimelineView==='year'?' on':''}" onclick="setHomeTimeline('year')">연간</button>
-        <button class="tb-vbtn${homeTimelineView==='week'?' on':''}" onclick="setHomeTimeline('week')">주간 <span style="font-size:14px;opacity:.7">· 세부 태스크 포함</span></button>
-      </div>
-    </div>
-    <div id="home-timeline" style="padding:0 20px 16px;overflow-x:auto">${homeTimelineView==='week'?weeklyGanttHTML():ganttHTML()}</div>
   </div>
   <div class="h-section" data-section="campaign">
     <div class="h-sec-head">
@@ -6640,7 +6659,9 @@ window.addEventListener('load',()=>{
 
 // ─── LOCALSTORAGE PERSISTENCE ────────────────────────────────
 const LS_KEY='spextrum_v1';
-let teamMembers=['대표','김수경','정예진','엘레','김수아','두안','김보강','박수진','김진흥','정보겸','최원선','오경민','발롱탕','강효진'];
+// [v56.1] 2026-07 재직자 명단
+const SPX_ROSTER=['강민승','기명섭','김보강','김수경','김수아','김진흥','대표님','두안','맹사성','박수진','베이샤','알렉시아','엘레','이다예','임시현','정보겸','정석주','정예진','제갈금','최원선'];
+let teamMembers=SPX_ROSTER.slice();
 
 // ─── FIREBASE 설정 ───────────────────────────────────────────
 const firebaseConfig = {
@@ -6675,7 +6696,12 @@ function initFirebase(){
         } else {
           // [v54] 재접속: 오프라인 동안의 원격 변경을 병합하고, 내 오프라인 변경을 푸시
           fbDB.ref(FB_ROOT).once('value').then(s=>{
-            try{_mergeRemote(s.val());}catch(e){console.warn('[v54] reconnect merge:',e);}
+            const v=s.val()||{};
+            if(!_checkVersionGate(v.meta)) return; // [v54.2]
+            try{
+              if(Object.keys(_shadow).length===0){ _coldMerge(v); } // [v54.2]
+              else { _mergeRemote(v); }
+            }catch(e){console.warn('[v54] reconnect merge:',e);}
             _fbSyncNow();
           }).catch(()=>{});
         }
@@ -6690,7 +6716,11 @@ function initFirebase(){
       if(!fbInitDone) return;
       const v=snap.val();
       if(!v) return;
-      try{_mergeRemote(v);}catch(e){console.warn('[v54] merge error:',e);}
+      if(!_checkVersionGate(v.meta)) return; // [v54.2]
+      try{
+        if(Object.keys(_shadow).length===0){ _coldMerge(v); } // [v54.2] 기준점 없음 → 서버 우선
+        else { _mergeRemote(v); }
+      }catch(e){console.warn('[v54] merge error:',e);}
     });
   }catch(e){
     console.warn('Firebase 초기화 실패:', e);
@@ -6895,15 +6925,16 @@ function setSaveStatus(state){
   const el=document.getElementById('save-status');
   if(!el)return;
   const map={
-    saving: {text:'저장 중...', color:'var(--text3)'},
-    saved:  {text:'✓ 저장됨',   color:'#27ae60'},
+    saving: {text:'서버 동기화 중...', color:'var(--text3)'},
+    saved:  {text:'✓ 서버 저장됨',   color:'#27ae60'},
+    local:  {text:'✓ 이 기기에 저장됨 · 연결 시 자동 전송', color:'#e67e22'}, // [v55]
     error:  {text:'⚠ 저장 실패', color:'#E24B4A'},
-    offline:{text:'오프라인',    color:'var(--text3)'},
+    offline:{text:'이 기기에 보관 중 · 연결 시 자동 전송', color:'#e67e22'},
   };
   const s=map[state]||map.saved;
   el.textContent=s.text;
   el.style.color=s.color;
-  if(state==='saved') setTimeout(()=>{if(el.textContent==='✓ 저장됨')el.textContent='';},3000);
+  if(state==='saved') setTimeout(()=>{if(el.textContent==='✓ 서버 저장됨')el.textContent='';},3000);
   // [v51.5 패치①] error/offline 상태일 때 화면 상단에 빨간 배너 — 사용자가 못 보고 지나치지 않도록
   showSaveErrorBanner(state==='error' || state==='offline', state);
 }
@@ -6937,6 +6968,41 @@ function showSaveErrorBanner(show, state){
 }
 
 // [v51.5 패치③] 저장 실패 상태에서 페이지 닫기/새로고침 시 브라우저 경고
+// ═══ [v55] 앱이 닫히는 순간 입력 포획 ═══
+// 모바일에서 "입력 후 바로 스와이프로 닫기"를 해도 blur를 강제 발생시켜
+// onblur 저장 로직 → 메모리 반영 → outbox 기록까지 동기로 끝낸다.
+function flushBeforeAppHide(){
+  try{
+    const a=document.activeElement;
+    if(a&&(a.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))){ a.blur(); }
+    try{localStorage.setItem(LS_KEY,_lsPayload());}catch(e){}
+    try{_stageOutboxDiffs(_flattenLocal());}catch(e){}
+    clearTimeout(fbSaveTimer);
+    _fbSyncNow(); // 완료 보장은 없음 — outbox가 본체, 이건 보조
+  }catch(e){console.warn('종료 직전 저장:',e);}
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden') flushBeforeAppHide();
+});
+window.addEventListener('pagehide', flushBeforeAppHide);
+
+// ═══ [v55] 입력 즉시 커밋 — onblur 전용 필드도 타이핑 멈추면 1.2초 뒤 자동 저장 ═══
+// (33개 템플릿을 개별 수정하는 대신, 입력 중인 요소의 onblur 로직을 조용히 호출)
+const _spxEditTimers=new WeakMap();
+document.addEventListener('input',e=>{
+  const el=e.target;
+  if(!el) return;
+  if(!(el.isContentEditable||/^(INPUT|TEXTAREA)$/.test(el.tagName))) return;
+  if(typeof el.onblur!=='function') return;
+  clearTimeout(_spxEditTimers.get(el));
+  _spxEditTimers.set(el,setTimeout(()=>{
+    if(!el.isConnected) return;
+    window._spxSilentToast=true;
+    try{ el.onblur.call(el,new Event('blur')); }catch(err){}
+    window._spxSilentToast=false;
+  },1200));
+},true);
+
 window.addEventListener('beforeunload', function(e){
   if(window._spxSaveErrorActive){
     e.preventDefault();
@@ -7002,8 +7068,132 @@ function fbSaveSnapshot(){
 // 원칙 3: 수신은 3-way 병합 — 로컬 미저장 변경은 원격이 절대 덮지 못한다.
 // ═══════════════════════════════════════════════════════════════════
 const FB_ROOT='spextrum_v2';
+const APP_VERSION=56.0; // [v55] 버전 게이트 — 서버의 _minVersion보다 낮으면 잠금
+let _versionBlocked=false;
+
+// ═══ [v55] 영속 outbox — "서버가 승인하기 전의 내 변경"을 기기에 보관 ═══
+// 앱이 전송 전에 죽어도, 다음 실행 때 서버보다 outbox가 우선 적용된 뒤 재전송된다.
+const SPX_OUTBOX_KEY='spx_pending_edits_v1';
+let spxOutbox=(()=>{try{return JSON.parse(localStorage.getItem(SPX_OUTBOX_KEY)||'{}');}catch(e){return {};}})();
+function _persistOutbox(){
+  try{localStorage.setItem(SPX_OUTBOX_KEY,JSON.stringify(spxOutbox));}catch(e){console.warn('[v55] outbox 저장 실패:',e);}
+}
+// saveToLS에서 호출: shadow 대비 바뀐 경로를 outbox에 동기 기록
+function _stageOutboxDiffs(cur){
+  if(Object.keys(_shadow).length===0) return; // 기준점 없으면 스테이징 불가 (콜드 스타트)
+  const now=Date.now();
+  let changed=false;
+  for(const path in cur){
+    const clean=_cleanObj(cur[path]);
+    if(_shadow[path]!==JSON.stringify(clean)){
+      spxOutbox[path]={value:clean,editedAt:now,deviceId:_deviceId};
+      changed=true;
+    }
+  }
+  // 72시간 지난 항목 정리 (오래된 outbox가 최신 데이터를 되살리는 사고 방지)
+  for(const path in spxOutbox){
+    if(now-(spxOutbox[path].editedAt||0)>72*3600*1000){delete spxOutbox[path];changed=true;}
+  }
+  if(changed)_persistOutbox();
+}
+// 서버 데이터 위에 미전송 수정을 덮어씀 (재시작·콜드 병합 시)
+function applyPendingEdits(flat){
+  for(const path in spxOutbox){
+    const e=spxOutbox[path];
+    if(e&&('value' in e)) flat[path]=e.value;
+  }
+  return flat;
+}
+// Firebase 승인 후에만 outbox 제거 (전송 중 추가 수정된 항목은 유지)
+function clearAcknowledgedEdits(sentPatch){
+  const cur=_flattenLocal();
+  let changed=false;
+  for(const path in sentPatch){
+    if(!spxOutbox[path]) continue;
+    if(sentPatch[path]===null){delete spxOutbox[path];changed=true;continue;}
+    const curHash=JSON.stringify(_cleanObj(cur[path]||null));
+    const sentHash=JSON.stringify(_cleanObj(sentPatch[path]));
+    if(curHash===sentHash){delete spxOutbox[path];changed=true;}
+  }
+  if(changed)_persistOutbox();
+}
+
+// ═══ [v55] 대량 삭제 가드 — 버그성 대량 삭제가 서버에 닿기 전에 차단 ═══
+let _massDeleteOk=false,_massDeleteAsked=false;
+
+// ═══ [v55] 자동화 단일 실행자 — 14대가 동시에 automate()를 돌리지 않게 ═══
+function _withAutomationLease(cb){
+  if(!fbConnected||!fbDB||!fbInitDone) return;
+  try{
+    fbDB.ref(FB_ROOT+'/meta/_autoLease').transaction(v=>{
+      const now=Date.now();
+      if(!v||now-(v.t||0)>90000||v.d===_deviceId) return {d:_deviceId,t:now};
+      return; // 다른 기기가 보유 중 → abort
+    },(err,committed)=>{ if(!err&&committed){try{cb();}catch(e){console.warn('[v55] automation:',e);}} });
+  }catch(e){}
+}
 let _shadow={};                 // path → JSON 문자열 (서버에 반영됐다고 아는 상태)
 let _syncInFlight=false,_syncQueued=false;
+
+// [v54.2] 버전 게이트 — 구버전 클라이언트가 데이터를 만지지 못하게 봉인
+function _checkVersionGate(meta){
+  const min=meta&&meta._minVersion;
+  if(typeof min==='number'&&APP_VERSION<min){
+    _versionBlocked=true;
+    _showVersionLock(min);
+    return false;
+  }
+  return true;
+}
+function _showVersionLock(min){
+  if(document.getElementById('spx-ver-lock')) return;
+  const o=document.createElement('div');
+  o.id='spx-ver-lock';
+  o.style.cssText='position:fixed;inset:0;z-index:999999;background:rgba(20,20,25,.96);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center';
+  o.innerHTML='<div style="font-size:44px">🔄</div>'
+    +'<div style="font-size:20px;font-weight:700">새 버전이 배포되었습니다</div>'
+    +'<div style="font-size:14px;color:#bbb;line-height:1.7">이 화면은 이전 버전(v'+APP_VERSION+')입니다. 데이터 보호를 위해<br>최신 버전(v'+min+')으로 이동할 때까지 저장이 잠깁니다.</div>'
+    +'<button onclick="spxForceUpdate()" style="background:#fff;color:#222;border:none;border-radius:8px;padding:12px 28px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">최신 버전으로 이동</button>';
+  document.body.appendChild(o);
+}
+function spxForceUpdate(){
+  const go=()=>location.replace(location.pathname+'?v='+Date.now());
+  try{
+    if(navigator.serviceWorker&&navigator.serviceWorker.getRegistrations){
+      navigator.serviceWorker.getRegistrations()
+        .then(rs=>Promise.all(rs.map(r=>r.unregister())))
+        .then(go).catch(go);
+      setTimeout(go,1500);
+      return;
+    }
+  }catch(e){}
+  go();
+}
+
+// [v54.2] 콜드 병합 — shadow가 없는 상태(오프라인 시작 후 첫 연결)에서는
+// 3-way 기준점이 없으므로 서버 우선. 로컬에만 있는 신규 엔티티만 보존·푸시.
+// (기존 3-way를 그대로 쓰면 낡은 로컬 캐시가 서버 최신을 전부 이겨버리는 구멍이 있었음)
+function _coldMerge(rootVal){
+  const remote=_flattenServer(rootVal||{});
+  const local=_flattenLocal();
+  const merged={};
+  _shadow={};
+  for(const p in remote){
+    merged[p]=remote[p];
+    _shadow[p]=JSON.stringify(_cleanObj(remote[p]));
+  }
+  let kept=0;
+  for(const p in local){
+    if(!(p in remote)){ merged[p]=local[p]; kept++; }
+  }
+  applyPendingEdits(merged); // [v55] 미전송 수정은 서버보다 우선
+  _rebuildFromFlat(merged);
+  refreshCurrentView();
+  updateSb();
+  if(kept>0) toast('🔄 오프라인 중 추가된 '+kept+'건을 서버에 반영합니다');
+  if(kept>0||Object.keys(spxOutbox).length>0) _fbSyncNow(); // [v55] 보존분·미전송분 재전송
+  return kept;
+}
 
 // [v54] 정규화 — Firebase는 빈 배열/빈 객체/null을 저장하지 않고 버리므로,
 // 로컬도 같은 형태로 맞춰야 해시 비교가 안정된다. 키도 정렬해 순서 비결정성 제거.
@@ -7160,6 +7350,7 @@ function _mergeRemote(rootVal){
 
 // [v54] 저장 실행 — 변경분만 멀티패스 update, 삭제는 휴지통 이동
 function _fbSyncNow(){
+  if(_versionBlocked) return; // [v54.2] 구버전 잠금 시 쓰기 금지
   if(!fbConnected||!fbDB||!fbInitDone) return;
   if(_syncInFlight){_syncQueued=true;return;}
   const cur=_flattenLocal();
@@ -7171,15 +7362,28 @@ function _fbSyncNow(){
     if(_shadow[path]!==h){patch[path]=clean;nChg++;}
   }
   const nowTs=Date.now();
+  const delOps=[];
   for(const path in _shadow){
     if(!(path in cur)){
       if(path.indexOf('meta/')===0) continue;
-      try{
-        patch['trash/'+nowTs+'_'+path.replace(/\//g,'~')]={
-          path:path,deletedAt:nowTs,deletedBy:_deviceId,data:JSON.parse(_shadow[path])
-        };
-      }catch(e){}
-      patch[path]=null;nDel++;
+      let trashVal=null;
+      try{trashVal={path:path,deletedAt:nowTs,deletedBy:_deviceId,data:JSON.parse(_shadow[path])};}catch(e){}
+      delOps.push({path:path,trashKey:'trash/'+nowTs+'_'+path.split('/').join('~'),trashVal:trashVal});
+    }
+  }
+  // [v55] 대량 삭제 가드 — 한 번에 15건 이상 삭제는 사용자 확인 전까지 보류
+  // (조립 버그·캐시 손상이 "사용자 삭제"로 번역되는 것을 차단)
+  if(delOps.length>=15&&!_massDeleteOk){
+    if(!_massDeleteAsked){
+      _massDeleteAsked=true;
+      cfm('⚠️ 대량 삭제 감지',
+        delOps.length+'건의 항목이 한 번에 삭제되려 합니다.\n\n직접 삭제하신 것이 맞으면 확인을 누르세요. 아니라면 취소 후 데이터 패널에서 🚨 긴급 백업을 받고 관리자에게 알려주세요.\n\n(취소해도 다른 수정사항은 정상 저장됩니다)',
+        ()=>{_massDeleteOk=true;_massDeleteAsked=false;_fbSyncNow();});
+    }
+  } else {
+    for(const d of delOps){
+      if(d.trashVal) patch[d.trashKey]=d.trashVal;
+      patch[d.path]=null;nDel++;
     }
   }
   if(!nChg&&!nDel){setSaveStatus('saved');return;}
@@ -7192,6 +7396,8 @@ function _fbSyncNow(){
       if(patch[path]===null) delete _shadow[path];
       else _shadow[path]=JSON.stringify(patch[path]);
     }
+    clearAcknowledgedEdits(patch); // [v55] 서버 승인 후에만 outbox 제거
+    if(nDel>0){_massDeleteOk=false;_massDeleteAsked=false;} // [v55] 가드 리셋
     _fbRetryCount=0;
     setSaveStatus('saved');
     updateFbStatus('✅ '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})+' · '+(nChg+nDel)+'건');
@@ -7215,6 +7421,7 @@ function _fbSyncNow(){
 }
 
 function fbSaveData(){
+  if(_versionBlocked) return; // [v54.2] 구버전 잠금 시 쓰기 금지
   if(!fbConnected||!fbDB) return;
   if(!fbInitDone) return; // 초기 로드 완료 전엔 절대 저장 금지
   clearTimeout(fbSaveTimer);
@@ -7228,22 +7435,40 @@ function fbLoadData(){
   // [v53 Phase0-E 유지] 가져오기 직후: 서버에서 내려받지 않고, 가져온 로컬 데이터를 서버에 반영
   if(localStorage.getItem('spx_import_pending')==='1'){
     localStorage.removeItem('spx_import_pending');
-    _shadow={}; // 전체를 변경으로 간주 → 전량 업로드
-    fbInitDone=true;
-    hideFbLoading();
-    _fbSyncNow();
-    toast('✅ 가져온 데이터를 서버에 반영하는 중...');
+    // [v55] 완전 복원: 서버 현재 상태를 shadow로 삼아 diff
+    // → 백업에 없는 서버 항목은 삭제(휴지통행), 백업 항목은 업로드 = 진짜 복원
+    fbDB.ref(FB_ROOT).once('value').then(s=>{
+      const serverFlat=_flattenServer(s.val()||{});
+      _shadow={};
+      for(const p in serverFlat) _shadow[p]=JSON.stringify(_cleanObj(serverFlat[p]));
+      _massDeleteOk=true; // 복원에 의한 대량 변경은 의도된 것
+      fbInitDone=true;
+      hideFbLoading();
+      _fbSyncNow();
+      toast('✅ 가져온 데이터로 서버를 복원하는 중...');
+    }).catch(()=>{
+      _shadow={};
+      fbInitDone=true;
+      hideFbLoading();
+      _fbSyncNow();
+    });
     return;
   }
 
   fbDB.ref(FB_ROOT).once('value').then(snap=>{
     const v2=snap.val();
     const hasV2=v2&&(v2.projects||v2.meta);
+    if(hasV2&&!_checkVersionGate(v2.meta)){ hideFbLoading(); return; } // [v54.2]
+    // [v54.2] 서버 최소 버전 자동 승격 — 이후 배포되는 구버전 잔존을 자동 잠금
+    if(hasV2&&!(v2.meta&&typeof v2.meta._minVersion==='number'&&v2.meta._minVersion>=APP_VERSION)){
+      fbDB.ref(FB_ROOT+'/meta/_minVersion').set(APP_VERSION).catch(()=>{});
+    }
     if(hasV2){
       // 초기 로드: 서버 = 진실 (페이지를 막 열었으므로 로컬 미저장 변경 없음)
       const flat=_flattenServer(v2);
       _shadow={};
       for(const p in flat) _shadow[p]=JSON.stringify(_cleanObj(flat[p]));
+      applyPendingEdits(flat); // [v55] 미전송 수정은 서버보다 우선
       _rebuildFromFlat(flat);
       refreshCurrentView();
       updateSb();
@@ -7251,6 +7476,7 @@ function fbLoadData(){
       fbInitDone=true;
       hideFbLoading();
       _pruneTrash();
+      if(Object.keys(spxOutbox).length>0) _fbSyncNow(); // [v55] 미전송분 재전송
       return;
     }
     // v2 비어있음 → 구버전(spextrum + spextrum_meetings)에서 1회 마이그레이션
@@ -7467,6 +7693,9 @@ function saveToLS(){
     showLsFailBanner(e);
     // [v53] return 제거 — 아래 fbSaveData()가 반드시 실행되게 함
   }
+  // [v55] 변경분을 outbox에 동기 기록 — 전송 전에 앱이 죽어도 다음 실행 때 복원·재전송
+  try{_stageOutboxDiffs(_flattenLocal());}catch(e){console.warn('[v55] stage:',e);}
+  if(!fbConnected||!fbInitDone) setSaveStatus('local'); // 서버 미연결: 기기 보관 상태 표시
   fbSaveData(); // localStorage 성패와 무관하게 항상 서버 저장 시도
 }
 
@@ -9684,6 +9913,7 @@ function pasteDataFromClipboard(){
       const parsed=JSON.parse(text);
       if(!parsed.projects) throw new Error('올바른 데이터가 아닙니다');
       localStorage.setItem(LS_KEY,text);
+      localStorage.setItem('spx_import_pending','1'); // [v55] 누락돼 있던 복원 플래그
       toast('✅ 가져오기 완료! 새로고침합니다...');
       setTimeout(()=>location.reload(),900);
     }catch(err){
@@ -9935,8 +10165,378 @@ function openWeeklyReport(){
   toast('주간 리포트 생성 완료');
 }
 
+// ═══════════════════════════════════════════════════════════════
+// [v56] 직원 모드 / 관리자 모드
+// 기능을 삭제하지 않고 "누구에게 무엇을 보여줄지"만 제어한다.
+// 관리자 모드를 켜면 기존 화면 전부가 그대로 돌아온다.
+// ═══════════════════════════════════════════════════════════════
+const SPX_ADMINS=['김수경','왕춘호','대표님','엘레']; // 대표 계정은 '대표님' 표기 병행
+let spxUser=localStorage.getItem('spx_user')||'';
+let spxMode=localStorage.getItem('spx_mode')||'emp';
+let spxTab='my';
+let spxBoardTab='cal';
+
+function spxIsAdmin(){return SPX_ADMINS.indexOf(spxUser)>=0;}
+function spxEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function spxToday(){const d=new Date();d.setHours(0,0,0,0);return d;}
+function spxDue(t){const d=t&&t.dueDate?parseLocalDate(t.dueDate):null;if(d)d.setHours(0,0,0,0);return d;}
+// 담당자 문자열에 내 이름이 포함되는지 ("엘레, 두안" 같은 복수 표기 지원)
+function spxMine(t){
+  if(!spxUser||!t||!t.meta) return false;
+  return String(t.meta).split(/[,·\/+]/).map(x=>x.trim()).indexOf(spxUser)>=0;
+}
+function spxAllTasks(){
+  const out=[];
+  (projects||[]).filter(p=>p&&!p.archived).forEach(p=>{
+    (p.schedules||[]).filter(s=>s&&!s.archived).forEach(s=>{
+      (s.tasks||[]).forEach(t=>{if(t)out.push({t:t,s:s,p:p});});
+    });
+  });
+  return out;
+}
+
+// ── 이름 게이트 ────────────────────────────────────────────────
+let _spxPick='';
+function spxOpenGate(){
+  _spxPick=spxUser||'';
+  const box=document.getElementById('spx-gate-names');
+  if(box){
+    const _sorted=(teamMembers||[]).slice().sort(function(a,b){return String(a).localeCompare(String(b),'ko');});
+    box.innerHTML=_sorted.map(function(m){
+      return '<div class="spx-name'+(m===_spxPick?' on':'')+'" onclick="spxPickName(\''+spxEsc(m)+'\')">'+spxEsc(m)+'</div>';
+    }).join('');
+  }
+  document.getElementById('spx-gate').classList.add('on');
+}
+function spxPickName(n){
+  _spxPick=n;
+  document.querySelectorAll('#spx-gate-names .spx-name').forEach(function(el){
+    el.classList.toggle('on', el.textContent===n);
+  });
+}
+function spxConfirmName(){
+  if(!_spxPick){toast('이름을 선택해주세요');return;}
+  spxUser=_spxPick;
+  try{localStorage.setItem('spx_user',spxUser);}catch(e){}
+  document.getElementById('spx-gate').classList.remove('on');
+  spxApplyMode();
+}
+
+// ── 모드 전환 ──────────────────────────────────────────────────
+function spxApplyMode(){
+  const tb=document.getElementById('spx-to-emp');
+  if(tb) tb.style.display=(spxMode==='admin'&&spxIsAdmin())?'inline-flex':'none';
+  if(spxMode==='admin'&&spxIsAdmin()){
+    document.body.classList.remove('spx-emp');
+    goHome();
+  } else {
+    spxMode='emp';
+    document.body.classList.add('spx-emp');
+    spxGo(spxTab||'my');
+  }
+  try{localStorage.setItem('spx_mode',spxMode);}catch(e){}
+}
+function spxSetMode(m){
+  spxMode=m;
+  try{localStorage.setItem('spx_mode',m);}catch(e){}
+  spxApplyMode();
+  toast(m==='admin'?'관리자 모드':'직원 모드');
+}
+function spxGo(tab){
+  spxTab=tab;
+  ['my','proj','board','more'].forEach(function(k){
+    const el=document.getElementById('spxnav-'+k);
+    if(el) el.classList.toggle('on',k===tab);
+  });
+  if(tab==='my'){spxRenderMy();showView('v-my');}
+  else if(tab==='proj'){spxRenderProj();showView('v-eproj');}
+  else if(tab==='board'){spxRenderBoard();showView('v-board');}
+  else {spxRenderMore();showView('v-more');}
+  window.scrollTo(0,0);
+}
+
+// ── 내 할 일 ───────────────────────────────────────────────────
+function spxRenderMy(){
+  const today=spxToday();
+  const mine=spxAllTasks().filter(function(x){return spxMine(x.t);});
+  const over=[],week=[],later=[],done=[];
+  mine.forEach(function(x){
+    if(x.t.done){done.push(x);return;}
+    const d=spxDue(x.t);
+    if(d&&d<today) over.push(x);
+    else if(d&&(d-today)/864e5<=7) week.push(x);
+    else later.push(x);
+  });
+  const bydue=function(a,b){const da=spxDue(a.t),db=spxDue(b.t);if(da&&db)return da-db;if(da)return -1;if(db)return 1;return 0;};
+  over.sort(bydue);week.sort(bydue);later.sort(bydue);
+
+  function row(x){
+    const t=x.t,d=spxDue(t);
+    let meta=x.p.name;
+    if(d){
+      const diff=Math.round((d-today)/864e5);
+      const lbl=t.done?'완료':diff<0?('D+'+(-diff)):diff===0?'오늘 마감':(t.dueDate+' 마감');
+      meta=(t.done?'':'<span style="color:'+(diff<0?'#c0392b':diff<=1?'#c0392b':diff<=3?'#854f0b':'var(--text3)')+'">'+lbl+'</span> · ')+spxEsc(x.p.name);
+    }
+    return '<div class="spx-row">'+
+      '<div class="spx-ck'+(t.done?' on':'')+'" onclick="spxToggle(\''+x.p.id+'\',\''+x.s.id+'\',\''+t.id+'\')">'+(t.done?'✓':'')+'</div>'+
+      '<div style="flex:1;min-width:0;cursor:pointer" onclick="openSidePanel(\''+x.p.id+'\',\''+x.s.id+'\',\''+t.id+'\')">'+
+        '<div class="spx-tn'+(t.done?' done':'')+'">'+spxEsc(t.name)+'</div>'+
+        '<div class="spx-tm">'+meta+'</div>'+
+      '</div></div>';
+  }
+  function sec(title,arr,color){
+    if(!arr.length) return '';
+    return '<div class="spx-sec" style="color:'+color+'">'+title+' · '+arr.length+'</div>'+arr.map(row).join('');
+  }
+
+  let body='';
+  if(!spxUser){
+    body='<div class="empty" style="padding:50px 20px">이름을 먼저 선택해주세요</div>';
+  } else if(!mine.length){
+    body='<div class="empty" style="padding:50px 20px">담당으로 지정된 할 일이 없습니다.<br><span style="font-size:13px">프로젝트 탭에서 할 일을 추가할 수 있습니다.</span></div>';
+  } else {
+    body=sec('기한 지남',over,'#c0392b')+sec('이번 주',week,'var(--text2)')+sec('예정',later,'var(--text3)');
+    if(done.length){
+      body+='<div class="spx-sec" style="color:var(--text3)">완료 · '+done.length+'</div>'+done.slice(0,20).map(row).join('');
+    }
+    if(!over.length&&!week.length&&!later.length){
+      body='<div class="empty" style="padding:40px 20px">🎉 미완료 할 일이 없습니다</div>'+body;
+    }
+  }
+
+  document.getElementById('my-content').innerHTML=
+    '<div class="spx-hd"><div>'+
+      '<div style="font-size:11px;letter-spacing:1.5px;color:var(--text3);font-weight:600">SPEXTRUM OS</div>'+
+      '<div class="spx-hd-t">'+spxEsc(spxUser||'게스트')+'님의 할 일</div>'+
+    '</div><div id="spx-save-badge" style="font-size:11px;color:var(--text3);white-space:nowrap"></div></div>'+
+    '<div style="padding:0 16px 20px">'+body+
+      '<button class="spx-btn-lg" onclick="spxQuickAdd()">＋ 할 일 추가</button>'+
+    '</div>';
+  spxSyncBadge();
+}
+function spxToggle(pid,sid,tid){
+  pkToggleTask(pid,sid,tid);
+  setTimeout(function(){ if(spxTab==='my'&&spxMode==='emp') spxRenderMy(); },60);
+}
+function spxSyncBadge(){
+  const src=document.getElementById('save-status');
+  const dst=document.getElementById('spx-save-badge');
+  if(src&&dst){dst.textContent=src.textContent||'';dst.style.color=src.style.color||'var(--text3)';}
+}
+setInterval(function(){if(spxMode==='emp')spxSyncBadge();},1500);
+
+// ── 할 일 추가 ─────────────────────────────────────────────────
+function spxQuickAdd(pidPre){
+  const act=(projects||[]).filter(function(p){return p&&!p.archived;});
+  if(!act.length){toast('프로젝트가 없습니다');return;}
+  const pid=pidPre||act[0].id;
+  modal('<div class="m-title">＋ 할 일 추가</div>'+
+    '<div class="frow"><label class="fl">할 일</label><input class="fi" id="spx-qa-name" placeholder="무엇을 해야 하나요?" autofocus></div>'+
+    '<div class="frow"><label class="fl">프로젝트</label><select class="fi" id="spx-qa-p" onchange="spxQaScheds()">'+
+      act.map(function(p){return '<option value="'+p.id+'"'+(p.id===pid?' selected':'')+'>'+spxEsc(p.name)+'</option>';}).join('')+
+    '</select></div>'+
+    '<div class="frow"><label class="fl">스케줄</label><select class="fi" id="spx-qa-s"></select></div>'+
+    '<div class="frow"><label class="fl">담당</label><select class="fi" id="spx-qa-m">'+
+      (teamMembers||[]).map(function(m){return '<option value="'+spxEsc(m)+'"'+(m===spxUser?' selected':'')+'>'+spxEsc(m)+'</option>';}).join('')+
+    '</select></div>'+
+    '<div class="frow"><label class="fl">마감일</label><input class="fi" type="date" id="spx-qa-d"></div>'+
+    '<div class="btn-row"><button class="btn pri sm" onclick="spxQaSave()">추가</button>'+
+    '<button class="btn sm" onclick="closeModal()">취소</button></div>');
+  spxQaScheds();
+  setTimeout(function(){const el=document.getElementById('spx-qa-name');if(el)el.focus();},80);
+}
+function spxQaScheds(){
+  const pid=document.getElementById('spx-qa-p').value;
+  const p=(projects||[]).find(function(x){return x.id===pid;});
+  const sel=document.getElementById('spx-qa-s');
+  const list=(p&&p.schedules||[]).filter(function(s){return !s.archived;});
+  sel.innerHTML=list.length?list.map(function(s){return '<option value="'+s.id+'">'+spxEsc(s.name)+'</option>';}).join('')
+    :'<option value="">(스케줄 없음 — 관리자에게 요청)</option>';
+}
+function spxQaSave(){
+  const name=(document.getElementById('spx-qa-name').value||'').trim();
+  if(!name){toast('할 일을 입력해주세요');return;}
+  const pid=document.getElementById('spx-qa-p').value;
+  const sid=document.getElementById('spx-qa-s').value;
+  if(!sid){toast('이 프로젝트에 스케줄이 없습니다');return;}
+  const p=(projects||[]).find(function(x){return x.id===pid;});
+  const s=p&&p.schedules.find(function(x){return x.id===sid;});
+  if(!s)return;
+  s.tasks.push({id:uid(),name:name,done:false,
+    meta:document.getElementById('spx-qa-m').value||spxUser||'',
+    dueDate:document.getElementById('spx-qa-d').value||'',
+    startDate:'',taskStatus:'예정',progress:0,memo:'',output:''});
+  saveToLS();closeModal();toast('추가됐습니다');
+  if(spxTab==='my')spxRenderMy(); else if(spxTab==='proj')spxRenderProj();
+}
+
+// ── 프로젝트 탭 (클릭 시 기존 프로젝트 페이지 그대로 — A안) ──
+function spxRenderProj(){
+  const act=(projects||[]).filter(function(p){return p&&!p.archived;});
+  const mineCnt={};
+  spxAllTasks().forEach(function(x){
+    if(spxMine(x.t)&&!x.t.done) mineCnt[x.p.id]=(mineCnt[x.p.id]||0)+1;
+  });
+  const mine=act.filter(function(p){return mineCnt[p.id];}).sort(function(a,b){return mineCnt[b.id]-mineCnt[a.id];});
+  const rest=act.filter(function(p){return !mineCnt[p.id];});
+
+  function card(p,hi){
+    const c=COLORS[p.color]||COLORS.blue;
+    const all=(p.schedules||[]).reduce(function(n,s){return n+(s.tasks||[]).length;},0);
+    const sub=hi?('내 할 일 '+mineCnt[p.id]+' · 전체 '+all):('전체 '+all+' · '+prog(p)+'%');
+    return '<div class="spx-card" onclick="spxOpenProject(\''+p.id+'\')">'+
+      '<span style="width:9px;height:9px;border-radius:50%;background:'+c.dot+';flex-shrink:0"></span>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:15px;color:var(--text)'+(hi?'':';color:var(--text2)')+'">'+spxEsc(p.name)+'</div>'+
+        '<div class="spx-tm">'+sub+'</div>'+
+      '</div>'+
+      '<span style="color:var(--text3);font-size:16px">›</span></div>';
+  }
+  document.getElementById('eproj-content').innerHTML=
+    '<div class="spx-hd"><div><div class="spx-hd-t">프로젝트</div>'+
+    '<div class="spx-hd-s">전체 '+act.length+'개</div></div></div>'+
+    '<div style="padding:0 16px 20px">'+
+      (mine.length?'<div class="spx-sec" style="color:#185fa5">내가 맡은 일이 있는 프로젝트 · '+mine.length+'</div>'+mine.map(function(p){return card(p,true);}).join(''):'')+
+      (rest.length?'<div class="spx-sec" style="color:var(--text3)">그 외 프로젝트 · '+rest.length+'</div>'+rest.map(function(p){return card(p,false);}).join(''):'')+
+    '</div>';
+}
+// A안: 기존 프로젝트 상세 페이지를 그대로 연다 (뒤로가기 버튼만 추가)
+function spxOpenProject(pid){
+  document.body.classList.remove('spx-emp');
+  openProj(pid);
+  setTimeout(function(){
+    const c=document.getElementById('proj-content');
+    if(c&&!document.getElementById('spx-back')){
+      const b=document.createElement('button');
+      b.id='spx-back';b.className='btn sm';
+      b.style.cssText='margin-bottom:14px';
+      b.textContent='‹ 프로젝트 목록';
+      b.onclick=function(){
+        const el=document.getElementById('spx-back');if(el)el.remove();
+        document.body.classList.add('spx-emp');spxGo('proj');
+      };
+      c.insertBefore(b,c.firstChild);
+    }
+  },60);
+}
+
+// ── 공통보드 ───────────────────────────────────────────────────
+function spxRenderBoard(){
+  const tabs=[['cal','캘린더'],['meet','회의'],['camp','캠페인']];
+  let body='';
+  if(spxBoardTab==='cal') body=spxBoardCal();
+  else if(spxBoardTab==='meet') body=spxBoardMeet();
+  else body=spxBoardCamp();
+  document.getElementById('board-content').innerHTML=
+    '<div class="spx-hd"><div class="spx-hd-t">공통보드</div></div>'+
+    '<div class="spx-tabs">'+tabs.map(function(t){
+      return '<div class="spx-tab'+(spxBoardTab===t[0]?' on':'')+'" onclick="spxBoardTab=\''+t[0]+'\';spxRenderBoard()">'+t[1]+'</div>';
+    }).join('')+'</div>'+
+    '<div style="padding:4px 14px 20px">'+body+'</div>';
+  if(spxBoardTab==='cal') setTimeout(function(){
+    const host=document.getElementById('spx-cal-host');
+    if(host){ const tmp=document.createElement('div'); tmp.id='home-cal-body'; host.appendChild(tmp); renderHomeCal(); }
+  },0);
+}
+function spxBoardCal(){
+  const mn=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  return '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 4px">'+
+    '<button class="btn xs ghost" onclick="shiftHomeCal(-1);spxRenderBoard()">‹</button>'+
+    '<span style="font-size:15px;font-weight:600">'+homeCalYear+'년 '+mn[homeCalMonth]+'</span>'+
+    '<button class="btn xs ghost" onclick="shiftHomeCal(1);spxRenderBoard()">›</button></div>'+
+    '<div id="spx-cal-host"></div>';
+}
+function spxBoardMeet(){
+  const list=(meetings||[]).slice().sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''));});
+  if(!list.length) return '<div class="empty" style="padding:40px">등록된 회의가 없습니다</div>';
+  const up=list.filter(function(m){return m.status!=='완료';});
+  const dn=list.filter(function(m){return m.status==='완료';});
+  function row(m){
+    const pt=String(m.date||'').split('.');
+    return '<div style="display:flex;gap:12px;padding:12px 4px;border-bottom:1px solid var(--border);align-items:flex-start">'+
+      '<div style="text-align:center;background:var(--surface2);border-radius:8px;padding:6px 9px;flex-shrink:0;min-width:46px">'+
+        '<div style="font-size:10px;color:var(--text3)">'+((pt[1]||'').replace(/^0/,'')||'-')+'월</div>'+
+        '<div style="font-size:16px;font-weight:700;font-family:var(--mono);line-height:1.1">'+((pt[2]||'').replace(/^0/,'')||'-')+'</div>'+
+      '</div>'+
+      '<div style="flex:1;min-width:0"><div style="font-size:14px;color:var(--text)">'+spxEsc(m.title)+'</div>'+
+      '<div class="spx-tm">'+spxEsc(m.time||'')+(m.attendees?' · '+spxEsc(m.attendees):'')+'</div>'+
+      (m.notes?'<div class="spx-tm" style="margin-top:3px">'+spxEsc(String(m.notes).slice(0,60))+'</div>':'')+'</div></div>';
+  }
+  return (up.length?'<div class="spx-sec" style="color:var(--text2)">예정 · '+up.length+'</div>'+up.map(row).join(''):'')+
+         (dn.length?'<div class="spx-sec" style="color:var(--text3)">완료 · '+dn.length+'</div>'+dn.slice(0,15).map(row).join(''):'');
+}
+function spxBoardCamp(){
+  const list=campaigns||[];
+  if(!list.length) return '<div class="empty" style="padding:40px">등록된 캠페인이 없습니다</div>';
+  const SC={'진행중':['#e6f1fb','#185fa5'],'완료':['#eaf3de','#3b6d11'],'예정':['#faeeda','#854f0b']};
+  return list.map(function(c){
+    const col=SC[c.status]||['#f0ede8','#5f5e5a'];
+    return '<div style="padding:13px 4px;border-bottom:1px solid var(--border)">'+
+      '<div style="display:flex;align-items:center;gap:8px">'+
+        '<span style="font-size:15px;color:var(--text);flex:1">'+spxEsc(c.name)+'</span>'+
+        '<span class="spx-pill" style="background:'+col[0]+';color:'+col[1]+'">'+spxEsc(c.status||'')+'</span></div>'+
+      '<div class="spx-tm">'+spxEsc(c.start||'')+' ~ '+spxEsc(c.end||'')+
+        (c.manager?' · '+spxEsc(c.manager):'')+(c.channel?' · '+spxEsc(c.channel):'')+'</div></div>';
+  }).join('');
+}
+
+// ── 더보기 ─────────────────────────────────────────────────────
+function spxRenderMore(){
+  const un=spxAllTasks().filter(function(x){return !x.t.done&&(!x.t.meta||!String(x.t.meta).trim());});
+  let html='<div class="spx-hd"><div class="spx-hd-t">더보기</div>'+
+    '<div class="spx-hd-s">'+spxEsc(spxUser||'게스트')+'</div></div><div style="padding:6px 16px 20px">';
+  html+='<div class="spx-card" onclick="spxShowUnassigned()"><div style="flex:1">'+
+    '<div style="font-size:15px">담당 미지정 할 일</div><div class="spx-tm">'+un.length+'건</div></div>'+
+    '<span style="color:var(--text3)">›</span></div>';
+  html+='<div class="spx-card" onclick="spxOpenGate()"><div style="flex:1">'+
+    '<div style="font-size:15px">이름 바꾸기</div><div class="spx-tm">현재: '+spxEsc(spxUser||'미설정')+'</div></div>'+
+    '<span style="color:var(--text3)">›</span></div>';
+  if(spxIsAdmin()){
+    html+='<div class="spx-card" onclick="spxSetMode(\'admin\')" style="border-bottom:none;margin-top:10px;'+
+      'background:var(--surface2);border-radius:10px;padding:14px 12px"><div style="flex:1">'+
+      '<div style="font-size:15px;font-weight:600">관리자 모드로 전환</div>'+
+      '<div class="spx-tm">대시보드 · 칸반 · 타임라인 · 주간보고 · 데이터 관리</div></div>'+
+      '<span style="color:var(--text3)">›</span></div>';
+  }
+  html+='</div>';
+  document.getElementById('more-content').innerHTML=html;
+}
+function spxShowUnassigned(){
+  const un=spxAllTasks().filter(function(x){return !x.t.done&&(!x.t.meta||!String(x.t.meta).trim());});
+  if(!un.length){toast('담당 미지정 할 일이 없습니다');return;}
+  modal('<div class="m-title">담당 미지정 할 일 '+un.length+'건</div>'+
+    '<div style="margin:0 -20px;border-top:1px solid var(--border);max-height:380px;overflow-y:auto">'+
+    un.map(function(x){
+      return '<div onclick="closeModal();openSidePanel(\''+x.p.id+'\',\''+x.s.id+'\',\''+x.t.id+'\')" '+
+        'style="padding:11px 20px;border-bottom:1px solid var(--border);cursor:pointer">'+
+        '<div style="font-size:14px">'+spxEsc(x.t.name)+'</div>'+
+        '<div class="spx-tm">'+spxEsc(x.p.name)+' › '+spxEsc(x.s.name||'')+(x.t.dueDate?' · '+x.t.dueDate:'')+'</div></div>';
+    }).join('')+'</div>'+
+    '<div class="btn-row" style="margin-top:14px"><button class="btn sm" onclick="closeModal()">닫기</button></div>');
+}
+
+// ── 부팅 ───────────────────────────────────────────────────────
+function spxSyncRoster(){
+  // [v56.1] 신규 입사자를 서버 팀원 목록에 1회 병합 (기존 이름은 지우지 않음)
+  try{
+    if(localStorage.getItem('spx_roster_v1')==='1') return;
+    let added=0;
+    SPX_ROSTER.forEach(function(n){ if(teamMembers.indexOf(n)<0){teamMembers.push(n);added++;} });
+    teamMembers.sort(function(a,b){return String(a).localeCompare(String(b),'ko');}); // [v56.1] 가나다순
+    localStorage.setItem('spx_roster_v1','1');
+    if(added>0) saveToLS();
+  }catch(e){}
+}
+function spxBoot(){
+  spxSyncRoster();
+  if(!spxUser){ spxOpenGate(); document.body.classList.add('spx-emp'); spxGo('my'); return; }
+  spxApplyMode();
+}
+
 renderList();
 goHome();
+setTimeout(spxBoot,300);
 
 // ─── 태스크 사이드 패널 ──────────────────────────────────────
 let _tspPid=null,_tspSid=null,_tspTid=null;
@@ -10418,19 +11018,13 @@ function closeSidePanel(){
   // Firebase 초기화
   initFirebase();
   // Run automation on load — fbInitDone 완료 후에만 실행
+  // [v55] 자동화는 lease를 가진 한 기기만 실행 — 14중 동시 실행으로 인한 충돌 제거
   setTimeout(()=>{
-    if(!fbInitDone){
-      automate();
-      checkOverdueTasks();
-    } else {
-      automate();
-      saveToLS();
-      checkOverdueTasks();
-    }
-  }, 1200);
-  // Auto-save + auto-run every 30 seconds — fbInitDone 확인 후 실행
+    checkOverdueTasks();
+    _withAutomationLease(()=>{automate();saveToLS();});
+  }, 1500);
   setInterval(()=>{
-    if(fbInitDone){automate();saveToLS();}
+    if(fbInitDone){_withAutomationLease(()=>{automate();saveToLS();});}
   }, 30000);
 })();
 
@@ -10494,6 +11088,37 @@ function openKpiDetail(type){
   }
 }
 </script>
+
+<!-- [v56] 직원 모드 하단 네비 -->
+<nav id="spx-emp-nav">
+  <div class="spx-nav-item" id="spxnav-my" onclick="spxGo('my')">
+    <svg viewBox="0 0 22 22" fill="none"><path d="M4 6.5l2 2 3.5-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 15.5l2 2 3.5-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.5 7.5H19M12.5 16.5H19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    내 할 일
+  </div>
+  <div class="spx-nav-item" id="spxnav-proj" onclick="spxGo('proj')">
+    <svg viewBox="0 0 22 22" fill="none"><path d="M2.5 6a2 2 0 012-2h3.4l1.8 2.2h7.8a2 2 0 012 2v8.3a2 2 0 01-2 2h-13a2 2 0 01-2-2V6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    프로젝트
+  </div>
+  <div class="spx-nav-item" id="spxnav-board" onclick="spxGo('board')">
+    <svg viewBox="0 0 22 22" fill="none"><circle cx="8" cy="7" r="2.6" stroke="currentColor" stroke-width="1.5"/><circle cx="15.5" cy="8.5" r="2.1" stroke="currentColor" stroke-width="1.5"/><path d="M3 17c0-2.6 2.2-4.4 5-4.4s5 1.8 5 4.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14 13.2c2.7 0 5 1.5 5 3.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    공통보드
+  </div>
+  <div class="spx-nav-item" id="spxnav-more" onclick="spxGo('more')">
+    <svg viewBox="0 0 22 22" fill="none"><circle cx="5" cy="11" r="1.7" fill="currentColor"/><circle cx="11" cy="11" r="1.7" fill="currentColor"/><circle cx="17" cy="11" r="1.7" fill="currentColor"/></svg>
+    더보기
+  </div>
+</nav>
+
+<!-- [v56] 이름 선택 게이트 -->
+<div id="spx-gate">
+  <div style="width:100%;max-width:400px">
+    <div style="font-size:12px;letter-spacing:2px;color:var(--text3);font-weight:600">SPEXTRUM OS</div>
+    <div style="font-size:22px;font-weight:700;margin:8px 0 4px;color:var(--text)">누구신가요?</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:20px">한 번만 선택하면 이 기기에 저장됩니다.</div>
+    <div id="spx-gate-names" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;max-height:52vh;overflow-y:auto;padding:2px"></div>
+    <button class="btn pri" id="spx-gate-go" style="width:100%;margin-top:18px;padding:13px;font-size:15px" onclick="spxConfirmName()">시작하기</button>
+  </div>
+</div>
 
 <!-- 하단 네비게이션 바 (모바일) -->
 <nav class="mob-nav">
