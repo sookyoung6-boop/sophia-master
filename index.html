@@ -385,6 +385,31 @@ body.spx-emp #spx-emp-nav{display:grid}
 @keyframes spxUp{from{transform:translateY(46px);opacity:.4}to{transform:translateY(0);opacity:1}}
 .spx-sheet .grab{width:38px;height:4px;border-radius:2px;background:var(--border2);margin:4px auto 14px}
 
+/* ═══ [v58] 직원 모드 — 반응형 · 긴급현황 · 접기 ═══ */
+.spx-two{display:block}
+.spx-grid2{display:block}
+.spx-chip{font-size:12.5px;padding:6px 12px;border-radius:20px;border:1px solid var(--border2);cursor:pointer;color:var(--text2);background:var(--surface);display:inline-flex;align-items:center;-webkit-tap-highlight-color:transparent}
+.spx-chip.on{background:var(--text);color:var(--surface);border-color:var(--text);font-weight:600}
+.spx-sumcard{flex:1;border-radius:14px;padding:13px 16px;min-width:0}
+.spx-urgcard{display:flex;gap:12px;align-items:flex-start;padding:13px 14px;border:1px solid var(--border);border-radius:14px;margin-bottom:9px;cursor:pointer;background:var(--surface)}
+.spx-urgcard:active{background:var(--surface2)}
+.spx-urgchip{font-family:var(--mono);font-weight:700;font-size:12px;padding:4px 10px;border-radius:10px;flex-shrink:0;margin-top:1px}
+.spx-cal-d.wide{min-height:88px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
+.spx-cal-d.wide.today{border-color:#a32d2d;border-width:1.5px}
+.spx-cal-d.wide .mk.wide{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10.5px;padding:1.5px 5px;border-radius:4px;margin-top:2px;font-weight:600}
+@media(min-width:900px){
+  body.spx-emp .content{max-width:1040px!important}
+  .spx-two{display:grid;grid-template-columns:1fr 1fr;gap:0 40px;align-items:start}
+  .spx-grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 32px}
+}
+/* [v58] 모바일 세로 — 프로젝트 페이지 우측 잘림 보정 */
+@media(max-width:700px){
+  #proj-content .add-row{flex-wrap:wrap}
+  #proj-content .add-row .fi{max-width:100%!important;flex:1 1 130px;min-width:0}
+  #proj-content .sched-item>div:first-child{flex-wrap:wrap;row-gap:6px}
+  #proj-content [style*="min-width:110px"]{min-width:96px!important}
+}
+
 .tl-wrap{overflow-x:auto;margin-bottom:20px}
 .tl-inner{min-width:560px}
 .tl-header{display:flex;padding-left:160px;border-bottom:1px solid var(--border);margin-bottom:0}
@@ -1474,12 +1499,16 @@ function projMainHTML(p,c,pr,allT,doneT){
   if(!p.statusNote) p.statusNote='';
   if(!p.risks)     p.risks='';
 
-  const statCards=[
+  const _emp=document.body.classList.contains('spx-emp'); // [v58] 직원모드: 요약 카드 축소
+  const statCards=(_emp?[
+    {label:'기간',     val:p.start, val2:p.end},
+    {label:'전체 진행률',val:`${pr}%`, color:c.dot},
+  ]:[
     {label:'기간',     val:p.start, val2:p.end},
     {label:'스케줄 단계',val:`${p.schedules.length}`},
     {label:'완료 태스크',val:`${doneT}`, suffix:`/${allT.length}`},
     {label:'전체 진행률',val:`${pr}%`, color:c.dot},
-  ].map(s=>`
+  ]).map(s=>`
     <div style="background:var(--surface2);border-radius:var(--radius);padding:16px 20px;flex:1;min-width:110px">
       <div style="font-size:14px;color:var(--text3);font-weight:500;margin-bottom:8px">${s.label}</div>
       <div style="font-size:${s.val2?'15px':'22px'};font-weight:700;color:${s.color||'var(--text)'};font-family:var(--mono);line-height:1.2">
@@ -1488,10 +1517,10 @@ function projMainHTML(p,c,pr,allT,doneT){
       </div>
     </div>`).join('');
 
-  const alertStrip=(overdue||dueSoon)?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
+  const alertStrip=(overdue||(dueSoon&&!_emp))?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
     ${overdue?`<div style="background:#fdf2f2;border:1px solid rgba(192,57,43,.2);border-radius:var(--rsm);padding:8px 14px;font-size:14px;color:var(--red);display:flex;align-items:center;gap:6px"><span style="font-weight:600">⚠️ 마감 초과 ${overdue}건</span> — 지금 바로 확인하세요</div>`:''}
-    ${dueSoon?`<div style="background:#faeeda;border:1px solid rgba(239,159,39,.25);border-radius:var(--rsm);padding:8px 14px;font-size:14px;color:#854f0b;display:flex;align-items:center;gap:6px"><span style="font-weight:600">🔔 이번 주 마감 ${dueSoon}건</span></div>`:''}
-  </div>`:'';
+    ${(dueSoon&&!_emp)?`<div style="background:#faeeda;border:1px solid rgba(239,159,39,.25);border-radius:var(--rsm);padding:8px 14px;font-size:14px;color:#854f0b;display:flex;align-items:center;gap:6px"><span style="font-weight:600">🔔 이번 주 마감 ${dueSoon}건</span></div>`:''}
+  </div>`:''; // [v58] 직원모드: 이번 주 마감 배지 제거
 
   // helper: inline editable field row
   const fieldRow=(lbl,field,ph,tabId='',isLast=false)=>`
@@ -4585,16 +4614,19 @@ function openNew(){
   renderNewForm();showView('v-new');
 }
 function renderNewForm(){
+  // [v58] 카테고리 후보: 템플릿 키 + 기존 프로젝트 카테고리
+  const _cats=[...new Set([...Object.keys(PROJECT_TEMPLATES),...(projects||[]).map(p=>p&&p.tag).filter(Boolean)])];
   document.getElementById('new-form-body').innerHTML=`
-  <div class="frow"><label class="fl">템플릿으로 시작</label>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn sm ghost" onclick="applyProjTemplate('')" id="tpl-none" style="border:2px solid var(--text)">비어있는 프로젝트</button>
-      ${Object.keys(PROJECT_TEMPLATES).map(k=>`<button class="btn sm ghost" onclick="applyProjTemplate('${k}')" id="tpl-${k}">${k}</button>`).join('')}
-    </div>
-  </div>
   <div class="frow"><label class="fl">프로젝트명 <span>*</span></label><input class="fi" id="f-name" placeholder="예: 전향 2차 컬렉션 런칭"></div>
   <div class="two-col">
-    <div class="frow"><label class="fl">카테고리</label><input class="fi" id="f-tag" placeholder="예: 제품개발"></div>
+    <div class="frow"><label class="fl">카테고리</label>
+      <select class="fi" id="f-tag-sel" onchange="fTagSel(this.value)">
+        <option value="">선택</option>
+        ${_cats.map(c=>`<option value="${c}">${c}</option>`).join('')}
+        <option value="__custom__">＋ 직접입력</option>
+      </select>
+      <input class="fi" id="f-tag" placeholder="카테고리 직접입력" style="display:none;margin-top:6px">
+    </div>
     <div class="frow"><label class="fl">상태</label><select class="fi" id="f-status"><option>예정</option><option>진행중</option><option>완료</option></select></div>
   </div>
   <div class="two-col">
@@ -4608,6 +4640,12 @@ function renderNewForm(){
   <div class="frow"><label class="fl">참여 부서</label><div class="dept-grid">${DEPTS.map(d=>`<div class="dept-opt${formDepts.includes(d)?' on':''}" onclick="toggleFD('${d}')">${d}</div>`).join('')}</div></div>
   <hr class="fdivider">
   <div class="sl" style="margin-top:0">스케줄 단계</div>
+  <div class="frow"><label class="fl">템플릿으로 시작 <span style="font-weight:400">스케줄·태스크가 자동 구성됩니다</span></label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn sm ghost" onclick="applyProjTemplate('')" id="tpl-none" style="border:2px solid var(--text)">비어있는 프로젝트</button>
+      ${Object.keys(PROJECT_TEMPLATES).map(k=>`<button class="btn sm ghost" onclick="applyProjTemplate('${k}')" id="tpl-${k}">${k}</button>`).join('')}
+    </div>
+  </div>
   <div id="form-scheds">${fSchedsHTML()}</div>
   <button class="btn sm ghost" onclick="addFSched()">+ 스케줄 추가</button>
   <hr class="fdivider">
@@ -4616,6 +4654,13 @@ function renderNewForm(){
   <button class="btn sm ghost" onclick="addFWA()">+ 카테고리 추가</button>
   <hr class="fdivider">
   <div class="btn-row"><button class="btn pri" onclick="createProj()">프로젝트 생성</button><button class="btn" onclick="goList()">취소</button></div>`;
+}
+// [v58] 카테고리 드롭다운 — 직접입력 토글
+function fTagSel(v){
+  const inp=document.getElementById('f-tag');
+  if(!inp)return;
+  if(v==='__custom__'){inp.style.display='block';setTimeout(()=>inp.focus(),40);}
+  else{inp.style.display='none';inp.value='';}
 }
 function fSchedsHTML(){
   if(!formScheds.length) return`<p style="font-size:14px;color:var(--text3);margin-bottom:10px">스케줄 단계를 추가하면 진행 현황을 관리할 수 있습니다</p>`;
@@ -4663,9 +4708,12 @@ function applyProjTemplate(key){
   }));
   document.getElementById('form-scheds').innerHTML=fSchedsHTML();
 
-  // 카테고리 자동 입력
-  const tagEl=document.getElementById('f-tag');
-  if(tagEl&&!tagEl.value) tagEl.value=tpl.tag||key;
+  // [v58] 카테고리 자동 선택 (드롭다운)
+  const selEl=document.getElementById('f-tag-sel');
+  if(selEl&&!selEl.value){
+    const v=tpl.tag||key;
+    if(Array.prototype.some.call(selEl.options,function(o){return o.value===v;})){selEl.value=v;fTagSel(v);}
+  }
 
   toast(`"${key}" 템플릿이 적용됐습니다`);
 }
@@ -4682,7 +4730,9 @@ function updateFW(id,k,v){const w=formWAs.find(x=>x.id===id);if(w)w[k]=v}
 function createProj(){
   const name=document.getElementById('f-name').value.trim();
   if(!name){alert('프로젝트명을 입력해주세요');return}
-  const tag=document.getElementById('f-tag').value.trim()||'기타';
+  const _tsel=document.getElementById('f-tag-sel');
+  const _tselv=_tsel?_tsel.value:'';
+  const tag=(_tselv==='__custom__'?document.getElementById('f-tag').value.trim():_tselv)||'기타'; // [v58]
   const start=document.getElementById('f-start').value.trim()||'2026';
   const end=document.getElementById('f-end').value.trim()||'2026';
   const overview=document.getElementById('f-overview').value.trim();
@@ -10225,6 +10275,15 @@ let spxTab='my';
 let spxBoardTab='cal';
 let spxMeetDoneOpen=false;
 let spxCalY=(new Date()).getFullYear(), spxCalM=(new Date()).getMonth();
+// [v58] 직원모드 상태
+let spxMyLaterOpen=false,spxMyDoneOpen=false,spxMyPartOpen=false,spxProjTab='all',spxUrgFilter='';
+function spxWide(){return window.innerWidth>=900;}
+let _spxRz;
+window.addEventListener('resize',function(){
+  if(!document.body.classList.contains('spx-emp'))return;
+  clearTimeout(_spxRz);
+  _spxRz=setTimeout(function(){if(spxTab==='my')spxRenderMy();else if(spxTab==='proj')spxRenderProj();else if(spxTab==='board')spxRenderBoard();},220);
+});
 
 function spxEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function spxToday(){const d=new Date();d.setHours(0,0,0,0);return d;}
@@ -10324,7 +10383,8 @@ function spxSharedRefresh(){
 // ── 내 할 일 ──
 function spxRenderMy(){
   const today=spxToday();
-  const mine=spxAllTasks().filter(function(x){return spxMine(x.t);});
+  const all=spxAllTasks();
+  const mine=all.filter(function(x){return spxMine(x.t);});
   const over=[],week=[],later=[],done=[];
   mine.forEach(function(x){
     if(x.t.done){done.push(x);return;}
@@ -10335,9 +10395,20 @@ function spxRenderMy(){
   });
   const bydue=function(a,b){const da=spxDue(a.t),db=spxDue(b.t);if(da&&db)return da-db;if(da)return -1;if(db)return 1;return 0;};
   over.sort(bydue);week.sort(bydue);later.sort(bydue);
-  function row(x){
+
+  // [v58] 참여 프로젝트 주의 — 내가 인볼브된 프로젝트에서 마감이 임박/초과된 (다른 팀원의) 업무
+  const myPids={};
+  mine.forEach(function(x){myPids[x.p.id]=1;});
+  const part=all.filter(function(x){
+    if(!myPids[x.p.id]||x.t.done||spxMine(x.t)) return false;
+    const d=spxDue(x.t);
+    return d&&(d-today)/864e5<=3;
+  }).sort(bydue);
+
+  function row(x,partMode){
     const t=x.t,d=spxDue(t);
     let meta=spxEsc(x.p.name);
+    if(partMode) meta+=' · '+spxEsc(t.meta||'미지정');
     if(d&&!t.done){
       const diff=Math.round((d-today)/864e5);
       const lbl=diff<0?('D+'+(-diff)):diff===0?'오늘 마감':(t.dueDate+' 마감');
@@ -10352,17 +10423,50 @@ function spxRenderMy(){
   }
   function sec(title,arr,color){
     if(!arr.length) return '';
-    return '<div class="spx-sec" style="color:'+color+'">'+title+' <span class="n">'+arr.length+'</span></div>'+arr.map(row).join('');
+    return '<div class="spx-sec" style="color:'+color+'">'+title+' <span class="n">'+arr.length+'</span></div>'+arr.map(function(x){return row(x,false);}).join('');
+  }
+  // [v58] 예정 — 3개까지 보여주고 더보기로 펼침
+  function laterSec(){
+    if(!later.length) return '';
+    let h='<div class="spx-sec" style="color:var(--text3)">예정 <span class="n">'+later.length+'</span></div>';
+    const vis=(spxMyLaterOpen||later.length<=3)?later:later.slice(0,3);
+    h+=vis.map(function(x){return row(x,false);}).join('');
+    if(later.length>3) h+='<div class="spx-fold" style="border-top:none;margin-top:0" onclick="spxMyLaterOpen=!spxMyLaterOpen;spxRenderMy()">'+(spxMyLaterOpen?'▾ 접기':'▸ 더보기 '+(later.length-3)+'건')+'</div>';
+    return h;
+  }
+  // [v58] 참여 프로젝트 주의
+  function partSec(){
+    if(!part.length) return '';
+    let h='<div class="spx-sec" style="color:#185fa5">참여 프로젝트 주의 <span class="n">'+part.length+'</span></div>'+
+      '<div class="spx-tm" style="margin:0 4px 2px">함께하는 프로젝트에서 마감이 임박했거나 지난 업무입니다</div>';
+    const vis=(spxMyPartOpen||part.length<=3)?part:part.slice(0,3);
+    h+=vis.map(function(x){return row(x,true);}).join('');
+    if(part.length>3) h+='<div class="spx-fold" style="border-top:none;margin-top:0" onclick="spxMyPartOpen=!spxMyPartOpen;spxRenderMy()">'+(spxMyPartOpen?'▾ 접기':'▸ 더보기 '+(part.length-3)+'건')+'</div>';
+    return h;
+  }
+  // [v58] 완료 — 접기(기본 닫힘)
+  function doneSec(){
+    if(!done.length) return '';
+    return '<div class="spx-fold" onclick="spxMyDoneOpen=!spxMyDoneOpen;spxRenderMy()">'+(spxMyDoneOpen?'▾':'▸')+' 완료 '+done.length+'</div>'+
+      (spxMyDoneOpen?done.slice(0,30).map(function(x){return row(x,false);}).join(''):'');
   }
   let body='';
   if(!spxUser){
     body='<div class="empty" style="padding:50px 20px">이름을 먼저 선택해주세요</div>';
-  } else if(!mine.length){
+  } else if(!mine.length&&!part.length){
     body='<div class="empty" style="padding:50px 20px">담당으로 지정된 할 일이 없습니다.<br><span style="font-size:13px">아래 버튼으로 할 일을 추가해보세요.</span></div>';
   } else {
-    if(!over.length&&!week.length&&!later.length) body+='<div class="empty" style="padding:36px 20px 10px">🎉 미완료 할 일이 없습니다</div>';
-    body+=sec('기한 지남',over,'#c0392b')+sec('이번 주',week,'var(--text)')+sec('예정',later,'var(--text3)');
-    if(done.length) body+=sec('완료',done.slice(0,20),'var(--text3)');
+    const myOpen=over.length+week.length+later.length;
+    if(myOpen||part.length){
+      body+='<div style="background:var(--text);color:var(--surface);border-radius:14px;padding:13px 16px;margin-top:14px;display:flex;align-items:center;gap:10px">'+
+        '<div style="flex:1;min-width:0"><div style="font-size:11px;opacity:.65;margin-bottom:2px">오늘 확인할 흐름</div>'+
+        '<div style="font-size:14.5px;font-weight:700">내 업무 '+myOpen+(part.length?' · 참여 프로젝트 주의 '+part.length:'')+'</div></div>'+
+        '<span style="font-size:11.5px;background:rgba(255,255,255,.16);padding:4px 10px;border-radius:14px;flex-shrink:0">총 '+(myOpen+part.length)+'건</span></div>';
+    }
+    if(!myOpen) body+='<div class="empty" style="padding:26px 20px 4px">🎉 내 미완료 할 일이 없습니다</div>';
+    body+='<div class="spx-two"><div>'+
+      sec('기한 지남',over,'#c0392b')+sec('이번 주',week,'var(--text)')+laterSec()+
+      '</div><div>'+partSec()+doneSec()+'</div></div>';
   }
   document.getElementById('my-content').innerHTML=
     '<div class="spx-hd"><div>'+
@@ -10452,14 +10556,28 @@ function spxRenderProj(){
       '</div>'+
       '<span style="color:var(--text3);font-size:16px">›</span></div>';
   }
+  // [v58] 전체 / 카테고리별
+  let body='';
+  if(spxProjTab==='cat'){
+    const groups={};
+    act.forEach(function(p){const k=p.tag||'기타';(groups[k]=groups[k]||[]).push(p);});
+    body=Object.keys(groups).sort(function(a,b){return String(a).localeCompare(String(b),'ko');}).map(function(k){
+      return '<div class="spx-sec" style="color:var(--text2)">'+spxEsc(k)+' <span class="n">'+groups[k].length+'</span></div>'+
+        '<div class="spx-grid2">'+groups[k].map(function(p){return card(p,!!mineCnt[p.id]);}).join('')+'</div>';
+    }).join('');
+    if(!body) body='<div class="empty" style="padding:36px">프로젝트가 없습니다</div>';
+  } else {
+    body=(mine.length?'<div class="spx-sec" style="color:#185fa5">내가 맡은 일이 있는 프로젝트 <span class="n">'+mine.length+'</span></div><div class="spx-grid2">'+mine.map(function(p){return card(p,true);}).join('')+'</div>':'')+
+      (rest.length?'<div class="spx-sec" style="color:var(--text3)">그 외 프로젝트 <span class="n">'+rest.length+'</span></div><div class="spx-grid2">'+rest.map(function(p){return card(p,false);}).join('')+'</div>':'');
+  }
   document.getElementById('eproj-content').innerHTML=
     '<div class="spx-hd"><div><div class="spx-hd-t">프로젝트</div>'+
     '<div class="spx-hd-s">전체 '+act.length+'개</div></div>'+
     '<button class="btn sm" onclick="openNew()">＋ 새 프로젝트</button></div>'+
-    '<div style="padding:0 16px 20px">'+
-      (mine.length?'<div class="spx-sec" style="color:#185fa5">내가 맡은 일이 있는 프로젝트 <span class="n">'+mine.length+'</span></div>'+mine.map(function(p){return card(p,true);}).join(''):'')+
-      (rest.length?'<div class="spx-sec" style="color:var(--text3)">그 외 프로젝트 <span class="n">'+rest.length+'</span></div>'+rest.map(function(p){return card(p,false);}).join(''):'')+
-    '</div>';
+    '<div class="spx-tabs">'+[['all','전체'],['cat','카테고리별']].map(function(t){
+      return '<div class="spx-tab'+(spxProjTab===t[0]?' on':'')+'" onclick="spxProjTab=\''+t[0]+'\';spxRenderProj()">'+t[1]+'</div>';
+    }).join('')+'</div>'+
+    '<div style="padding:0 16px 20px">'+body+'</div>';
 }
 // [v57] 직원 모드를 유지한 채 기존 프로젝트 페이지를 연다 (A안 + 모드 유지)
 function spxOpenProject(pid){
@@ -10520,13 +10638,22 @@ function spxBoardCal(){
   const startCol=first.getDay();
   let cells='';
   for(let i=0;i<startCol;i++) cells+='<div></div>';
+  const wide=spxWide(); // [v58] 가로/PC — 관리자 대시보드 캘린더처럼 업무 노출
   for(let d=1;d<=days;d++){
     const isT=(today.getFullYear()===spxCalY&&today.getMonth()===spxCalM&&today.getDate()===d);
     const wd=(startCol+d-1)%7;
     let mk='',cls='';
-    if(meetByDay[d]){cls=' has-mt';mk+='<div class="mk mt">'+spxEsc(String(meetByDay[d][0].title||'회의').slice(0,5))+(meetByDay[d].length>1?'+'+(meetByDay[d].length-1):'')+'</div>';}
-    if(taskByDay[d]){cls=' has-tk';mk+='<div class="mk tk">'+taskByDay[d].length+'건</div>';}
-    cells+='<div class="spx-cal-d'+cls+(isT?' today':'')+'" onclick="spxDayDetail('+d+')">'+
+    if(wide){
+      const evs=[];
+      (meetByDay[d]||[]).forEach(function(m){evs.push({l:m.title||'회의',bg:'#e6f1fb',c:'#185fa5'});});
+      (taskByDay[d]||[]).forEach(function(x){const col=COLORS[x.p.color]||COLORS.blue;evs.push({l:x.t.name,bg:col.tag,c:col.tagT||col.dot});});
+      mk=evs.slice(0,3).map(function(e){return '<div class="mk wide" style="background:'+e.bg+';color:'+e.c+'">'+spxEsc(String(e.l))+'</div>';}).join('')+
+        (evs.length>3?'<div class="mk" style="color:#185fa5;font-weight:700;margin-top:2px">+'+(evs.length-3)+'</div>':'');
+    } else {
+      if(meetByDay[d]){cls=' has-mt';mk+='<div class="mk mt">'+spxEsc(String(meetByDay[d][0].title||'회의').slice(0,5))+(meetByDay[d].length>1?'+'+(meetByDay[d].length-1):'')+'</div>';}
+      if(taskByDay[d]){cls=' has-tk';mk+='<div class="mk tk">'+taskByDay[d].length+'건</div>';}
+    }
+    cells+='<div class="spx-cal-d'+(wide?' wide':'')+cls+(isT?' today':'')+'" onclick="spxDayDetail('+d+')">'+
       '<div class="dd" style="'+(wd===0?'color:#a32d2d':wd===6?'color:#2b5a8a':'')+'">'+d+'</div>'+mk+'</div>';
   }
   // 다가오는 회의 (미완료, 날짜순)
@@ -10594,25 +10721,41 @@ function spxDayDetail(day){
 function spxBoardUrgent(){
   const today=spxToday();
   const all=spxAllTasks().filter(function(x){return !x.t.done;});
-  const over=all.filter(function(x){const d=spxDue(x.t);return d&&d<today;})
-    .sort(function(a,b){return spxDue(a.t)-spxDue(b.t);});
-  const week=all.filter(function(x){const d=spxDue(x.t);return d&&d>=today&&(d-today)/864e5<=7;})
-    .sort(function(a,b){return spxDue(a.t)-spxDue(b.t);});
-  function line(x,red){
+  const myPids={};
+  spxAllTasks().forEach(function(x){if(spxMine(x.t))myPids[x.p.id]=1;});
+  let f=spxUrgFilter;
+  if(!f) f=Object.keys(myPids).length?'proj':'all'; // [v58] 기본: 내 참여 프로젝트
+  const list=all.filter(function(x){
+    if(f==='mine') return spxMine(x.t);
+    if(f==='proj') return !!myPids[x.p.id];
+    return true;
+  });
+  const over=list.filter(function(x){const d=spxDue(x.t);return d&&d<today;}).sort(function(a,b){return spxDue(a.t)-spxDue(b.t);});
+  const soon=list.filter(function(x){const d=spxDue(x.t);return d&&d>=today&&(d-today)/864e5<=3;}).sort(function(a,b){return spxDue(a.t)-spxDue(b.t);});
+  function card(x,red){
     const d=spxDue(x.t);
     const diff=Math.round((d-today)/864e5);
-    const lbl=red?('D+'+(-diff)):(diff===0?'오늘':(d.getMonth()+1)+'/'+d.getDate());
-    return '<div class="spx-line" onclick="openSidePanel(\''+x.p.id+'\',\''+x.s.id+'\',\''+x.t.id+'\')">'+
-      '<span class="d" style="color:'+(red?'#c0392b':diff<=1?'#c0392b':'#854f0b')+'">'+lbl+'</span>'+
-      '<span style="flex:1;min-width:0;color:var(--text)">'+spxEsc(x.t.name)+'</span>'+
-      '<span class="spx-tm" style="flex-shrink:0;margin:0">'+spxEsc(x.t.meta||'미지정')+' · '+spxEsc(String(x.p.name).slice(0,10))+'</span></div>';
+    const lbl=red?('D+'+(-diff)):(diff===0?'D-DAY':'D-'+diff);
+    return '<div class="spx-urgcard" onclick="openSidePanel(\''+x.p.id+'\',\''+x.s.id+'\',\''+x.t.id+'\')">'+
+      '<span class="spx-urgchip" style="'+(red?'background:#fdf2f2;color:#c0392b':'background:#faeeda;color:#854f0b')+'">'+lbl+'</span>'+
+      '<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600;color:var(--text);line-height:1.4">'+spxEsc(x.t.name)+'</div>'+
+      '<div class="spx-tm">'+spxEsc(x.p.name)+' · '+spxEsc(x.t.meta||'미지정')+'</div></div></div>';
   }
-  return '<div class="spx-sec" style="color:#c0392b;margin-top:14px">🚨 마감 초과 <span class="n">'+over.length+'</span></div>'+
-    (over.length?over.map(function(x){return line(x,true);}).join(''):'<div class="spx-tm" style="padding:6px 4px">없습니다 👏</div>')+
-    '<div class="spx-sec" style="color:#854f0b">이번 주 해야 할 업무 <span class="n">'+week.length+'</span></div>'+
-    (week.length?week.map(function(x){return line(x,false);}).join(''):'<div class="spx-tm" style="padding:6px 4px">이번 주 마감 업무가 없습니다</div>');
+  const chips=[['all','전체'],['proj','내 참여 프로젝트'],['mine','내 업무']].map(function(c){
+    return '<span class="spx-chip'+(f===c[0]?' on':'')+'" onclick="spxUrgFilter=\''+c[0]+'\';spxRenderBoard()">'+c[1]+'</span>';
+  }).join('');
+  return '<div style="display:flex;gap:10px;margin-top:14px">'+
+    '<div class="spx-sumcard" style="background:#fdf2f2"><div style="font-size:12px;color:#c0392b;font-weight:700">마감 초과</div><div style="font-size:26px;font-weight:700;font-family:var(--mono);color:#c0392b;line-height:1.35">'+over.length+'<span style="font-size:13px;font-weight:600"> 건</span></div></div>'+
+    '<div class="spx-sumcard" style="background:#faeeda"><div style="font-size:12px;color:#854f0b;font-weight:700">3일 이내</div><div style="font-size:26px;font-weight:700;font-family:var(--mono);color:#854f0b;line-height:1.35">'+soon.length+'<span style="font-size:13px;font-weight:600"> 건</span></div></div></div>'+
+    '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:14px">'+chips+'</div>'+
+    '<div class="spx-two"><div>'+
+    '<div class="spx-sec" style="color:#c0392b">마감 초과 <span class="n">'+over.length+'</span></div>'+
+    (over.length?over.map(function(x){return card(x,true);}).join(''):'<div class="spx-tm" style="padding:6px 4px">없습니다 👏</div>')+
+    '</div><div>'+
+    '<div class="spx-sec" style="color:#854f0b">3일 이내 마감 <span class="n">'+soon.length+'</span></div>'+
+    (soon.length?soon.map(function(x){return card(x,false);}).join(''):'<div class="spx-tm" style="padding:6px 4px">3일 이내 마감 업무가 없습니다</div>')+
+    '</div></div>';
 }
-
 // 캠페인
 function spxBoardCamp(){
   const list=campaigns||[];
