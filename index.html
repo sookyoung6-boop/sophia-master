@@ -17,7 +17,7 @@
 <link rel="icon" type="image/png" href="icon-192.png">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
-:root{--bg:#f7f6f2;--surface:#fff;--surface2:#f0ede8;--border:rgba(0,0,0,.08);--border2:rgba(0,0,0,.14);--text:#1a1917;--text2:#6b6860;--text3:#908c86;--red:#c0392b;--red-bg:#fdf2f2;--radius:12px;--rsm:8px;--mono:'DM Mono',monospace;--sans:'Noto Sans KR',sans-serif}
+:root{--bg:#f9f9f7;--surface:#fff;--surface2:#f4f3f2;--border:rgba(0,0,0,.08);--border2:rgba(0,0,0,.14);--text:#1a1a1a;--text2:#686766;--text3:#8e8c8c;--red:#c0392b;--red-bg:#fdf2f2;--radius:12px;--rsm:8px;--mono:'DM Mono',monospace;--sans:'Noto Sans KR',sans-serif}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.6}
 input,textarea,select,button{font-family:var(--sans)}
@@ -109,7 +109,7 @@ input,textarea,select,button{font-family:var(--sans)}
 .st-pending{background:#faeeda;color:#854f0b}.st-review{background:#eeedfe;color:#3c3489}
 .status-sel{appearance:none;border:none;font-size:14px;font-weight:500;cursor:pointer;padding:3px 20px 3px 8px;border-radius:10px;font-family:var(--sans);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9'%3E%3Cpath fill='%23888' d='M4.5 6L1 2.5h7z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 5px center;outline:none}
 .task-list{display:flex;flex-direction:column;gap:6px}
-.task-item{display:flex;align-items:flex-start;gap:11px;padding:11px 13px;background:var(--surface2);border-radius:var(--rsm)}
+.task-item{display:flex;align-items:flex-start;gap:11px;padding:11px 13px;background:#fafaf9;border:1px solid var(--border);border-radius:var(--rsm)}
 .task-item:hover .tdel{opacity:1}
 .chk{width:17px;height:17px;border-radius:5px;border:1.5px solid var(--border2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;transition:background .15s,border-color .15s}
 .chk.on{background:#27ae60;border-color:#27ae60;color:#fff}
@@ -301,37 +301,89 @@ select.fi{cursor:pointer;appearance:none;background-image:url("data:image/svg+xm
 .health-bad{background:#fdf2f2;color:#c0392b}
 .health-idle{background:var(--surface2);color:var(--text3)}
 
-/* ═══ [v56] 직원 모드 ═══ */
+/* ═══ [v57] 직원 모드 ═══ */
 body.spx-emp .sidebar,body.spx-emp .mob-nav,body.spx-emp .topbar{display:none!important}
-body.spx-emp .main{padding-bottom:70px!important}
-body.spx-emp .content,body.spx-emp .home-content{padding:16px 14px!important;max-width:100%!important}
-#spx-emp-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:62px;background:var(--surface);border-top:1px solid var(--border);z-index:300;grid-template-columns:repeat(4,1fr);align-items:center}
+body.spx-emp .main{padding-bottom:74px!important}
+body.spx-emp .content{padding:0 0 20px!important;max-width:640px!important;margin:12px auto 16px;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:0 2px 14px rgba(0,0,0,.03)}
+@media(max-width:700px){body.spx-emp .content{margin:10px 10px 16px;max-width:none!important}}
+body.spx-emp #proj-content,body.spx-emp #deliv-content{padding:14px 14px 24px!important;max-width:100%!important}
+body.spx-emp #v-tasks{padding:14px 14px 24px}
+#spx-emp-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:64px;background:var(--surface);border-top:1px solid var(--border);z-index:240;grid-template-columns:repeat(4,1fr);align-items:center;box-shadow:0 -4px 16px rgba(0,0,0,.04)}
 body.spx-emp #spx-emp-nav{display:grid}
-.spx-nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 0;cursor:pointer;color:var(--text3);font-size:11px;-webkit-tap-highlight-color:transparent;transition:color .15s}
-.spx-nav-item.on{color:var(--text);font-weight:600}
+.spx-nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0;cursor:pointer;color:var(--text3);font-size:10.5px;-webkit-tap-highlight-color:transparent;transition:color .15s}
+.spx-nav-item.on{color:var(--text);font-weight:700}
 .spx-nav-item svg{width:21px;height:21px}
-.spx-hd{padding:16px 16px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface);position:sticky;top:0;z-index:20}
-.spx-hd-t{font-size:18px;font-weight:700;color:var(--text);line-height:1.3}
+.spx-hd{padding:18px 18px 13px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface);position:sticky;top:0;z-index:20;border-radius:18px 18px 0 0}
+.spx-hd-t{font-size:19px;font-weight:700;color:var(--text);line-height:1.3;letter-spacing:-.01em}
 .spx-hd-s{font-size:12px;color:var(--text3);margin-top:2px}
-.spx-sec{font-size:12px;font-weight:600;margin:18px 4px 8px;letter-spacing:.02em}
-.spx-row{display:flex;gap:11px;padding:12px 4px;border-bottom:1px solid var(--border);align-items:flex-start}
-.spx-ck{width:21px;height:21px;border-radius:50%;border:1.6px solid var(--border2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;transition:all .15s}
+.spx-brand{font-size:10px;letter-spacing:2px;color:var(--text3);font-weight:700}
+.spx-sec{font-size:12px;font-weight:700;margin:20px 4px 6px;letter-spacing:.02em;display:flex;align-items:center;gap:6px}
+.spx-sec .n{font-weight:600;opacity:.65}
+.spx-row{display:flex;gap:12px;padding:12px 4px;border-bottom:1px solid var(--border);align-items:flex-start}
+.spx-row:active{background:var(--surface2)}
+.spx-ck{width:22px;height:22px;border-radius:50%;border:1.6px solid var(--border2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;transition:all .15s}
 .spx-ck.on{background:#27ae60;border-color:#27ae60;color:#fff}
 .spx-tn{font-size:15px;color:var(--text);line-height:1.45}
 .spx-tn.done{text-decoration:line-through;color:var(--text3)}
-.spx-tm{font-size:12px;color:var(--text3);margin-top:3px}
-.spx-pill{display:inline-block;font-size:11px;padding:2px 9px;border-radius:20px;font-weight:600}
-.spx-card{display:flex;align-items:center;gap:11px;padding:13px 4px;border-bottom:1px solid var(--border);cursor:pointer}
-.spx-btn-lg{width:100%;padding:14px;border-radius:10px;border:1.5px dashed var(--border2);background:transparent;color:var(--text2);font-size:14px;font-family:var(--sans);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:14px}
+.spx-tm{font-size:12px;color:var(--text3);margin-top:3px;line-height:1.5}
+.spx-pill{display:inline-block;font-size:11px;padding:2.5px 10px;border-radius:20px;font-weight:600;white-space:nowrap}
+.spx-card{display:flex;align-items:center;gap:12px;padding:14px 4px;border-bottom:1px solid var(--border);cursor:pointer}
+.spx-card:active{background:var(--surface2)}
+.spx-menu{display:flex;align-items:center;gap:13px;padding:15px 14px;border:1px solid var(--border);border-radius:14px;cursor:pointer;background:var(--surface);margin-bottom:10px;transition:background .12s}
+.spx-menu:active{background:var(--surface2)}
+.spx-menu .ic{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.spx-btn-lg{width:100%;padding:14px;border-radius:12px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-weight:600;font-size:14px;font-family:var(--sans);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:16px}
 .spx-btn-lg:hover{background:var(--surface2);border-color:var(--text3)}
 .spx-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:19}
 .spx-tab{flex:1;text-align:center;padding:12px 0;font-size:14px;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent}
-.spx-tab.on{color:var(--text);font-weight:600;border-bottom-color:var(--text)}
+.spx-tab.on{color:var(--text);font-weight:700;border-bottom-color:var(--text)}
+/* 컴팩트 캘린더 */
+.spx-cal{padding:4px 2px}
+.spx-cal-wk{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:3px}
+.spx-cal-wk span{text-align:center;font-size:10.5px;color:var(--text3);font-weight:600;padding:3px 0}
+.spx-cal-g{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.spx-cal-d{min-height:50px;border-radius:10px;padding:5px 4px 3px;font-size:12px;color:var(--text2);cursor:pointer;line-height:1.3;overflow:hidden;border:1.5px solid transparent}
+.spx-cal-d:active{opacity:.75}
+.spx-cal-d .dd{font-weight:600;font-size:12px}
+.spx-cal-d.has-tk{background:#f7e2df}
+.spx-cal-d.has-tk .dd{color:#5b2320}
+.spx-cal-d.has-mt{background:#dbe7f8}
+.spx-cal-d.has-mt .dd{color:#1e3a5f}
+.spx-cal-d.today{border-color:#a32d2d;background:transparent}
+.spx-cal-d.today .dd{color:#a32d2d;font-weight:700}
+.spx-cal-d .mk{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.spx-cal-d .mk.mt{color:#2b5a8a}
+.spx-cal-d .mk.tk{color:#a32d2d;font-weight:700}
+.spx-day-chip{text-align:center;background:var(--surface2);border-radius:10px;padding:5px 9px;flex-shrink:0;min-width:46px}
+.spx-fold{display:flex;align-items:center;gap:6px;padding:11px 4px;cursor:pointer;color:var(--text3);font-size:13px;font-weight:600;border-top:1px solid var(--border);margin-top:8px}
+.spx-line{display:flex;gap:9px;padding:9px 4px;border-bottom:1px solid var(--border);align-items:baseline;cursor:pointer;font-size:13.5px;line-height:1.5}
+.spx-line:active{background:var(--surface2)}
+.spx-line .d{font-family:var(--mono);font-size:11.5px;font-weight:700;flex-shrink:0;min-width:40px}
 #spx-gate{position:fixed;inset:0;z-index:99998;background:var(--bg);display:none;align-items:center;justify-content:center;padding:24px}
 #spx-gate.on{display:flex}
-.spx-name{padding:13px 8px;border:1px solid var(--border2);border-radius:10px;text-align:center;font-size:15px;cursor:pointer;color:var(--text);transition:all .12s}
+.spx-name{padding:13px 8px;border:1px solid var(--border2);border-radius:11px;text-align:center;font-size:15px;cursor:pointer;color:var(--text);transition:all .12s;background:var(--surface)}
 .spx-name:hover{background:var(--surface2)}
-.spx-name.on{border:2px solid var(--text);background:var(--surface2);font-weight:600}
+.spx-name.on{border:2px solid var(--text);background:var(--surface2);font-weight:700}
+/* [v57.4] 프로젝트 내 결과물 탭 모바일 */
+.parch-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+@media(max-width:860px){
+  .parch-grid{grid-template-columns:1fr;gap:16px}
+}
+/* [v57.2] 결과물 아카이브 모바일 */
+.deliv-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.deliv-row{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s}
+@media(max-width:700px){
+  .deliv-head{flex-direction:column;align-items:stretch;gap:10px;margin-bottom:14px}
+  .deliv-head .view-toggle{align-self:flex-start}
+  .deliv-row{padding:10px 4px;flex-wrap:wrap}
+  .deliv-row a,.deliv-row>span[style*="eaf3de"]{font-size:12px!important}
+  body.spx-emp #deliv-content{padding:14px 14px 24px!important}
+}
+/* [v57.1] 더보기 바텀시트 */
+.spx-sheet-ov{position:fixed;inset:0;background:rgba(20,20,20,.38);z-index:9000;display:flex;align-items:flex-end;justify-content:center}
+.spx-sheet{width:100%;max-width:640px;background:var(--surface);border-radius:20px 20px 0 0;padding:8px 16px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px rgba(0,0,0,.16);animation:spxUp .2s ease}
+@keyframes spxUp{from{transform:translateY(46px);opacity:.4}to{transform:translateY(0);opacity:1}}
+.spx-sheet .grab{width:38px;height:4px;border-radius:2px;background:var(--border2);margin:4px auto 14px}
 
 .tl-wrap{overflow-x:auto;margin-bottom:20px}
 .tl-inner{min-width:560px}
@@ -696,7 +748,7 @@ body.spx-emp #spx-emp-nav{display:grid}
      비밀번호 변경 시: 아래 SPX_AUTH_KEY 값을 새 비번의 base64로 교체
      base64 변환: 검색창에 "base64 encoder" 또는 console에서 btoa('새비번')
 ═══════════════════════════════════════════════════════════════════ -->
-<div id="spx-auth-gate" style="position:fixed;inset:0;z-index:99999;background:#f7f6f2;display:flex;align-items:center;justify-content:center;font-family:'Pretendard','맑은 고딕','Malgun Gothic',sans-serif">
+<div id="spx-auth-gate" style="position:fixed;inset:0;z-index:99999;background:#f9f9f7;display:flex;align-items:center;justify-content:center;font-family:'Pretendard','맑은 고딕','Malgun Gothic',sans-serif">
   <div style="text-align:center;padding:40px 32px;max-width:360px;width:100%;box-sizing:border-box">
     <div style="font-size:13px;letter-spacing:3px;color:#908c86;margin-bottom:10px;font-weight:600">SPEXTRUM</div>
     <div style="font-size:22px;font-weight:700;color:#1a1917;margin-bottom:6px;letter-spacing:-.01em">Business OS</div>
@@ -743,7 +795,7 @@ body.spx-emp #spx-emp-nav{display:grid}
 
 <div class="toast" id="toast"></div>
 <!-- Firebase 로딩 오버레이 -->
-<div id="fb-loading-overlay" style="position:fixed;inset:0;background:var(--bg,#f7f6f2);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+<div id="fb-loading-overlay" style="position:fixed;inset:0;background:var(--bg,#f9f9f7);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
   <div style="font-size:16px;font-weight:700;color:#1a1917;letter-spacing:.08em">SPEXTRUM</div>
   <div style="display:flex;gap:6px;align-items:center">
     <div style="width:6px;height:6px;border-radius:50%;background:#1a1917;animation:fbDot 1.2s infinite .0s both"></div>
@@ -872,10 +924,10 @@ body.spx-emp #spx-emp-nav{display:grid}
 const COLORS={teal:{tag:'#e1f5ee',tagT:'#0f6e56',dot:'#1D9E75'},blue:{tag:'#e6f1fb',tagT:'#185fa5',dot:'#378ADD'},amber:{tag:'#faeeda',tagT:'#854f0b',dot:'#EF9F27'},purple:{tag:'#eeedfe',tagT:'#3c3489',dot:'#7F77DD'},coral:{tag:'#faece7',tagT:'#993c1d',dot:'#D85A30'},pink:{tag:'#fbeaf0',tagT:'#993556',dot:'#D4537E'}};
 const STC={'진행중':'st-active','완료':'st-done','예정':'st-pending','검토중':'st-review'};
 const DEPTS=['콘텐츠파트','디자인파트','경영지원팀','운영팀','CEO','COO','외주'];
-const FTYPES={pdf:{l:'PDF',bg:'#faece7',t:'#993c1d'},docx:{l:'DOC',bg:'#e6f1fb',t:'#185fa5'},doc:{l:'DOC',bg:'#e6f1fb',t:'#185fa5'},xlsx:{l:'XLS',bg:'#eaf3de',t:'#3b6d11'},xls:{l:'XLS',bg:'#eaf3de',t:'#3b6d11'},pptx:{l:'PPT',bg:'#faeeda',t:'#854f0b'},ppt:{l:'PPT',bg:'#faeeda',t:'#854f0b'},png:{l:'IMG',bg:'#eeedfe',t:'#3c3489'},jpg:{l:'IMG',bg:'#eeedfe',t:'#3c3489'},jpeg:{l:'IMG',bg:'#eeedfe',t:'#3c3489'},fig:{l:'FIG',bg:'#fbeaf0',t:'#993556'},zip:{l:'ZIP',bg:'#f0ede8',t:'#5f5e5a'},ai:{l:'AI',bg:'#faeeda',t:'#854f0b'},gs:{l:'GS',bg:'#eaf3de',t:'#3b6d11'}};
+const FTYPES={pdf:{l:'PDF',bg:'#faece7',t:'#993c1d'},docx:{l:'DOC',bg:'#e6f1fb',t:'#185fa5'},doc:{l:'DOC',bg:'#e6f1fb',t:'#185fa5'},xlsx:{l:'XLS',bg:'#eaf3de',t:'#3b6d11'},xls:{l:'XLS',bg:'#eaf3de',t:'#3b6d11'},pptx:{l:'PPT',bg:'#faeeda',t:'#854f0b'},ppt:{l:'PPT',bg:'#faeeda',t:'#854f0b'},png:{l:'IMG',bg:'#eeedfe',t:'#3c3489'},jpg:{l:'IMG',bg:'#eeedfe',t:'#3c3489'},jpeg:{l:'IMG',bg:'#eeedfe',t:'#3c3489'},fig:{l:'FIG',bg:'#fbeaf0',t:'#993556'},zip:{l:'ZIP',bg:'#f4f3f2',t:'#5f5e5a'},ai:{l:'AI',bg:'#faeeda',t:'#854f0b'},gs:{l:'GS',bg:'#eaf3de',t:'#3b6d11'}};
 function uid(){return Math.random().toString(36).slice(2,9)}
 function today(){return new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'})}
-function ftype(n){const e=(n.split('.').pop()||'').toLowerCase();return FTYPES[e]||{l:'FILE',bg:'#f0ede8',t:'#5f5e5a'}}
+function ftype(n){const e=(n.split('.').pop()||'').toLowerCase();return FTYPES[e]||{l:'FILE',bg:'#f4f3f2',t:'#5f5e5a'}}
 function fsz(b){return b<1024?b+'B':b<1048576?Math.round(b/1024)+'KB':(b/1048576).toFixed(1)+'MB'}
 
 let projects=[
@@ -1802,7 +1854,7 @@ function projListInner(p){
       <input type="hidden" id="qa-meta-${p.id}-${s.id}">
     </div>`;
     return `<div data-sched-id="${s.id}" style="border-bottom:2px solid var(--border)">
-      <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#E5DFD2;border-top:1px solid var(--border2)">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#e4e2dd;border-top:1px solid var(--border2)">
         <div style="width:8px;height:8px;border-radius:50%;background:${c.dot}"></div>
         <span style="font-size:14px;font-weight:700;color:var(--text);flex:1">${s.name}</span>
         <span class="sbadge ${cls}" style="font-size:14px">${s.status}</span>
@@ -2132,7 +2184,7 @@ function projArchiveHTML(p){
     </div>
   </div>
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+  <div class="parch-grid">
     <!-- 결과물 체크리스트 -->
     <div>
       <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px">결과물 체크리스트</div>
@@ -5031,7 +5083,7 @@ function renderHomeCal(){
     <div style="display:flex;gap:14px;flex-wrap:wrap;padding:12px 4px 0;font-size:14px;color:var(--text3)">
       <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#e6f1fb;border:1px solid #185fa5;display:inline-block"></span>회의</span>
       <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#faeeda;border:1px solid #854f0b;display:inline-block"></span>캠페인</span>
-      <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#f0ede8;display:inline-block"></span>태스크 마감</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#f4f3f2;display:inline-block"></span>태스크 마감</span>
     </div>`;
 }
 
@@ -5566,9 +5618,9 @@ function weeklyGanttHTMLWithOffset(weekOffset){
 }
 
 // CAMPAIGN
-function setCampFilter(f){campFilter=f;document.getElementById('camp-table').innerHTML=campTableHTML();document.querySelectorAll('.filt-btn').forEach(el=>el.classList.toggle('on',el.textContent===f))}
+function setCampFilter(f){campFilter=f;{const _ct=document.getElementById('camp-table');if(_ct)_ct.innerHTML=campTableHTML();}if(typeof spxSharedRefresh==='function')spxSharedRefresh();document.querySelectorAll('.filt-btn').forEach(el=>el.classList.toggle('on',el.textContent===f))}
 function saveCamp(id,k,v){const c=campaigns.find(x=>x.id===id);if(c&&v.trim()&&v!=='—'){c[k]=v.trim();saveToLS();}}
-function deleteCamp(id){const c=campaigns.find(x=>x.id===id);cfm('캠페인 삭제',`"${c.name}"을 삭제합니다.`,()=>{_deletedCampIds.add(id);campaigns=campaigns.filter(x=>x.id!==id);saveToLS();document.getElementById('camp-table').innerHTML=campTableHTML();toast('삭제됐습니다')})}
+function deleteCamp(id){const c=campaigns.find(x=>x.id===id);cfm('캠페인 삭제',`"${c.name}"을 삭제합니다.`,()=>{_deletedCampIds.add(id);campaigns=campaigns.filter(x=>x.id!==id);saveToLS();{const _ct=document.getElementById('camp-table');if(_ct)_ct.innerHTML=campTableHTML();}if(typeof spxSharedRefresh==='function')spxSharedRefresh();toast('삭제됐습니다')})}
 function openAddCampaign(){
   modal(`<div class="m-title">새 캠페인 추가</div>
   <div class="two-col"><div class="frow"><label class="fl">캠페인명</label><input class="fi" id="mc-name" placeholder="SNS 런칭 캠페인"></div><div class="frow"><label class="fl">단계</label><input class="fi" id="mc-stage" placeholder="기획"></div></div>
@@ -5579,8 +5631,8 @@ function openAddCampaign(){
 }
 function saveCampaign(){
   const name=document.getElementById('mc-name').value.trim();if(!name)return;
-  campaigns.push({id:uid(),name,stage:document.getElementById('mc-stage').value.trim()||'기획',status:'예정',start:document.getElementById('mc-start').value.trim(),end:document.getElementById('mc-end').value.trim(),budget:document.getElementById('mc-budget').value.trim(),manager:document.getElementById('mc-manager').value.trim(),channel:document.getElementById('mc-channel').value.trim(),result:''});
-  closeModal();saveToLS();addNotif('새 캠페인이 추가됐습니다','goHome()');document.getElementById('camp-table').innerHTML=campTableHTML();toast('캠페인이 추가됐습니다');
+  campaigns.push({id:uid(),name,stage:document.getElementById('mc-stage').value.trim()||'기획',status:'예정',start:document.getElementById('mc-start').value.trim(),end:document.getElementById('mc-end').value.trim(),budget:document.getElementById('mc-budget').value.trim(),manager:document.getElementById('mc-manager').value.trim(),channel:document.getElementById('mc-channel').value.trim(),result:'',createdBy:(typeof spxUser!=='undefined'&&spxUser)?spxUser:''});
+  closeModal();saveToLS();addNotif('새 캠페인이 추가됐습니다','goHome()');{const _ct=document.getElementById('camp-table');if(_ct)_ct.innerHTML=campTableHTML();}if(typeof spxSharedRefresh==='function')spxSharedRefresh();toast('캠페인이 추가됐습니다');
 }
 
 // MEETING
@@ -5821,7 +5873,7 @@ function cycleMeetStatus(id){
 function setMeetFilter(f){meetFilter=f;document.getElementById('meet-list').innerHTML=meetListHTML()}
 function deleteMeeting(id){const m=meetings.find(x=>x.id===id);cfm('회의 삭제',`"${m.title}"을 삭제합니다.${m.calEventId&&gcConnected?' 캘린더 일정도 함께 삭제됩니다.':''}`,async()=>{
   if(m.calEventId&&gcConnected)await calFetch('DELETE',`/calendars/primary/events/${m.calEventId}`);
-  meetings=meetings.filter(x=>x.id!==id);saveToLS();document.getElementById('meet-list').innerHTML=meetListHTML();toast('삭제됐습니다')})}function openAddMeeting(){
+  meetings=meetings.filter(x=>x.id!==id);saveToLS();{const _ml=document.getElementById('meet-list');if(_ml)_ml.innerHTML=meetListHTML();}if(typeof spxSharedRefresh==='function')spxSharedRefresh();toast('삭제됐습니다')})}function openAddMeeting(){
   modal(`<div class="m-title">새 회의 추가</div>
   <div class="frow"><label class="fl">회의 제목</label><input class="fi" id="mm-title" placeholder="주간 팀 미팅"></div>
   <div class="two-col"><div class="frow"><label class="fl">날짜</label><input class="fi" id="mm-date" placeholder="2026.04.15"></div><div class="frow"><label class="fl">시간</label><input class="fi" id="mm-time" placeholder="10:00"></div></div>
@@ -5854,14 +5906,14 @@ function saveEditMeeting(id){
   m.attendees=document.getElementById('em-att').value.trim();
   m.notes=document.getElementById('em-notes').value.trim();
   closeModal();saveToLS();
-  document.getElementById('meet-list').innerHTML=meetListHTML();
+  {const _ml=document.getElementById('meet-list');if(_ml)_ml.innerHTML=meetListHTML();}if(typeof spxSharedRefresh==='function')spxSharedRefresh();
   toast('회의가 수정됐습니다');
 }
 
 function saveMeeting(){
   const title=document.getElementById('mm-title').value.trim();if(!title)return;
-  meetings.push({id:uid(),title,date:document.getElementById('mm-date').value.trim()||today(),time:document.getElementById('mm-time').value.trim()||'',attendees:document.getElementById('mm-att').value.trim(),status:'예정',notes:document.getElementById('mm-notes').value.trim()});
-  closeModal();saveToLS();addNotif('새 회의가 추가됐습니다','goHome()');document.getElementById('meet-list').innerHTML=meetListHTML();toast('회의가 추가됐습니다');
+  meetings.push({id:uid(),title,date:document.getElementById('mm-date').value.trim()||today(),time:document.getElementById('mm-time').value.trim()||'',attendees:document.getElementById('mm-att').value.trim(),status:'예정',notes:document.getElementById('mm-notes').value.trim(),createdBy:(typeof spxUser!=='undefined'&&spxUser)?spxUser:''});
+  closeModal();saveToLS();addNotif('새 회의가 추가됐습니다','goHome()');{const _ml=document.getElementById('meet-list');if(_ml)_ml.innerHTML=meetListHTML();}if(typeof spxSharedRefresh==='function')spxSharedRefresh();toast('회의가 추가됐습니다');
 }
 
 // MODAL HELPER
@@ -6315,7 +6367,7 @@ async function syncMeetingToCalendar(mid){
     res=await calFetch('POST',`/calendars/${calId}/events`,evt);
     if(res&&res.id){m.calEventId=res.id;m.calSyncHash=newHash;saveToLS();toast('"'+m.title+'" 캘린더에 추가됐습니다')}
   }
-  if(document.getElementById('meet-list'))document.getElementById('meet-list').innerHTML=meetListHTML();
+  if(document.getElementById('meet-list')){const _ml=document.getElementById('meet-list');if(_ml)_ml.innerHTML=meetListHTML();}if(typeof spxSharedRefresh==='function')spxSharedRefresh();
 }
 
 async function removeMeetingFromCalendar(mid){
@@ -6323,7 +6375,7 @@ async function removeMeetingFromCalendar(mid){
   if(!m||!m.calEventId)return;
   await calFetch('DELETE',`/calendars/primary/events/${m.calEventId}`);
   delete m.calEventId;toast('캘린더 일정이 삭제됐습니다');
-  if(document.getElementById('meet-list'))document.getElementById('meet-list').innerHTML=meetListHTML();
+  if(document.getElementById('meet-list')){const _ml=document.getElementById('meet-list');if(_ml)_ml.innerHTML=meetListHTML();}if(typeof spxSharedRefresh==='function')spxSharedRefresh();
 }
 
 async function syncAllMeetings(){
@@ -6345,7 +6397,7 @@ async function syncAllMeetings(){
   }
   saveToLS();
   toast(`✅ 신규 ${created}건 · 업데이트 ${updated}건`);
-  if(document.getElementById('meet-list'))document.getElementById('meet-list').innerHTML=meetListHTML();
+  if(document.getElementById('meet-list')){const _ml=document.getElementById('meet-list');if(_ml)_ml.innerHTML=meetListHTML();}if(typeof spxSharedRefresh==='function')spxSharedRefresh();
 }
 
 async function loadUpcomingEvents(){
@@ -6585,7 +6637,7 @@ async function doSendReportEmail(){
       <h1 style="font-size:20px;border-bottom:2px solid #1a1917;padding-bottom:10px">📊 Spextrum 주간 업무 현황</h1>
       <p style="color:#666;font-size:14px">${today.toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'})}</p>
       <h2 style="font-size:15px;margin-top:24px">✅ 진행중 프로젝트 (${inProgress.length}개)</h2>
-      ${inProgress.map(p=>{const pr=prog(p);return`<div style="padding:10px;background:#f7f6f2;border-radius:6px;margin:6px 0"><strong>${p.name}</strong> <span style="color:#666;font-size:14px">${pr}% 완료</span></div>`;}).join('')}
+      ${inProgress.map(p=>{const pr=prog(p);return`<div style="padding:10px;background:#f9f9f7;border-radius:6px;margin:6px 0"><strong>${p.name}</strong> <span style="color:#666;font-size:14px">${pr}% 완료</span></div>`;}).join('')}
       ${overdue.length?`<h2 style="font-size:15px;margin-top:24px;color:#c0392b">⚠️ 마감 초과 태스크 (${overdue.length}건)</h2>
       ${overdue.map(t=>`<div style="padding:8px 10px;background:#fdf2f2;border-radius:6px;margin:4px 0;font-size:14px">${t.name} <span style="color:#999">— ${t.dueDate}</span></div>`).join('')}`:''}
       <p style="margin-top:24px;font-size:14px;color:#999;border-top:1px solid #eee;padding-top:12px">— Spextrum Business OS</p>
@@ -7068,7 +7120,7 @@ function fbSaveSnapshot(){
 // 원칙 3: 수신은 3-way 병합 — 로컬 미저장 변경은 원격이 절대 덮지 못한다.
 // ═══════════════════════════════════════════════════════════════════
 const FB_ROOT='spextrum_v2';
-const APP_VERSION=56.0; // [v55] 버전 게이트 — 서버의 _minVersion보다 낮으면 잠금
+const APP_VERSION=57.8; // [v55] 버전 게이트 — 서버의 _minVersion보다 낮으면 잠금
 let _versionBlocked=false;
 
 // ═══ [v55] 영속 outbox — "서버가 승인하기 전의 내 변경"을 기기에 보관 ═══
@@ -7648,7 +7700,7 @@ window.spxRestoreMeetings=function(dateKey){
     if(!confirm(`회의를 ${dateKey} (${v.tsStr}) 시점으로 복원합니다.\n현재 ${meetings.length}건 → 복원 후 ${v.count}건\n계속하시겠습니까?`)) return false;
     meetings=v.meetings;
     saveToLS();
-    if(document.getElementById('meet-list')) document.getElementById('meet-list').innerHTML=meetListHTML();
+    if(document.getElementById('meet-list')) {const _ml=document.getElementById('meet-list');if(_ml)_ml.innerHTML=meetListHTML();}if(typeof spxSharedRefresh==='function')spxSharedRefresh();
     toast(`✅ 회의 ${v.count}건 복원됨`);
     return true;
   }catch(e){
@@ -8400,10 +8452,10 @@ function renderDeliverableArchive(){
   }
 
   document.getElementById('deliv-content').innerHTML=`
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+    <div class="deliv-head">
       <div>
         <h1 style="font-size:19px;font-weight:700">결과물 아카이브</h1>
-        <p style="font-size:14px;color:var(--text3);margin-top:3px">전체 ${total}개 · 완료 ${done}개 · 파일/링크 ${withFile}개</p>
+        <p style="font-size:13px;color:var(--text3);margin-top:3px">전체 ${total}개 · 완료 ${done}개 · 파일/링크 ${withFile}개</p>
       </div>
       <div class="view-toggle">
         <button class="vt-btn${delivGroupBy==='project'?' on':''}" onclick="delivGroupBy='project';renderDeliverableArchive()">프로젝트별</button>
@@ -8419,16 +8471,15 @@ function delivRowHTML(d, showProj){
     ? `<a href="${d.link}" target="_blank" style="font-size:13px;color:#185fa5;text-decoration:none;background:#e6f1fb;padding:2px 8px;border-radius:6px;flex-shrink:0">🔗 링크</a>`
     : '';
   const fileBadge=d.file?`<span style="font-size:13px;background:#eaf3de;color:#3b6d11;padding:2px 8px;border-radius:6px;flex-shrink:0">📎 ${d.file}</span>`:'';
-  return `<div onclick="openProj('${d.projId}')"
-    style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s"
+  return `<div onclick="openProj('${d.projId}')" class="deliv-row"
     onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
-    <span style="font-size:14px;flex-shrink:0">${d.done?'✅':'⬜'}</span>
+    <span style="font-size:14px;flex-shrink:0;margin-top:1px">${d.done?'✅':'⬜'}</span>
     <div style="flex:1;min-width:0">
-      <div style="font-size:14px;font-weight:500;color:var(--text);${d.done?'':''}overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.name}</div>
-      <div style="font-size:13px;color:var(--text3);margin-top:1px">
-        ${showProj?`<span style="background:${c.tag};color:${c.tagT};padding:1px 6px;border-radius:4px;margin-right:6px">${d.projName}</span>`:''}
+      <div style="font-size:14px;font-weight:500;color:var(--text);line-height:1.45">${d.name}</div>
+      <div style="font-size:12.5px;color:var(--text3);margin-top:2px;display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center">
+        ${showProj?`<span style="background:${c.tag};color:${c.tagT};padding:1px 6px;border-radius:4px">${d.projName}</span>`:''}
         <span>${d.waName}</span>
-        ${d.memo?`<span style="margin-left:6px">· ${escHtml(d.memo).slice(0,40)}</span>`:''}
+        ${d.memo?`<span>· ${escHtml(d.memo).slice(0,30)}</span>`:''}
       </div>
     </div>
     ${linkBadge}
@@ -10002,17 +10053,17 @@ function openMeetingReport(){
       const isOverdue=v&&v.dueDate&&parseLocalDate(v.dueDate)<today&&!v.done;
       const diff=v&&v.dueDate?Math.round((today-parseLocalDate(v.dueDate))/864e5):null;
       return `<tr>
-        ${i===0?`<td rowspan="${maxRows}" style="background:${color}18;color:${color};font-weight:700;font-size:14px;text-align:center;vertical-align:middle;padding:8px 6px;border:1px solid #e0ddd8;border-right:2px solid ${color}">${dept}</td>`:''}
-        <td style="padding:7px 10px;border:1px solid #e0ddd8;font-size:14px;vertical-align:middle">${d?`<span style="color:#27ae60;margin-right:4px">✓</span>${d.projName} · ${d.name}${d.meta?`<br><span style='font-size:14px;color:#999'>${d.meta}</span>`:''}`:''}</td>
-        <td style="padding:7px 10px;border:1px solid #e0ddd8;font-size:14px;vertical-align:middle">${p?`<span style="color:#185fa5">${p.projName} · ${p.name}</span>${p.dueDate?`<br><span style='font-size:14px;color:#999'>마감 ${p.dueDate}</span>`:''}`:''}</td>
-        <td style="padding:7px 10px;border:1px solid #e0ddd8;font-size:14px;vertical-align:middle">${v?`<span style="color:${isOverdue?'#E24B4A':'#854f0b'};margin-right:4px">${isOverdue?'⚠️':'🔸'}</span>${v.projName} · ${v.name}${isOverdue&&diff?`<br><span style='font-size:14px;color:#E24B4A'>D+${diff} 초과</span>`:''}${v.taskStatus==='보류'?`<br><span style='font-size:14px;color:#854f0b'>보류 중</span>`:''}`:''}</td>
+        ${i===0?`<td rowspan="${maxRows}" style="background:${color}18;color:${color};font-weight:700;font-size:14px;text-align:center;vertical-align:middle;padding:8px 6px;border:1px solid #e0dede;border-right:2px solid ${color}">${dept}</td>`:''}
+        <td style="padding:7px 10px;border:1px solid #e0dede;font-size:14px;vertical-align:middle">${d?`<span style="color:#27ae60;margin-right:4px">✓</span>${d.projName} · ${d.name}${d.meta?`<br><span style='font-size:14px;color:#999'>${d.meta}</span>`:''}`:''}</td>
+        <td style="padding:7px 10px;border:1px solid #e0dede;font-size:14px;vertical-align:middle">${p?`<span style="color:#185fa5">${p.projName} · ${p.name}</span>${p.dueDate?`<br><span style='font-size:14px;color:#999'>마감 ${p.dueDate}</span>`:''}`:''}</td>
+        <td style="padding:7px 10px;border:1px solid #e0dede;font-size:14px;vertical-align:middle">${v?`<span style="color:${isOverdue?'#E24B4A':'#854f0b'};margin-right:4px">${isOverdue?'⚠️':'🔸'}</span>${v.projName} · ${v.name}${isOverdue&&diff?`<br><span style='font-size:14px;color:#E24B4A'>D+${diff} 초과</span>`:''}${v.taskStatus==='보류'?`<br><span style='font-size:14px;color:#854f0b'>보류 중</span>`:''}`:''}</td>
       </tr>`;
     }).join('');
   }).join('');
 
   const ov=document.createElement('div');
   ov.id='meeting-report-ov';
-  ov.style.cssText='position:fixed;inset:0;background:#f7f6f2;z-index:1000;overflow-y:auto;padding:32px 40px';
+  ov.style.cssText='position:fixed;inset:0;background:#f9f9f7;z-index:1000;overflow-y:auto;padding:32px 40px';
   ov.innerHTML=`
     <div style="max-width:1200px;margin:0 auto">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
@@ -10106,7 +10157,7 @@ function openWeeklyReport(){
         <span style="font-size:14px;background:${c.tag};color:${c.tagT};padding:3px 10px;border-radius:10px;font-weight:600">${p.tag}</span>
         <span style="font-size:14px;font-weight:700;color:${c.dot};font-family:monospace">${pr}%</span>
       </div>
-      ${p.statusNote?`<div style="background:#f7f6f2;border-left:3px solid ${c.dot};padding:8px 12px;border-radius:0 6px 6px 0;font-size:14px;color:#1a1917;margin-bottom:12px;line-height:1.6">
+      ${p.statusNote?`<div style="background:#f9f9f7;border-left:3px solid ${c.dot};padding:8px 12px;border-radius:0 6px 6px 0;font-size:14px;color:#1a1917;margin-bottom:12px;line-height:1.6">
         <span style="font-size:14px;font-weight:700;color:#888;display:block;margin-bottom:3px;letter-spacing:.06em;text-transform:uppercase">현재 상태</span>${p.statusNote}</div>`:''}
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
         <div>
@@ -10126,7 +10177,7 @@ function openWeeklyReport(){
   }).join('');
 
   const html='<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>Spextrum 주간 리포트</title>'
-    +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:14px;color:#1a1917;background:#fff;padding:32px 40px;max-width:1000px;margin:0 auto}.wr-actions{display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px}.wr-btn{padding:8px 14px;font-size:14px;background:#fff;border:1px solid #d5d2cc;border-radius:6px;cursor:pointer;font-family:inherit;color:#1a1917;transition:background .15s}.wr-btn:hover{background:#f7f6f2}.wr-btn.pri{background:#1a1917;color:#fff;border-color:#1a1917}.wr-btn.pri:hover{background:#333}@media print{body{padding:16px 20px}@page{margin:1.5cm}.wr-actions{display:none!important}}</style>'
+    +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:14px;color:#1a1917;background:#fff;padding:32px 40px;max-width:1000px;margin:0 auto}.wr-actions{display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px}.wr-btn{padding:8px 14px;font-size:14px;background:#fff;border:1px solid #d5d2cc;border-radius:6px;cursor:pointer;font-family:inherit;color:#1a1917;transition:background .15s}.wr-btn:hover{background:#f9f9f7}.wr-btn.pri{background:#1a1917;color:#fff;border-color:#1a1917}.wr-btn.pri:hover{background:#333}@media print{body{padding:16px 20px}@page{margin:1.5cm}.wr-actions{display:none!important}}</style>'
     +'</head><body>'
     +'<div class="wr-actions">'
       +'<button class="wr-btn" onclick="window.print()">🖨️ 인쇄 / PDF 저장</button>'
@@ -10166,21 +10217,22 @@ function openWeeklyReport(){
 }
 
 // ═══════════════════════════════════════════════════════════════
-// [v56] 직원 모드 / 관리자 모드
-// 기능을 삭제하지 않고 "누구에게 무엇을 보여줄지"만 제어한다.
-// 관리자 모드를 켜면 기존 화면 전부가 그대로 돌아온다.
+// [v57] 직원 모드 / 관리자 모드 (SPX_ROSTER는 팀원 선언부에 정의됨)
 // ═══════════════════════════════════════════════════════════════
-const SPX_ADMINS=['김수경','왕춘호','대표님','엘레']; // 대표 계정은 '대표님' 표기 병행
 let spxUser=localStorage.getItem('spx_user')||'';
 let spxMode=localStorage.getItem('spx_mode')||'emp';
 let spxTab='my';
 let spxBoardTab='cal';
+let spxMeetDoneOpen=false;
+let spxCalY=(new Date()).getFullYear(), spxCalM=(new Date()).getMonth();
 
-function spxIsAdmin(){return SPX_ADMINS.indexOf(spxUser)>=0;}
 function spxEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function spxToday(){const d=new Date();d.setHours(0,0,0,0);return d;}
 function spxDue(t){const d=t&&t.dueDate?parseLocalDate(t.dueDate):null;if(d)d.setHours(0,0,0,0);return d;}
-// 담당자 문자열에 내 이름이 포함되는지 ("엘레, 두안" 같은 복수 표기 지원)
+function spxMDate(m){
+  const s=String(m&&m.date||'');const mt=s.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+  if(!mt)return null;const d=new Date(+mt[1],+mt[2]-1,+mt[3]);d.setHours(0,0,0,0);return d;
+}
 function spxMine(t){
   if(!spxUser||!t||!t.meta) return false;
   return String(t.meta).split(/[,·\/+]/).map(x=>x.trim()).indexOf(spxUser)>=0;
@@ -10194,8 +10246,18 @@ function spxAllTasks(){
   });
   return out;
 }
+function spxSyncRoster(){
+  try{
+    if(localStorage.getItem('spx_roster_v1')==='1') return;
+    let added=0;
+    SPX_ROSTER.forEach(function(n){ if(teamMembers.indexOf(n)<0){teamMembers.push(n);added++;} });
+    teamMembers.sort(function(a,b){return String(a).localeCompare(String(b),'ko');});
+    localStorage.setItem('spx_roster_v1','1');
+    if(added>0) saveToLS();
+  }catch(e){}
+}
 
-// ── 이름 게이트 ────────────────────────────────────────────────
+// ── 이름 게이트 ──
 let _spxPick='';
 function spxOpenGate(){
   _spxPick=spxUser||'';
@@ -10222,15 +10284,14 @@ function spxConfirmName(){
   spxApplyMode();
 }
 
-// ── 모드 전환 ──────────────────────────────────────────────────
+// ── 모드 ──
 function spxApplyMode(){
   const tb=document.getElementById('spx-to-emp');
-  if(tb) tb.style.display=(spxMode==='admin'&&spxIsAdmin())?'inline-flex':'none';
-  if(spxMode==='admin'&&spxIsAdmin()){
+  if(tb) tb.style.display=(spxMode==='admin')?'inline-flex':'none';
+  if(spxMode==='admin'){
     document.body.classList.remove('spx-emp');
     goHome();
   } else {
-    spxMode='emp';
     document.body.classList.add('spx-emp');
     spxGo(spxTab||'my');
   }
@@ -10239,23 +10300,28 @@ function spxApplyMode(){
 function spxSetMode(m){
   spxMode=m;
   try{localStorage.setItem('spx_mode',m);}catch(e){}
+  closeModal();
   spxApplyMode();
-  toast(m==='admin'?'관리자 모드':'직원 모드');
+  toast(m==='admin'?'관리자 모드로 전환했습니다':'직원 모드로 전환했습니다');
 }
 function spxGo(tab){
   spxTab=tab;
-  ['my','proj','board','more'].forEach(function(k){
+  const b=document.getElementById('spx-back');if(b)b.remove();
+  ['my','proj','board'].forEach(function(k){
     const el=document.getElementById('spxnav-'+k);
     if(el) el.classList.toggle('on',k===tab);
   });
-  if(tab==='my'){spxRenderMy();showView('v-my');}
-  else if(tab==='proj'){spxRenderProj();showView('v-eproj');}
+  if(tab==='proj'){spxRenderProj();showView('v-eproj');}
   else if(tab==='board'){spxRenderBoard();showView('v-board');}
-  else {spxRenderMore();showView('v-more');}
+  else {spxTab='my';spxRenderMy();showView('v-my');}
   window.scrollTo(0,0);
 }
+// 공유 데이터 변경 시(회의·캠페인 추가/삭제) 직원 보드 갱신
+function spxSharedRefresh(){
+  if(document.body.classList.contains('spx-emp')&&spxTab==='board') spxRenderBoard();
+}
 
-// ── 내 할 일 ───────────────────────────────────────────────────
+// ── 내 할 일 ──
 function spxRenderMy(){
   const today=spxToday();
   const mine=spxAllTasks().filter(function(x){return spxMine(x.t);});
@@ -10269,14 +10335,13 @@ function spxRenderMy(){
   });
   const bydue=function(a,b){const da=spxDue(a.t),db=spxDue(b.t);if(da&&db)return da-db;if(da)return -1;if(db)return 1;return 0;};
   over.sort(bydue);week.sort(bydue);later.sort(bydue);
-
   function row(x){
     const t=x.t,d=spxDue(t);
-    let meta=x.p.name;
-    if(d){
+    let meta=spxEsc(x.p.name);
+    if(d&&!t.done){
       const diff=Math.round((d-today)/864e5);
-      const lbl=t.done?'완료':diff<0?('D+'+(-diff)):diff===0?'오늘 마감':(t.dueDate+' 마감');
-      meta=(t.done?'':'<span style="color:'+(diff<0?'#c0392b':diff<=1?'#c0392b':diff<=3?'#854f0b':'var(--text3)')+'">'+lbl+'</span> · ')+spxEsc(x.p.name);
+      const lbl=diff<0?('D+'+(-diff)):diff===0?'오늘 마감':(t.dueDate+' 마감');
+      meta='<span style="color:'+(diff<=1?'#c0392b':diff<=3?'#854f0b':'var(--text3)')+';font-weight:600">'+lbl+'</span> · '+meta;
     }
     return '<div class="spx-row">'+
       '<div class="spx-ck'+(t.done?' on':'')+'" onclick="spxToggle(\''+x.p.id+'\',\''+x.s.id+'\',\''+t.id+'\')">'+(t.done?'✓':'')+'</div>'+
@@ -10287,29 +10352,23 @@ function spxRenderMy(){
   }
   function sec(title,arr,color){
     if(!arr.length) return '';
-    return '<div class="spx-sec" style="color:'+color+'">'+title+' · '+arr.length+'</div>'+arr.map(row).join('');
+    return '<div class="spx-sec" style="color:'+color+'">'+title+' <span class="n">'+arr.length+'</span></div>'+arr.map(row).join('');
   }
-
   let body='';
   if(!spxUser){
     body='<div class="empty" style="padding:50px 20px">이름을 먼저 선택해주세요</div>';
   } else if(!mine.length){
-    body='<div class="empty" style="padding:50px 20px">담당으로 지정된 할 일이 없습니다.<br><span style="font-size:13px">프로젝트 탭에서 할 일을 추가할 수 있습니다.</span></div>';
+    body='<div class="empty" style="padding:50px 20px">담당으로 지정된 할 일이 없습니다.<br><span style="font-size:13px">아래 버튼으로 할 일을 추가해보세요.</span></div>';
   } else {
-    body=sec('기한 지남',over,'#c0392b')+sec('이번 주',week,'var(--text2)')+sec('예정',later,'var(--text3)');
-    if(done.length){
-      body+='<div class="spx-sec" style="color:var(--text3)">완료 · '+done.length+'</div>'+done.slice(0,20).map(row).join('');
-    }
-    if(!over.length&&!week.length&&!later.length){
-      body='<div class="empty" style="padding:40px 20px">🎉 미완료 할 일이 없습니다</div>'+body;
-    }
+    if(!over.length&&!week.length&&!later.length) body+='<div class="empty" style="padding:36px 20px 10px">🎉 미완료 할 일이 없습니다</div>';
+    body+=sec('기한 지남',over,'#c0392b')+sec('이번 주',week,'var(--text)')+sec('예정',later,'var(--text3)');
+    if(done.length) body+=sec('완료',done.slice(0,20),'var(--text3)');
   }
-
   document.getElementById('my-content').innerHTML=
     '<div class="spx-hd"><div>'+
-      '<div style="font-size:11px;letter-spacing:1.5px;color:var(--text3);font-weight:600">SPEXTRUM OS</div>'+
+      '<div class="spx-brand">SPEXTRUM OS</div>'+
       '<div class="spx-hd-t">'+spxEsc(spxUser||'게스트')+'님의 할 일</div>'+
-    '</div><div id="spx-save-badge" style="font-size:11px;color:var(--text3);white-space:nowrap"></div></div>'+
+    '</div><div id="spx-save-badge" style="font-size:11px;color:var(--text3);white-space:nowrap;text-align:right"></div></div>'+
     '<div style="padding:0 16px 20px">'+body+
       '<button class="spx-btn-lg" onclick="spxQuickAdd()">＋ 할 일 추가</button>'+
     '</div>';
@@ -10317,28 +10376,28 @@ function spxRenderMy(){
 }
 function spxToggle(pid,sid,tid){
   pkToggleTask(pid,sid,tid);
-  setTimeout(function(){ if(spxTab==='my'&&spxMode==='emp') spxRenderMy(); },60);
+  setTimeout(function(){ if(document.body.classList.contains('spx-emp')){if(spxTab==='my')spxRenderMy();else if(spxTab==='board')spxRenderBoard();} },60);
 }
 function spxSyncBadge(){
   const src=document.getElementById('save-status');
   const dst=document.getElementById('spx-save-badge');
   if(src&&dst){dst.textContent=src.textContent||'';dst.style.color=src.style.color||'var(--text3)';}
 }
-setInterval(function(){if(spxMode==='emp')spxSyncBadge();},1500);
+setInterval(function(){if(document.body.classList.contains('spx-emp'))spxSyncBadge();},1500);
 
-// ── 할 일 추가 ─────────────────────────────────────────────────
+// ── 할 일 추가 ──
 function spxQuickAdd(pidPre){
   const act=(projects||[]).filter(function(p){return p&&!p.archived;});
   if(!act.length){toast('프로젝트가 없습니다');return;}
   const pid=pidPre||act[0].id;
   modal('<div class="m-title">＋ 할 일 추가</div>'+
-    '<div class="frow"><label class="fl">할 일</label><input class="fi" id="spx-qa-name" placeholder="무엇을 해야 하나요?" autofocus></div>'+
+    '<div class="frow"><label class="fl">할 일</label><input class="fi" id="spx-qa-name" placeholder="무엇을 해야 하나요?"></div>'+
     '<div class="frow"><label class="fl">프로젝트</label><select class="fi" id="spx-qa-p" onchange="spxQaScheds()">'+
       act.map(function(p){return '<option value="'+p.id+'"'+(p.id===pid?' selected':'')+'>'+spxEsc(p.name)+'</option>';}).join('')+
     '</select></div>'+
     '<div class="frow"><label class="fl">스케줄</label><select class="fi" id="spx-qa-s"></select></div>'+
     '<div class="frow"><label class="fl">담당</label><select class="fi" id="spx-qa-m">'+
-      (teamMembers||[]).map(function(m){return '<option value="'+spxEsc(m)+'"'+(m===spxUser?' selected':'')+'>'+spxEsc(m)+'</option>';}).join('')+
+      (teamMembers||[]).slice().sort(function(a,b){return String(a).localeCompare(String(b),'ko');}).map(function(m){return '<option value="'+spxEsc(m)+'"'+(m===spxUser?' selected':'')+'>'+spxEsc(m)+'</option>';}).join('')+
     '</select></div>'+
     '<div class="frow"><label class="fl">마감일</label><input class="fi" type="date" id="spx-qa-d"></div>'+
     '<div class="btn-row"><button class="btn pri sm" onclick="spxQaSave()">추가</button>'+
@@ -10352,7 +10411,7 @@ function spxQaScheds(){
   const sel=document.getElementById('spx-qa-s');
   const list=(p&&p.schedules||[]).filter(function(s){return !s.archived;});
   sel.innerHTML=list.length?list.map(function(s){return '<option value="'+s.id+'">'+spxEsc(s.name)+'</option>';}).join('')
-    :'<option value="">(스케줄 없음 — 관리자에게 요청)</option>';
+    :'<option value="">(스케줄 없음 — 프로젝트에서 먼저 추가)</option>';
 }
 function spxQaSave(){
   const name=(document.getElementById('spx-qa-name').value||'').trim();
@@ -10366,12 +10425,13 @@ function spxQaSave(){
   s.tasks.push({id:uid(),name:name,done:false,
     meta:document.getElementById('spx-qa-m').value||spxUser||'',
     dueDate:document.getElementById('spx-qa-d').value||'',
-    startDate:'',taskStatus:'예정',progress:0,memo:'',output:''});
+    startDate:'',taskStatus:'예정',progress:0,memo:'',output:'',
+    createdBy:spxUser||'',createdAt:new Date().toISOString().slice(0,10)}); // [v57] 작성자 자동 기록
   saveToLS();closeModal();toast('추가됐습니다');
-  if(spxTab==='my')spxRenderMy(); else if(spxTab==='proj')spxRenderProj();
+  if(spxTab==='my')spxRenderMy(); else if(spxTab==='proj')spxRenderProj(); else if(spxTab==='board')spxRenderBoard();
 }
 
-// ── 프로젝트 탭 (클릭 시 기존 프로젝트 페이지 그대로 — A안) ──
+// ── 프로젝트 탭 ──
 function spxRenderProj(){
   const act=(projects||[]).filter(function(p){return p&&!p.archived;});
   const mineCnt={};
@@ -10380,7 +10440,6 @@ function spxRenderProj(){
   });
   const mine=act.filter(function(p){return mineCnt[p.id];}).sort(function(a,b){return mineCnt[b.id]-mineCnt[a.id];});
   const rest=act.filter(function(p){return !mineCnt[p.id];});
-
   function card(p,hi){
     const c=COLORS[p.color]||COLORS.blue;
     const all=(p.schedules||[]).reduce(function(n,s){return n+(s.tasks||[]).length;},0);
@@ -10388,45 +10447,46 @@ function spxRenderProj(){
     return '<div class="spx-card" onclick="spxOpenProject(\''+p.id+'\')">'+
       '<span style="width:9px;height:9px;border-radius:50%;background:'+c.dot+';flex-shrink:0"></span>'+
       '<div style="flex:1;min-width:0">'+
-        '<div style="font-size:15px;color:var(--text)'+(hi?'':';color:var(--text2)')+'">'+spxEsc(p.name)+'</div>'+
+        '<div style="font-size:15px;'+(hi?'color:var(--text)':'color:var(--text2)')+'">'+spxEsc(p.name)+'</div>'+
         '<div class="spx-tm">'+sub+'</div>'+
       '</div>'+
       '<span style="color:var(--text3);font-size:16px">›</span></div>';
   }
   document.getElementById('eproj-content').innerHTML=
     '<div class="spx-hd"><div><div class="spx-hd-t">프로젝트</div>'+
-    '<div class="spx-hd-s">전체 '+act.length+'개</div></div></div>'+
+    '<div class="spx-hd-s">전체 '+act.length+'개</div></div>'+
+    '<button class="btn sm" onclick="openNew()">＋ 새 프로젝트</button></div>'+
     '<div style="padding:0 16px 20px">'+
-      (mine.length?'<div class="spx-sec" style="color:#185fa5">내가 맡은 일이 있는 프로젝트 · '+mine.length+'</div>'+mine.map(function(p){return card(p,true);}).join(''):'')+
-      (rest.length?'<div class="spx-sec" style="color:var(--text3)">그 외 프로젝트 · '+rest.length+'</div>'+rest.map(function(p){return card(p,false);}).join(''):'')+
+      (mine.length?'<div class="spx-sec" style="color:#185fa5">내가 맡은 일이 있는 프로젝트 <span class="n">'+mine.length+'</span></div>'+mine.map(function(p){return card(p,true);}).join(''):'')+
+      (rest.length?'<div class="spx-sec" style="color:var(--text3)">그 외 프로젝트 <span class="n">'+rest.length+'</span></div>'+rest.map(function(p){return card(p,false);}).join(''):'')+
     '</div>';
 }
-// A안: 기존 프로젝트 상세 페이지를 그대로 연다 (뒤로가기 버튼만 추가)
+// [v57] 직원 모드를 유지한 채 기존 프로젝트 페이지를 연다 (A안 + 모드 유지)
 function spxOpenProject(pid){
-  document.body.classList.remove('spx-emp');
   openProj(pid);
+  spxAddBack('proj-content','proj','‹ 프로젝트 목록');
+}
+function spxAddBack(containerId,tab,label){
+  if(!document.body.classList.contains('spx-emp')) return;
   setTimeout(function(){
-    const c=document.getElementById('proj-content');
-    if(c&&!document.getElementById('spx-back')){
-      const b=document.createElement('button');
-      b.id='spx-back';b.className='btn sm';
-      b.style.cssText='margin-bottom:14px';
-      b.textContent='‹ 프로젝트 목록';
-      b.onclick=function(){
-        const el=document.getElementById('spx-back');if(el)el.remove();
-        document.body.classList.add('spx-emp');spxGo('proj');
-      };
-      c.insertBefore(b,c.firstChild);
-    }
-  },60);
+    const c=document.getElementById(containerId);
+    if(!c)return;
+    const old=document.getElementById('spx-back');if(old)old.remove();
+    const b=document.createElement('button');
+    b.id='spx-back';b.className='btn sm';
+    b.style.cssText='margin:0 0 14px';
+    b.textContent=label;
+    b.onclick=function(){spxGo(tab);};
+    c.insertBefore(b,c.firstChild);
+  },80);
 }
 
-// ── 공통보드 ───────────────────────────────────────────────────
+// ── 공통보드 ──
 function spxRenderBoard(){
-  const tabs=[['cal','캘린더'],['meet','회의'],['camp','캠페인']];
+  const tabs=[['cal','캘린더 · 회의'],['camp','캠페인'],['urgent','긴급현황']];
   let body='';
   if(spxBoardTab==='cal') body=spxBoardCal();
-  else if(spxBoardTab==='meet') body=spxBoardMeet();
+  else if(spxBoardTab==='urgent') body=spxBoardUrgent();
   else body=spxBoardCamp();
   document.getElementById('board-content').innerHTML=
     '<div class="spx-hd"><div class="spx-hd-t">공통보드</div></div>'+
@@ -10434,73 +10494,218 @@ function spxRenderBoard(){
       return '<div class="spx-tab'+(spxBoardTab===t[0]?' on':'')+'" onclick="spxBoardTab=\''+t[0]+'\';spxRenderBoard()">'+t[1]+'</div>';
     }).join('')+'</div>'+
     '<div style="padding:4px 14px 20px">'+body+'</div>';
-  if(spxBoardTab==='cal') setTimeout(function(){
-    const host=document.getElementById('spx-cal-host');
-    if(host){ const tmp=document.createElement('div'); tmp.id='home-cal-body'; host.appendChild(tmp); renderHomeCal(); }
-  },0);
-}
-function spxBoardCal(){
-  const mn=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-  return '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 4px">'+
-    '<button class="btn xs ghost" onclick="shiftHomeCal(-1);spxRenderBoard()">‹</button>'+
-    '<span style="font-size:15px;font-weight:600">'+homeCalYear+'년 '+mn[homeCalMonth]+'</span>'+
-    '<button class="btn xs ghost" onclick="shiftHomeCal(1);spxRenderBoard()">›</button></div>'+
-    '<div id="spx-cal-host"></div>';
-}
-function spxBoardMeet(){
-  const list=(meetings||[]).slice().sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''));});
-  if(!list.length) return '<div class="empty" style="padding:40px">등록된 회의가 없습니다</div>';
-  const up=list.filter(function(m){return m.status!=='완료';});
-  const dn=list.filter(function(m){return m.status==='완료';});
-  function row(m){
-    const pt=String(m.date||'').split('.');
-    return '<div style="display:flex;gap:12px;padding:12px 4px;border-bottom:1px solid var(--border);align-items:flex-start">'+
-      '<div style="text-align:center;background:var(--surface2);border-radius:8px;padding:6px 9px;flex-shrink:0;min-width:46px">'+
-        '<div style="font-size:10px;color:var(--text3)">'+((pt[1]||'').replace(/^0/,'')||'-')+'월</div>'+
-        '<div style="font-size:16px;font-weight:700;font-family:var(--mono);line-height:1.1">'+((pt[2]||'').replace(/^0/,'')||'-')+'</div>'+
-      '</div>'+
-      '<div style="flex:1;min-width:0"><div style="font-size:14px;color:var(--text)">'+spxEsc(m.title)+'</div>'+
-      '<div class="spx-tm">'+spxEsc(m.time||'')+(m.attendees?' · '+spxEsc(m.attendees):'')+'</div>'+
-      (m.notes?'<div class="spx-tm" style="margin-top:3px">'+spxEsc(String(m.notes).slice(0,60))+'</div>':'')+'</div></div>';
-  }
-  return (up.length?'<div class="spx-sec" style="color:var(--text2)">예정 · '+up.length+'</div>'+up.map(row).join(''):'')+
-         (dn.length?'<div class="spx-sec" style="color:var(--text3)">완료 · '+dn.length+'</div>'+dn.slice(0,15).map(row).join(''):'');
-}
-function spxBoardCamp(){
-  const list=campaigns||[];
-  if(!list.length) return '<div class="empty" style="padding:40px">등록된 캠페인이 없습니다</div>';
-  const SC={'진행중':['#e6f1fb','#185fa5'],'완료':['#eaf3de','#3b6d11'],'예정':['#faeeda','#854f0b']};
-  return list.map(function(c){
-    const col=SC[c.status]||['#f0ede8','#5f5e5a'];
-    return '<div style="padding:13px 4px;border-bottom:1px solid var(--border)">'+
-      '<div style="display:flex;align-items:center;gap:8px">'+
-        '<span style="font-size:15px;color:var(--text);flex:1">'+spxEsc(c.name)+'</span>'+
-        '<span class="spx-pill" style="background:'+col[0]+';color:'+col[1]+'">'+spxEsc(c.status||'')+'</span></div>'+
-      '<div class="spx-tm">'+spxEsc(c.start||'')+' ~ '+spxEsc(c.end||'')+
-        (c.manager?' · '+spxEsc(c.manager):'')+(c.channel?' · '+spxEsc(c.channel):'')+'</div></div>';
-  }).join('');
 }
 
-// ── 더보기 ─────────────────────────────────────────────────────
-function spxRenderMore(){
-  const un=spxAllTasks().filter(function(x){return !x.t.done&&(!x.t.meta||!String(x.t.meta).trim());});
-  let html='<div class="spx-hd"><div class="spx-hd-t">더보기</div>'+
-    '<div class="spx-hd-s">'+spxEsc(spxUser||'게스트')+'</div></div><div style="padding:6px 16px 20px">';
-  html+='<div class="spx-card" onclick="spxShowUnassigned()"><div style="flex:1">'+
-    '<div style="font-size:15px">담당 미지정 할 일</div><div class="spx-tm">'+un.length+'건</div></div>'+
-    '<span style="color:var(--text3)">›</span></div>';
-  html+='<div class="spx-card" onclick="spxOpenGate()"><div style="flex:1">'+
-    '<div style="font-size:15px">이름 바꾸기</div><div class="spx-tm">현재: '+spxEsc(spxUser||'미설정')+'</div></div>'+
-    '<span style="color:var(--text3)">›</span></div>';
-  if(spxIsAdmin()){
-    html+='<div class="spx-card" onclick="spxSetMode(\'admin\')" style="border-bottom:none;margin-top:10px;'+
-      'background:var(--surface2);border-radius:10px;padding:14px 12px"><div style="flex:1">'+
-      '<div style="font-size:15px;font-weight:600">관리자 모드로 전환</div>'+
-      '<div class="spx-tm">대시보드 · 칸반 · 타임라인 · 주간보고 · 데이터 관리</div></div>'+
+// 캘린더 · 회의 (통합 탭)
+function spxBoardCal(){
+  const mn=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const today=spxToday();
+  // 날짜별 마커 수집
+  const meetByDay={},taskByDay={};
+  (meetings||[]).forEach(function(m){
+    const d=spxMDate(m);
+    if(d&&d.getFullYear()===spxCalY&&d.getMonth()===spxCalM){
+      (meetByDay[d.getDate()]=meetByDay[d.getDate()]||[]).push(m);
+    }
+  });
+  spxAllTasks().forEach(function(x){
+    if(x.t.done)return;
+    const d=spxDue(x.t);
+    if(d&&d.getFullYear()===spxCalY&&d.getMonth()===spxCalM){
+      (taskByDay[d.getDate()]=taskByDay[d.getDate()]||[]).push(x);
+    }
+  });
+  const first=new Date(spxCalY,spxCalM,1);
+  const days=new Date(spxCalY,spxCalM+1,0).getDate();
+  const startCol=first.getDay();
+  let cells='';
+  for(let i=0;i<startCol;i++) cells+='<div></div>';
+  for(let d=1;d<=days;d++){
+    const isT=(today.getFullYear()===spxCalY&&today.getMonth()===spxCalM&&today.getDate()===d);
+    const wd=(startCol+d-1)%7;
+    let mk='',cls='';
+    if(meetByDay[d]){cls=' has-mt';mk+='<div class="mk mt">'+spxEsc(String(meetByDay[d][0].title||'회의').slice(0,5))+(meetByDay[d].length>1?'+'+(meetByDay[d].length-1):'')+'</div>';}
+    if(taskByDay[d]){cls=' has-tk';mk+='<div class="mk tk">'+taskByDay[d].length+'건</div>';}
+    cells+='<div class="spx-cal-d'+cls+(isT?' today':'')+'" onclick="spxDayDetail('+d+')">'+
+      '<div class="dd" style="'+(wd===0?'color:#a32d2d':wd===6?'color:#2b5a8a':'')+'">'+d+'</div>'+mk+'</div>';
+  }
+  // 다가오는 회의 (미완료, 날짜순)
+  const up=(meetings||[]).filter(function(m){return m.status!=='완료';})
+    .sort(function(a,b){return (spxMDate(a)||0)-(spxMDate(b)||0);});
+  const dn=(meetings||[]).filter(function(m){return m.status==='완료';})
+    .sort(function(a,b){return (spxMDate(b)||0)-(spxMDate(a)||0);});
+  function mrow(m){
+    const d=spxMDate(m);
+    return '<div style="display:flex;gap:12px;padding:11px 4px;border-bottom:1px solid var(--border);align-items:flex-start">'+
+      '<div class="spx-day-chip" onclick="openEditMeeting(\''+m.id+'\')">'+
+        '<div style="font-size:9.5px;color:var(--text3)">'+(d?(d.getMonth()+1)+'월':'-')+'</div>'+
+        '<div style="font-size:16px;font-weight:700;font-family:var(--mono);line-height:1.1">'+(d?d.getDate():'-')+'</div></div>'+
+      '<div style="flex:1;min-width:0" onclick="openEditMeeting(\''+m.id+'\')">'+
+        '<div style="font-size:14px;color:var(--text)">'+spxEsc(m.title)+'</div>'+
+        '<div class="spx-tm">'+spxEsc(m.time||'시간미정')+(m.attendees?' · '+spxEsc(m.attendees):'')+
+        (m.createdBy?' · 작성 '+spxEsc(m.createdBy):'')+'</div>'+
+        (m.notes?'<div class="spx-tm">'+spxEsc(String(m.notes).slice(0,50))+'</div>':'')+'</div>'+
+      '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">'+
+        '<span class="spx-pill" onclick="event.stopPropagation();spxMeetToggle(\''+m.id+'\')" style="cursor:pointer;'+(m.status==='완료'?'background:#eaf3de;color:#3b6d11':'background:#e6f1fb;color:#185fa5')+'">'+(m.status==='완료'?'완료':'예정')+'</span>'+
+        '<span onclick="event.stopPropagation();deleteMeeting(\''+m.id+'\')" style="color:var(--text3);font-size:14px;padding:0 4px;cursor:pointer">✕</span>'+
+      '</div></div>';
+  }
+  return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 2px 6px">'+
+    '<button class="btn xs ghost" onclick="spxCalShift(-1)">‹</button>'+
+    '<span style="font-size:15px;font-weight:700">'+spxCalY+'년 '+mn[spxCalM]+'</span>'+
+    '<button class="btn xs ghost" onclick="spxCalShift(1)">›</button></div>'+
+    '<div class="spx-cal"><div class="spx-cal-wk"><span style="color:#a32d2d">일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span style="color:#2b5a8a">토</span></div>'+
+    '<div class="spx-cal-g">'+cells+'</div>'+
+    '<div class="spx-tm" style="margin:7px 2px 0">회의 · <span style="color:#a32d2d">마감 태스크 건수</span>가 함께 표시됩니다. 날짜를 누르면 상세.</div></div>'+
+    '<div class="spx-sec" style="color:var(--text)">다가오는 회의 <span class="n">'+up.length+'</span></div>'+
+    (up.length?up.map(mrow).join(''):'<div class="spx-tm" style="padding:6px 4px">예정된 회의가 없습니다</div>')+
+    '<button class="spx-btn-lg" onclick="openAddMeeting()">＋ 회의 추가</button>'+
+    (dn.length?'<div class="spx-fold" onclick="spxMeetDoneOpen=!spxMeetDoneOpen;spxRenderBoard()">'+
+      (spxMeetDoneOpen?'▾':'▸')+' 완료된 회의 '+dn.length+'</div>'+
+      (spxMeetDoneOpen?dn.map(mrow).join(''):''):'');
+}
+function spxMeetToggle(id){
+  const m=(meetings||[]).find(function(x){return x.id===id;});
+  if(!m) return;
+  m.status=(m.status==='완료')?'예정':'완료';
+  saveToLS();
+  spxRenderBoard();
+  toast(m.status==='완료'?'완료 처리됐습니다':'예정으로 되돌렸습니다');
+}
+function spxCalShift(n){
+  spxCalM+=n;
+  if(spxCalM<0){spxCalM=11;spxCalY--;}
+  if(spxCalM>11){spxCalM=0;spxCalY++;}
+  spxRenderBoard();
+}
+function spxDayDetail(day){
+  const meets=(meetings||[]).filter(function(m){const d=spxMDate(m);return d&&d.getFullYear()===spxCalY&&d.getMonth()===spxCalM&&d.getDate()===day;});
+  const tasks=spxAllTasks().filter(function(x){if(x.t.done)return false;const d=spxDue(x.t);return d&&d.getFullYear()===spxCalY&&d.getMonth()===spxCalM&&d.getDate()===day;});
+  if(!meets.length&&!tasks.length){toast('이 날짜에 일정이 없습니다');return;}
+  modal('<div class="m-title">'+(spxCalM+1)+'월 '+day+'일</div>'+
+    (meets.length?'<div class="spx-sec" style="margin-top:4px">회의</div>'+meets.map(function(m){
+      return '<div class="spx-line" onclick="closeModal();openEditMeeting(\''+m.id+'\')"><span style="flex:1">'+spxEsc(m.title)+'</span><span class="spx-tm">'+spxEsc(m.time||'')+'</span></div>';}).join(''):'')+
+    (tasks.length?'<div class="spx-sec">마감 태스크</div>'+tasks.map(function(x){
+      return '<div class="spx-line" onclick="closeModal();openSidePanel(\''+x.p.id+'\',\''+x.s.id+'\',\''+x.t.id+'\')"><span style="flex:1">'+spxEsc(x.t.name)+'</span><span class="spx-tm">'+spxEsc(x.t.meta||'')+'</span></div>';}).join(''):'')+
+    '<div class="btn-row" style="margin-top:14px"><button class="btn sm" onclick="closeModal()">닫기</button></div>');
+}
+
+// 전사 긴급현황
+function spxBoardUrgent(){
+  const today=spxToday();
+  const all=spxAllTasks().filter(function(x){return !x.t.done;});
+  const over=all.filter(function(x){const d=spxDue(x.t);return d&&d<today;})
+    .sort(function(a,b){return spxDue(a.t)-spxDue(b.t);});
+  const week=all.filter(function(x){const d=spxDue(x.t);return d&&d>=today&&(d-today)/864e5<=7;})
+    .sort(function(a,b){return spxDue(a.t)-spxDue(b.t);});
+  function line(x,red){
+    const d=spxDue(x.t);
+    const diff=Math.round((d-today)/864e5);
+    const lbl=red?('D+'+(-diff)):(diff===0?'오늘':(d.getMonth()+1)+'/'+d.getDate());
+    return '<div class="spx-line" onclick="openSidePanel(\''+x.p.id+'\',\''+x.s.id+'\',\''+x.t.id+'\')">'+
+      '<span class="d" style="color:'+(red?'#c0392b':diff<=1?'#c0392b':'#854f0b')+'">'+lbl+'</span>'+
+      '<span style="flex:1;min-width:0;color:var(--text)">'+spxEsc(x.t.name)+'</span>'+
+      '<span class="spx-tm" style="flex-shrink:0;margin:0">'+spxEsc(x.t.meta||'미지정')+' · '+spxEsc(String(x.p.name).slice(0,10))+'</span></div>';
+  }
+  return '<div class="spx-sec" style="color:#c0392b;margin-top:14px">🚨 마감 초과 <span class="n">'+over.length+'</span></div>'+
+    (over.length?over.map(function(x){return line(x,true);}).join(''):'<div class="spx-tm" style="padding:6px 4px">없습니다 👏</div>')+
+    '<div class="spx-sec" style="color:#854f0b">이번 주 해야 할 업무 <span class="n">'+week.length+'</span></div>'+
+    (week.length?week.map(function(x){return line(x,false);}).join(''):'<div class="spx-tm" style="padding:6px 4px">이번 주 마감 업무가 없습니다</div>');
+}
+
+// 캠페인
+function spxBoardCamp(){
+  const list=campaigns||[];
+  const SC={'진행중':['#e6f1fb','#185fa5'],'완료':['#eaf3de','#3b6d11'],'예정':['#faeeda','#854f0b']};
+  return (list.length?list.map(function(c){
+    const col=SC[c.status]||['#f4f3f2','#5f5e5a'];
+    return '<div style="padding:13px 4px;border-bottom:1px solid var(--border);cursor:pointer" onclick="spxEditCamp(\''+c.id+'\')">'+
+      '<div style="display:flex;align-items:center;gap:8px">'+
+        '<span style="font-size:15px;color:var(--text);flex:1;min-width:0">'+spxEsc(c.name)+'</span>'+
+        '<span class="spx-pill" style="background:'+col[0]+';color:'+col[1]+'">'+spxEsc(c.status||'예정')+'</span>'+
+        '<span onclick="event.stopPropagation();deleteCamp(\''+c.id+'\')" style="color:var(--text3);font-size:15px;padding:2px 4px;cursor:pointer">✕</span></div>'+
+      '<div class="spx-tm">'+spxEsc(c.start||'')+' ~ '+spxEsc(c.end||'')+
+        (c.manager?' · '+spxEsc(c.manager):'')+(c.channel?' · '+spxEsc(c.channel):'')+
+        (c.createdBy?' · 작성 '+spxEsc(c.createdBy):'')+'</div></div>';
+  }).join(''):'<div class="empty" style="padding:36px">등록된 캠페인이 없습니다</div>')+
+  '<button class="spx-btn-lg" onclick="openAddCampaign()">＋ 캠페인 추가</button>';
+}
+
+// [v57.4] 캠페인 수정
+function spxEditCamp(id){
+  const c=(campaigns||[]).find(function(x){return x.id===id;});
+  if(!c) return;
+  modal('<div class="m-title">✎ 캠페인 수정</div>'+
+    '<div class="frow"><label class="fl">캠페인명</label><input class="fi" id="spx-ec-name" value="'+spxEsc(c.name)+'"></div>'+
+    '<div class="two-col">'+
+      '<div class="frow"><label class="fl">시작</label><input class="fi" id="spx-ec-start" value="'+spxEsc(c.start||'')+'" placeholder="2026.07.01"></div>'+
+      '<div class="frow"><label class="fl">종료</label><input class="fi" id="spx-ec-end" value="'+spxEsc(c.end||'')+'" placeholder="2026.07.31"></div>'+
+    '</div>'+
+    '<div class="two-col">'+
+      '<div class="frow"><label class="fl">담당</label><input class="fi" id="spx-ec-mgr" value="'+spxEsc(c.manager||'')+'"></div>'+
+      '<div class="frow"><label class="fl">채널</label><input class="fi" id="spx-ec-ch" value="'+spxEsc(c.channel||'')+'"></div>'+
+    '</div>'+
+    '<div class="frow"><label class="fl">상태</label><select class="fi" id="spx-ec-st">'+
+      ['예정','진행중','완료'].map(function(s){return '<option'+(c.status===s?' selected':'')+'>'+s+'</option>';}).join('')+
+    '</select></div>'+
+    '<div class="btn-row"><button class="btn pri sm" onclick="spxEditCampSave(\''+id+'\')">저장</button>'+
+    '<button class="btn sm" onclick="closeModal()">취소</button></div>');
+}
+function spxEditCampSave(id){
+  const c=(campaigns||[]).find(function(x){return x.id===id;});
+  if(!c) return;
+  const name=(document.getElementById('spx-ec-name').value||'').trim();
+  if(!name){toast('캠페인명을 입력해주세요');return;}
+  c.name=name;
+  c.start=document.getElementById('spx-ec-start').value.trim();
+  c.end=document.getElementById('spx-ec-end').value.trim();
+  c.manager=document.getElementById('spx-ec-mgr').value.trim();
+  c.channel=document.getElementById('spx-ec-ch').value.trim();
+  c.status=document.getElementById('spx-ec-st').value;
+  saveToLS();closeModal();spxRenderBoard();toast('수정됐습니다');
+}
+
+// ── 더보기 (바텀시트) ──
+function spxMoreSheet(){
+  spxCloseSheet();
+  const un=spxAllTasks().filter(function(x){return !x.t.done&&(!x.t.meta||!String(x.t.meta).trim());}).length;
+  function menu(ic,bg,title,sub,fn){
+    return '<div class="spx-menu" style="margin-bottom:8px" onclick="spxCloseSheet();'+fn+'">'+
+      '<div class="ic" style="background:'+bg+'">'+ic+'</div>'+
+      '<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600;color:var(--text)">'+title+'</div>'+
+      '<div class="spx-tm" style="margin-top:1px">'+sub+'</div></div>'+
       '<span style="color:var(--text3)">›</span></div>';
   }
-  html+='</div>';
-  document.getElementById('more-content').innerHTML=html;
+  const ov=document.createElement('div');
+  ov.className='spx-sheet-ov';ov.id='spx-sheet-ov';
+  ov.addEventListener('click',function(e){if(e.target===ov)spxCloseSheet();});
+  ov.innerHTML='<div class="spx-sheet"><div class="grab"></div>'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin:0 2px 12px">'+
+      '<span style="font-size:16px;font-weight:700;color:var(--text)">더보기</span>'+
+      '<span class="spx-tm" style="margin:0">'+spxEsc(spxUser||'게스트')+'</span></div>'+
+    menu('📋','#e6f1fb','태스크보드','전 직원 업무 현황 · 부하 분포','spxOpenTaskBoard()')+
+    menu('📦','#faeeda','결과물 아카이브','프로젝트 산출물 모아보기','spxOpenDeliv()')+
+    menu('❓','#f4f3f2','담당 미지정 할 일',un+'건','spxShowUnassigned()')+
+    menu('⚙️','#ececec','설정','이름 바꾸기 · 모드 전환','spxOpenSettings()')+
+    '</div>';
+  document.body.appendChild(ov);
+}
+function spxCloseSheet(){const o=document.getElementById('spx-sheet-ov');if(o)o.remove();}
+function spxOpenTaskBoard(){
+  renderTaskBoard();
+  showView('v-tasks');
+  spxAddBack('v-tasks',spxTab,'‹ 돌아가기');
+}
+function spxOpenDeliv(){
+  renderDeliverableArchive();
+  showView('v-deliv');
+  spxAddBack('deliv-content',spxTab,'‹ 돌아가기');
+}
+function spxOpenSettings(){
+  modal('<div class="m-title">⚙️ 설정</div>'+
+    '<div class="spx-line" onclick="closeModal();spxOpenGate()"><span style="flex:1">이름 바꾸기</span><span class="spx-tm">현재: '+spxEsc(spxUser||'미설정')+'</span></div>'+
+    '<div class="spx-line" onclick="spxSetMode(\'admin\')"><span style="flex:1">관리자 모드로 전환</span><span class="spx-tm">대시보드 · 칸반 · 데이터 관리</span></div>'+
+    '<div class="btn-row" style="margin-top:14px"><button class="btn sm" onclick="closeModal()">닫기</button></div>');
 }
 function spxShowUnassigned(){
   const un=spxAllTasks().filter(function(x){return !x.t.done&&(!x.t.meta||!String(x.t.meta).trim());});
@@ -10516,18 +10721,7 @@ function spxShowUnassigned(){
     '<div class="btn-row" style="margin-top:14px"><button class="btn sm" onclick="closeModal()">닫기</button></div>');
 }
 
-// ── 부팅 ───────────────────────────────────────────────────────
-function spxSyncRoster(){
-  // [v56.1] 신규 입사자를 서버 팀원 목록에 1회 병합 (기존 이름은 지우지 않음)
-  try{
-    if(localStorage.getItem('spx_roster_v1')==='1') return;
-    let added=0;
-    SPX_ROSTER.forEach(function(n){ if(teamMembers.indexOf(n)<0){teamMembers.push(n);added++;} });
-    teamMembers.sort(function(a,b){return String(a).localeCompare(String(b),'ko');}); // [v56.1] 가나다순
-    localStorage.setItem('spx_roster_v1','1');
-    if(added>0) saveToLS();
-  }catch(e){}
-}
+// ── 부팅 ──
 function spxBoot(){
   spxSyncRoster();
   if(!spxUser){ spxOpenGate(); document.body.classList.add('spx-emp'); spxGo('my'); return; }
@@ -11103,7 +11297,7 @@ function openKpiDetail(type){
     <svg viewBox="0 0 22 22" fill="none"><circle cx="8" cy="7" r="2.6" stroke="currentColor" stroke-width="1.5"/><circle cx="15.5" cy="8.5" r="2.1" stroke="currentColor" stroke-width="1.5"/><path d="M3 17c0-2.6 2.2-4.4 5-4.4s5 1.8 5 4.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14 13.2c2.7 0 5 1.5 5 3.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
     공통보드
   </div>
-  <div class="spx-nav-item" id="spxnav-more" onclick="spxGo('more')">
+  <div class="spx-nav-item" id="spxnav-more" onclick="spxMoreSheet()">
     <svg viewBox="0 0 22 22" fill="none"><circle cx="5" cy="11" r="1.7" fill="currentColor"/><circle cx="11" cy="11" r="1.7" fill="currentColor"/><circle cx="17" cy="11" r="1.7" fill="currentColor"/></svg>
     더보기
   </div>
