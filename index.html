@@ -408,6 +408,12 @@ body.spx-emp #spx-emp-nav{display:grid}
 .spx-cal-d.wide.today{border-color:#a32d2d;border-width:1.5px}
 .spx-cal-d.wide .mk.wide{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10.5px;padding:1.5px 5px;border-radius:4px;margin-top:2px;font-weight:600}
 .spx-calsel{font-size:12.5px;padding:5px 10px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);color:var(--text2);font-family:var(--sans);cursor:pointer;max-width:220px}
+/* [v60] 태그 다중 선택 패널 */
+.tb-tagpanel{position:absolute;top:calc(100% + 5px);left:0;z-index:400;min-width:190px;max-height:280px;overflow-y:auto;background:var(--surface);border:1px solid var(--border2);border-radius:10px;box-shadow:0 8px 26px rgba(0,0,0,.14);padding:4px 0}
+.tb-tagrow{display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:13.5px;color:var(--text);cursor:pointer;white-space:nowrap}
+.tb-tagrow:hover{background:var(--surface2)}
+.tb-tagck{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0}
+.tb-tagck.on{background:#27ae60;border-color:#27ae60;color:#fff}
 @media(min-width:900px){
   body.spx-emp .content{max-width:840px!important}
   .spx-two{display:grid;grid-template-columns:1fr 1fr;gap:0 40px;align-items:start}
@@ -8340,6 +8346,8 @@ let tbView=prefGet('tbView','board'); // [v48] 개인 설정 'board'|'timeline'|
 let tbFilter='전체'; // '전체' | dept name
 let tbPersonFilter='전체'; // '전체' | person name
 let tbTagFilters=[];      // [v59] 태그 다중 선택
+let tbTagOpen=false;      // [v60] 태그 선택 패널 열림
+let tbMoreOpen=false;     // [v60] 직원모드 — 부가 필터 접기
 let tbProjFilter='전체';  // [v59] '전체' | projId
 let tbPeriodFilter='전체'; // '전체' | 'today' | 'week' | 'month' | 'next_month' | 'overdue' | 'no_date'
 
@@ -8471,6 +8479,22 @@ function tbToggleTag(tg){
   if(i>=0) tbTagFilters.splice(i,1); else tbTagFilters.push(tg);
   renderTaskBoard();
 }
+// [v60] 태그 선택 패널
+function tbTagPanel(e){
+  if(e) e.stopPropagation();
+  tbTagOpen=!tbTagOpen;
+  renderTaskBoard();
+}
+function tbTagPick(e,tg){
+  e.stopPropagation();
+  tbToggleTag(tg); // 패널은 열린 상태 유지
+}
+function tbMoreToggle(){tbMoreOpen=!tbMoreOpen;renderTaskBoard();}
+document.addEventListener('click',function(e){
+  if(!tbTagOpen) return;
+  const box=document.getElementById('tb-tagbox');
+  if(box&&!box.contains(e.target)){tbTagOpen=false;renderTaskBoard();}
+});
 
 let delivGroupBy='project'; // 'project' | 'tag'
 
@@ -8594,6 +8618,7 @@ function renderTaskBoard(){
   const persons=getAllPersons();
   const allT=getAllTasks();
   const today=new Date();today.setHours(0,0,0,0);
+  const _tbEmp=document.body.classList.contains('spx-emp'); // [v60] 직원모드
   const overdueCount=applyTbFilters(allT.map(t=>({...t,done:false}))).filter(t=>t.dueDate&&parseLocalDate(t.dueDate)<today).length;
   const activeCount=applyTbFilters(allT).length;
 
@@ -8619,35 +8644,26 @@ function renderTaskBoard(){
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="0" y="0" width="12" height="12" rx="1" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M0 4h12M0 8h12M4 0v12" stroke="currentColor" stroke-width="1"/></svg>
             표
           </button>
-          ${document.body.classList.contains('spx-emp')?'':`<button class="tb-vbtn${tbView==='workload'?' on':''}" onclick="setTbView('workload')">
+          ${_tbEmp?'':`<button class="tb-vbtn${tbView==='workload'?' on':''}" onclick="setTbView('workload')">
             👥 부하 현황
           </button>`}
         </div>
-        <!-- 정렬 -->
-        <select class="tb-filter" onchange="tbSort=this.value;prefSet('tbSort',tbSort);document.getElementById('tb-body').innerHTML=tbBodyHTML()" style="font-size:14px;padding:5px 8px">
-          <option value="urgent"${tbSort==='urgent'?' selected':''}>⚡ 긴급순</option>
-          <option value="date"${tbSort==='date'?' selected':''}>📅 날짜순</option>
-          <option value="default"${tbSort==='default'?' selected':''}>기본순</option>
-        </select>
-        <!-- 파트 필터 -->
-        <select class="tb-filter" onchange="tbFilter=this.value;tbPersonFilter='전체';renderTaskBoard()">
-          ${depts.map(d=>`<option value="${d}"${tbFilter===d?' selected':''}>${d==='전체'?'전체 파트':d}</option>`).join('')}
-        </select>
-        <!-- 담당자 필터 -->
-        <select class="tb-filter" onchange="tbPersonFilter=this.value;tbFilter='전체';renderTaskBoard()">
-          <option value="전체"${tbPersonFilter==='전체'?' selected':''}>전체 담당자</option>
-          ${persons.slice(1).map(n=>`<option value="${n}"${tbPersonFilter===n?' selected':''}>${n}</option>`).join('')}
-        </select>
+        <!-- [v60] 태그 필터 — 다중 선택 패널 -->
+        <div id="tb-tagbox" style="position:relative;flex-shrink:0">
+          <button class="tb-filter" onclick="tbTagPanel(event)" style="cursor:pointer;display:flex;align-items:center;gap:5px">
+            ${tbTagFilters.length?`🏷 태그 ${tbTagFilters.length}개`:'전체 태그'} <span style="font-size:9px;opacity:.6">▼</span>
+          </button>
+          ${tbTagOpen?`<div class="tb-tagpanel">
+            ${getAllTags().length?getAllTags().map(tg=>`<div class="tb-tagrow" onclick="tbTagPick(event,'${tg}')">
+              <span class="tb-tagck${tbTagFilters.includes(tg)?' on':''}">${tbTagFilters.includes(tg)?'✓':''}</span>
+              <span style="flex:1;min-width:0">🏷 ${tg}</span></div>`).join(''):'<div style="padding:10px 12px;font-size:13px;color:var(--text3)">태그가 없습니다</div>'}
+            ${tbTagFilters.length?`<div class="tb-tagrow" style="border-top:1px solid var(--border);color:var(--text3)" onclick="tbTagPick(event,'전체')">전체 해제</div>`:''}
+          </div>`:''}
+        </div>
         <!-- [v59] 프로젝트별 필터 -->
         <select class="tb-filter" onchange="tbProjFilter=this.value;renderTaskBoard()">
           <option value="전체"${tbProjFilter==='전체'?' selected':''}>전체 프로젝트</option>
           ${(projects||[]).filter(p=>p&&!p.archived).map(p=>`<option value="${p.id}"${tbProjFilter===p.id?' selected':''}>${p.name}</option>`).join('')}
-        </select>
-        <!-- [v59] 태그 필터 (다중 선택) -->
-        <select class="tb-filter" onchange="tbToggleTag(this.value)">
-          <option value="">${tbTagFilters.length?`태그 ${tbTagFilters.length}개 선택됨`:'전체 태그'}</option>
-          <option value="전체">전체 태그 (선택 해제)</option>
-          ${getAllTags().map(tg=>`<option value="${tg}">${tbTagFilters.includes(tg)?'✓ ':''}🏷 ${tg}</option>`).join('')}
         </select>
         <!-- 기간 필터 -->
         <select class="tb-filter" onchange="tbPeriodFilter=this.value;renderTaskBoard()">
@@ -8661,11 +8677,25 @@ function renderTaskBoard(){
           <option value="next_month"${tbPeriodFilter==='next_month'?' selected':''}>다음 달 마감</option>
           <option value="no_date"${tbPeriodFilter==='no_date'?' selected':''}>마감일 없음</option>
         </select>
-        <!-- 완료 숨기기 -->
+        <!-- [v60] 부가 필터 — 직원모드에서는 접기 -->
+        ${(_tbEmp&&!tbMoreOpen)?`<button class="tb-filter" onclick="tbMoreToggle()" style="cursor:pointer">＋ 필터 더보기</button>`:`
+        ${_tbEmp?`<button class="tb-filter" onclick="tbMoreToggle()" style="cursor:pointer">− 필터 접기</button>`:''}
+        <select class="tb-filter" onchange="tbSort=this.value;prefSet('tbSort',tbSort);document.getElementById('tb-body').innerHTML=tbBodyHTML()" style="font-size:14px;padding:5px 8px">
+          <option value="urgent"${tbSort==='urgent'?' selected':''}>⚡ 긴급순</option>
+          <option value="date"${tbSort==='date'?' selected':''}>📅 날짜순</option>
+          <option value="default"${tbSort==='default'?' selected':''}>기본순</option>
+        </select>
+        <select class="tb-filter" onchange="tbFilter=this.value;tbPersonFilter='전체';renderTaskBoard()">
+          ${depts.map(d=>`<option value="${d}"${tbFilter===d?' selected':''}>${d==='전체'?'전체 파트':d}</option>`).join('')}
+        </select>
+        <select class="tb-filter" onchange="tbPersonFilter=this.value;tbFilter='전체';renderTaskBoard()">
+          <option value="전체"${tbPersonFilter==='전체'?' selected':''}>전체 담당자</option>
+          ${persons.slice(1).map(n=>`<option value="${n}"${tbPersonFilter===n?' selected':''}>${n}</option>`).join('')}
+        </select>
         <label style="display:flex;align-items:center;gap:5px;font-size:14px;color:var(--text3);cursor:pointer;flex-shrink:0">
           <input type="checkbox" ${tbHideDone?'checked':''} onchange="tbHideDone=this.checked;prefSet('tbHideDone',tbHideDone);document.getElementById('tb-body').innerHTML=tbBodyHTML()" style="accent-color:var(--text);width:13px;height:13px">
           완료 숨기기
-        </label>
+        </label>`}
         <div style="display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap">
           ${tbPeriodFilter!=='전체'?`<span style="font-size:14px;background:#e6f1fb;color:#185fa5;padding:3px 9px;border-radius:10px;cursor:pointer" onclick="tbPeriodFilter='전체';renderTaskBoard()" title="기간 필터 해제">📅 ${({overdue:'마감 초과',today:'오늘',week:'이번 주',last_week:'지난주',month:'이번 달',last_month:'지난달',next_month:'다음 달',no_date:'마감일 없음'})[tbPeriodFilter]} ✕</span>`:''}
           ${tbProjFilter!=='전체'?`<span style="font-size:14px;background:#e1f5ee;color:#0f6e56;padding:3px 9px;border-radius:10px;cursor:pointer" onclick="tbProjFilter='전체';renderTaskBoard()" title="프로젝트 필터 해제">📁 ${((projects||[]).find(p=>p.id===tbProjFilter)||{}).name||''} ✕</span>`:''}
@@ -10291,7 +10321,7 @@ function openWeeklyReport(){
 // ═══════════════════════════════════════════════════════════════
 let spxUser=localStorage.getItem('spx_user')||'';
 let spxMode=localStorage.getItem('spx_mode')||'emp';
-let spxTab='board'; // [v59.1] 탭 순서: 공통보드 → 내 할 일 → 프로젝트
+let spxTab='my'; // [v60] 탭 순서: 내 할 일 → 공통보드 → 프로젝트
 let spxBoardTab='cal';
 let spxMeetDoneOpen=false;
 let spxCalY=(new Date()).getFullYear(), spxCalM=(new Date()).getMonth();
@@ -10373,7 +10403,7 @@ function spxApplyMode(){
     goHome();
   } else {
     document.body.classList.add('spx-emp');
-    spxGo(spxTab||'board'); // [v59.1] 첫 탭 = 공통보드
+    spxGo(spxTab||'my'); // [v60] 첫 탭 = 내 할 일
   }
   try{localStorage.setItem('spx_mode',spxMode);}catch(e){}
 }
@@ -10387,7 +10417,7 @@ function spxSetMode(m){
 function spxGo(tab){
   spxTab=tab;
   const b=document.getElementById('spx-back');if(b)b.remove();
-  ['board','my','proj'].forEach(function(k){
+  ['my','board','proj'].forEach(function(k){
     const el=document.getElementById('spxnav-'+k);
     if(el) el.classList.toggle('on',k===tab);
   });
@@ -10898,7 +10928,7 @@ function spxShowUnassigned(){
 // ── 부팅 ──
 function spxBoot(){
   spxSyncRoster();
-  if(!spxUser){ spxOpenGate(); document.body.classList.add('spx-emp'); spxGo('board'); return; }
+  if(!spxUser){ spxOpenGate(); document.body.classList.add('spx-emp'); spxGo('my'); return; }
   spxApplyMode();
 }
 
@@ -11459,13 +11489,13 @@ function openKpiDetail(type){
 
 <!-- [v56] 직원 모드 하단 네비 -->
 <nav id="spx-emp-nav">
-  <div class="spx-nav-item" id="spxnav-board" onclick="spxGo('board')">
-    <svg viewBox="0 0 22 22" fill="none"><circle cx="8" cy="7" r="2.6" stroke="currentColor" stroke-width="1.5"/><circle cx="15.5" cy="8.5" r="2.1" stroke="currentColor" stroke-width="1.5"/><path d="M3 17c0-2.6 2.2-4.4 5-4.4s5 1.8 5 4.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14 13.2c2.7 0 5 1.5 5 3.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-    공통보드
-  </div>
   <div class="spx-nav-item" id="spxnav-my" onclick="spxGo('my')">
     <svg viewBox="0 0 22 22" fill="none"><path d="M4 6.5l2 2 3.5-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 15.5l2 2 3.5-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.5 7.5H19M12.5 16.5H19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
     내 할 일
+  </div>
+  <div class="spx-nav-item" id="spxnav-board" onclick="spxGo('board')">
+    <svg viewBox="0 0 22 22" fill="none"><circle cx="8" cy="7" r="2.6" stroke="currentColor" stroke-width="1.5"/><circle cx="15.5" cy="8.5" r="2.1" stroke="currentColor" stroke-width="1.5"/><path d="M3 17c0-2.6 2.2-4.4 5-4.4s5 1.8 5 4.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14 13.2c2.7 0 5 1.5 5 3.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    공통보드
   </div>
   <div class="spx-nav-item" id="spxnav-proj" onclick="spxGo('proj')">
     <svg viewBox="0 0 22 22" fill="none"><path d="M2.5 6a2 2 0 012-2h3.4l1.8 2.2h7.8a2 2 0 012 2v8.3a2 2 0 01-2 2h-13a2 2 0 01-2-2V6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
