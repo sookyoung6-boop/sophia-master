@@ -347,12 +347,12 @@ body.spx-emp #spx-emp-nav{display:grid}
 .spx-cal-d .dd{font-weight:600;font-size:12px}
 .spx-cal-d.has-tk{background:#f7e2df}
 .spx-cal-d.has-tk .dd{color:#5b2320}
-.spx-cal-d.has-mt{background:#dbe7f8}
-.spx-cal-d.has-mt .dd{color:#1e3a5f}
+.spx-cal-d.has-mt{background:#eae8e4} /* [v60.1] 회의=회색 */
+.spx-cal-d.has-mt .dd{color:#403f3b}
 .spx-cal-d.today{border-color:#a32d2d;background:transparent}
 .spx-cal-d.today .dd{color:#a32d2d;font-weight:700}
 .spx-cal-d .mk{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
-.spx-cal-d .mk.mt{color:#2b5a8a}
+.spx-cal-d .mk.mt{color:#5f5e5a}
 .spx-cal-d .mk.tk{color:#a32d2d;font-weight:700}
 .spx-day-chip{text-align:center;background:var(--surface2);border-radius:10px;padding:5px 9px;flex-shrink:0;min-width:46px}
 .spx-fold{display:flex;align-items:center;gap:6px;padding:11px 4px;cursor:pointer;color:var(--text3);font-size:13px;font-weight:600;border-top:1px solid var(--border);margin-top:8px}
@@ -4941,7 +4941,7 @@ function openCalDay(yr,mo,d){
   meetings.forEach(m=>{
     const pts=m.date.split('.');
     const my=parseInt(pts[0]),mm=parseInt(pts[1])-1,md=parseInt(pts[2]);
-    if(my===yr&&mm===mo&&md===d) evs.push({type:'meet',label:m.title,color:'#185fa5',bg:'#e6f1fb',action:`closeModal();goHome()`});
+    if(my===yr&&mm===mo&&md===d) evs.push({type:'meet',label:m.title,color:'#5f5e5a',bg:'#eae8e4',action:`closeModal();goHome()`}) /* [v60.1] 회의=회색 */;
   });
   // 오픈일자 이벤트
   projects.filter(p=>p.launchDate&&!p.archived).forEach(p=>{
@@ -5063,7 +5063,7 @@ function renderHomeCal(){
     const pts=m.date.split('.');
     if(pts.length<3)return;
     const my=parseInt(pts[0]),mm=parseInt(pts[1])-1,md=parseInt(pts[2]);
-    if(my===yr&&mm===mo) addEv(md,{type:'meet',label:m.title||'',color:'#185fa5',bg:'#e6f1fb'});
+    if(my===yr&&mm===mo) addEv(md,{type:'meet',label:m.title||'',color:'#5f5e5a',bg:'#eae8e4'}) /* [v60.1] 회의=회색 */;
   });
 
   // 1.5 오픈일자
@@ -10697,7 +10697,7 @@ function spxBoardCal(){
     let mk='',cls='';
     if(wide){
       const evs=[];
-      (meetByDay[d]||[]).forEach(function(m){evs.push({l:m.title||'회의',bg:'#e6f1fb',c:'#185fa5'});});
+      (meetByDay[d]||[]).forEach(function(m){evs.push({l:m.title||'회의',bg:'#eae8e4',c:'#5f5e5a'});}); /* [v60.1] 회의=회색 */
       (taskByDay[d]||[]).forEach(function(x){const col=COLORS[x.p.color]||COLORS.blue;evs.push({l:x.t.name,bg:col.tag,c:col.tagT||col.dot});});
       mk=evs.slice(0,3).map(function(e){return '<div class="mk wide" style="background:'+e.bg+';color:'+e.c+'">'+spxEsc(String(e.l))+'</div>';}).join('')+
         (evs.length>3?'<div class="mk" style="color:#185fa5;font-weight:700;margin-top:2px">+'+(evs.length-3)+'</div>':'');
