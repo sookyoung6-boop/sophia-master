@@ -394,11 +394,22 @@ body.spx-emp #spx-emp-nav{display:grid}
 .spx-urgcard{display:flex;gap:12px;align-items:flex-start;padding:13px 14px;border:1px solid var(--border);border-radius:14px;margin-bottom:9px;cursor:pointer;background:var(--surface)}
 .spx-urgcard:active{background:var(--surface2)}
 .spx-urgchip{font-family:var(--mono);font-weight:700;font-size:12px;padding:4px 10px;border-radius:10px;flex-shrink:0;margin-top:1px}
+.spx-group-t{font-size:14.5px;font-weight:800;color:var(--text);margin:22px 4px 2px;letter-spacing:-.01em;display:flex;align-items:center;gap:6px}
+.spx-group-t .n{font-size:12px;font-weight:700;color:var(--text3)}
+.spx-part-card{background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:14px 14px 8px;margin-top:22px}
+.spx-part-card .spx-row{border-bottom-color:var(--border2)}
+.spx-part-card .spx-row:last-of-type{border-bottom:none}
 .spx-cal-d.wide{min-height:88px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
+@media(min-width:900px){
+  /* [v59.1] 직원모드 프로젝트 상세 — 관리자(900px)와 직원 기본폭 사이 */
+  body.spx-emp.spx-wide-page .content{max-width:900px!important}
+  body.spx-emp #proj-content{padding:18px 22px 28px!important}
+}
 .spx-cal-d.wide.today{border-color:#a32d2d;border-width:1.5px}
 .spx-cal-d.wide .mk.wide{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10.5px;padding:1.5px 5px;border-radius:4px;margin-top:2px;font-weight:600}
+.spx-calsel{font-size:12.5px;padding:5px 10px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);color:var(--text2);font-family:var(--sans);cursor:pointer;max-width:220px}
 @media(min-width:900px){
-  body.spx-emp .content{max-width:1040px!important}
+  body.spx-emp .content{max-width:840px!important}
   .spx-two{display:grid;grid-template-columns:1fr 1fr;gap:0 40px;align-items:start}
   .spx-grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 32px}
 }
@@ -720,6 +731,7 @@ body.spx-emp #spx-emp-nav{display:grid}
 /* BOARD VIEW */
 .bv-cols{display:flex;gap:0;height:100%;overflow-x:auto;padding:16px 24px;gap:12px;align-items:flex-start}
 .bv-col{flex-shrink:0;width:230px;background:var(--surface2);border-radius:var(--radius);display:flex;flex-direction:column;max-height:calc(100vh - 130px)}
+@media(min-width:900px){.bv-col{width:276px} /* [v59.1] PC 칸반 가로폭 +20% */}
 .bv-col-head{padding:12px 14px 10px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .bv-col-name{font-size:14px;font-weight:700;color:var(--text2);letter-spacing:.04em}
 .bv-col-count{font-size:14px;color:var(--text3);background:var(--surface);border:1px solid var(--border);padding:1px 7px;border-radius:10px;font-family:var(--mono)}
@@ -1023,7 +1035,8 @@ function prog(p){
   const a=p.schedules.filter(s=>!s.archived).flatMap(s=>(s.tasks||[]));
   return a.length?Math.round(a.filter(t=>t&&t.done).length/a.length*100):0;
 }
-function showView(id){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById(id).classList.add('active')}
+function showView(id){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById(id).classList.add('active');
+  document.body.classList.toggle('spx-wide-page',id==='v-proj'||id==='v-tasks'||id==='v-deliv'); /* [v59.1] 넓게 쓰는 화면 */ }
 function setBc(segs){
   document.getElementById('topbar-bc').innerHTML=segs.map((s,i)=>i===segs.length-1?`<span class="bc-seg cur">${s.label}</span>`:`<span class="bc-seg lnk" onclick="${s.fn}">${s.label}</span><span class="bc-sep">›</span>`).join('');
   // 뒤로가기 버튼 표시/숨김
@@ -8326,7 +8339,8 @@ function checkOverdueTasks(){
 let tbView=prefGet('tbView','board'); // [v48] 개인 설정 'board'|'timeline'|'table'
 let tbFilter='전체'; // '전체' | dept name
 let tbPersonFilter='전체'; // '전체' | person name
-let tbTagFilter='전체'; // '전체' | tag name
+let tbTagFilters=[];      // [v59] 태그 다중 선택
+let tbProjFilter='전체';  // [v59] '전체' | projId
 let tbPeriodFilter='전체'; // '전체' | 'today' | 'week' | 'month' | 'next_month' | 'overdue' | 'no_date'
 
 // Flatten all tasks across projects with context
@@ -8400,7 +8414,8 @@ function getAllTags(){
   return [...tags].sort();
 }
 
-function applyTbFilters(tasks){
+// [v59] 완료숨김을 제외한 공통 필터 (파트·담당자·프로젝트·태그·기간)
+function tbBaseFilters(tasks){
   let result=tasks;
   if(tbFilter!=='전체') result=result.filter(t=>{
     const metaDepts=deptsFromMeta(t.meta);
@@ -8411,12 +8426,21 @@ function applyTbFilters(tasks){
     if(!t.meta)return false;
     return t.meta.split(/[,·\/+\s]+/).map(m=>m.trim()).filter(m=>m.length>1).includes(tbPersonFilter);
   });
-  if(tbTagFilter!=='전체') result=result.filter(t=>(t.tags||[]).includes(tbTagFilter));
+  if(tbProjFilter!=='전체') result=result.filter(t=>t.projId===tbProjFilter);
+  if(tbTagFilters.length) result=result.filter(t=>{
+    const tg=t.tags||[];
+    return tbTagFilters.some(x=>tg.includes(x)); // 여러 태그 = OR
+  });
   if(tbPeriodFilter!=='전체'){
     const today=new Date();today.setHours(0,0,0,0);
     const todayMs=today.getTime();
-    const weekEnd=new Date(today);weekEnd.setDate(today.getDate()+(7-((today.getDay()||7))));weekEnd.setHours(23,59,59,999);
+    const dow=today.getDay()||7; // 월=1 … 일=7
+    const weekEnd=new Date(today);weekEnd.setDate(today.getDate()+(7-dow));weekEnd.setHours(23,59,59,999);
+    const lastWeekStart=new Date(today);lastWeekStart.setDate(today.getDate()-dow-6);lastWeekStart.setHours(0,0,0,0);
+    const lastWeekEnd=new Date(today);lastWeekEnd.setDate(today.getDate()-dow);lastWeekEnd.setHours(23,59,59,999);
     const monthEnd=new Date(today.getFullYear(),today.getMonth()+1,0,23,59,59,999);
+    const lastMonthStart=new Date(today.getFullYear(),today.getMonth()-1,1);
+    const lastMonthEnd=new Date(today.getFullYear(),today.getMonth(),0,23,59,59,999);
     const nextMonthStart=new Date(today.getFullYear(),today.getMonth()+1,1);
     const nextMonthEnd=new Date(today.getFullYear(),today.getMonth()+2,0,23,59,59,999);
     result=result.filter(t=>{
@@ -8426,13 +8450,26 @@ function applyTbFilters(tasks){
       if(tbPeriodFilter==='overdue') return d<todayMs && !t.done;
       if(tbPeriodFilter==='today') return d===todayMs;
       if(tbPeriodFilter==='week') return d>=todayMs && d<=weekEnd.getTime();
+      if(tbPeriodFilter==='last_week') return d>=lastWeekStart.getTime() && d<=lastWeekEnd.getTime();
       if(tbPeriodFilter==='month') return d>=todayMs && d<=monthEnd.getTime();
+      if(tbPeriodFilter==='last_month') return d>=lastMonthStart.getTime() && d<=lastMonthEnd.getTime();
       if(tbPeriodFilter==='next_month') return d>=nextMonthStart.getTime() && d<=nextMonthEnd.getTime();
       return true;
     });
   }
+  return result;
+}
+function applyTbFilters(tasks){
+  let result=tbBaseFilters(tasks);
   if(tbHideDone) result=result.filter(t=>!t.done);
   return result;
+}
+// [v59] 태그 다중 선택 토글
+function tbToggleTag(tg){
+  if(!tg||tg==='전체'){tbTagFilters=[];renderTaskBoard();return;}
+  const i=tbTagFilters.indexOf(tg);
+  if(i>=0) tbTagFilters.splice(i,1); else tbTagFilters.push(tg);
+  renderTaskBoard();
 }
 
 let delivGroupBy='project'; // 'project' | 'tag'
@@ -8582,9 +8619,9 @@ function renderTaskBoard(){
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="0" y="0" width="12" height="12" rx="1" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M0 4h12M0 8h12M4 0v12" stroke="currentColor" stroke-width="1"/></svg>
             표
           </button>
-          <button class="tb-vbtn${tbView==='workload'?' on':''}" onclick="setTbView('workload')">
+          ${document.body.classList.contains('spx-emp')?'':`<button class="tb-vbtn${tbView==='workload'?' on':''}" onclick="setTbView('workload')">
             👥 부하 현황
-          </button>
+          </button>`}
         </div>
         <!-- 정렬 -->
         <select class="tb-filter" onchange="tbSort=this.value;prefSet('tbSort',tbSort);document.getElementById('tb-body').innerHTML=tbBodyHTML()" style="font-size:14px;padding:5px 8px">
@@ -8601,10 +8638,16 @@ function renderTaskBoard(){
           <option value="전체"${tbPersonFilter==='전체'?' selected':''}>전체 담당자</option>
           ${persons.slice(1).map(n=>`<option value="${n}"${tbPersonFilter===n?' selected':''}>${n}</option>`).join('')}
         </select>
-        <!-- 태그 필터 -->
-        <select class="tb-filter" onchange="tbTagFilter=this.value;renderTaskBoard()">
-          <option value="전체"${tbTagFilter==='전체'?' selected':''}>전체 태그</option>
-          ${getAllTags().map(tg=>`<option value="${tg}"${tbTagFilter===tg?' selected':''}>🏷 ${tg}</option>`).join('')}
+        <!-- [v59] 프로젝트별 필터 -->
+        <select class="tb-filter" onchange="tbProjFilter=this.value;renderTaskBoard()">
+          <option value="전체"${tbProjFilter==='전체'?' selected':''}>전체 프로젝트</option>
+          ${(projects||[]).filter(p=>p&&!p.archived).map(p=>`<option value="${p.id}"${tbProjFilter===p.id?' selected':''}>${p.name}</option>`).join('')}
+        </select>
+        <!-- [v59] 태그 필터 (다중 선택) -->
+        <select class="tb-filter" onchange="tbToggleTag(this.value)">
+          <option value="">${tbTagFilters.length?`태그 ${tbTagFilters.length}개 선택됨`:'전체 태그'}</option>
+          <option value="전체">전체 태그 (선택 해제)</option>
+          ${getAllTags().map(tg=>`<option value="${tg}">${tbTagFilters.includes(tg)?'✓ ':''}🏷 ${tg}</option>`).join('')}
         </select>
         <!-- 기간 필터 -->
         <select class="tb-filter" onchange="tbPeriodFilter=this.value;renderTaskBoard()">
@@ -8612,7 +8655,9 @@ function renderTaskBoard(){
           <option value="overdue"${tbPeriodFilter==='overdue'?' selected':''}>⚠️ 마감 초과</option>
           <option value="today"${tbPeriodFilter==='today'?' selected':''}>📍 오늘 마감</option>
           <option value="week"${tbPeriodFilter==='week'?' selected':''}>이번 주 마감</option>
+          <option value="last_week"${tbPeriodFilter==='last_week'?' selected':''}>지난주 마감</option>
           <option value="month"${tbPeriodFilter==='month'?' selected':''}>이번 달 마감</option>
+          <option value="last_month"${tbPeriodFilter==='last_month'?' selected':''}>지난달 마감</option>
           <option value="next_month"${tbPeriodFilter==='next_month'?' selected':''}>다음 달 마감</option>
           <option value="no_date"${tbPeriodFilter==='no_date'?' selected':''}>마감일 없음</option>
         </select>
@@ -8622,8 +8667,9 @@ function renderTaskBoard(){
           완료 숨기기
         </label>
         <div style="display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap">
-          ${tbPeriodFilter!=='전체'?`<span style="font-size:14px;background:#e6f1fb;color:#185fa5;padding:3px 9px;border-radius:10px;cursor:pointer" onclick="tbPeriodFilter='전체';renderTaskBoard()" title="기간 필터 해제">📅 ${({overdue:'마감 초과',today:'오늘',week:'이번 주',month:'이번 달',next_month:'다음 달',no_date:'마감일 없음'})[tbPeriodFilter]} ✕</span>`:''}
-          ${tbTagFilter!=='전체'?`<span style="font-size:14px;background:#fff3a3;color:#854f0b;padding:3px 9px;border-radius:10px;cursor:pointer" onclick="tbTagFilter='전체';renderTaskBoard()" title="태그 필터 해제">🏷 ${tbTagFilter} ✕</span>`:''}
+          ${tbPeriodFilter!=='전체'?`<span style="font-size:14px;background:#e6f1fb;color:#185fa5;padding:3px 9px;border-radius:10px;cursor:pointer" onclick="tbPeriodFilter='전체';renderTaskBoard()" title="기간 필터 해제">📅 ${({overdue:'마감 초과',today:'오늘',week:'이번 주',last_week:'지난주',month:'이번 달',last_month:'지난달',next_month:'다음 달',no_date:'마감일 없음'})[tbPeriodFilter]} ✕</span>`:''}
+          ${tbProjFilter!=='전체'?`<span style="font-size:14px;background:#e1f5ee;color:#0f6e56;padding:3px 9px;border-radius:10px;cursor:pointer" onclick="tbProjFilter='전체';renderTaskBoard()" title="프로젝트 필터 해제">📁 ${((projects||[]).find(p=>p.id===tbProjFilter)||{}).name||''} ✕</span>`:''}
+          ${tbTagFilters.map(tg=>`<span style="font-size:14px;background:#fff3a3;color:#854f0b;padding:3px 9px;border-radius:10px;cursor:pointer" onclick="tbToggleTag('${tg}')" title="이 태그 해제">🏷 ${tg} ✕</span>`).join('')}
           ${tbPersonFilter!=='전체'?`<span style="font-size:14px;background:var(--surface2);color:var(--text2);padding:3px 9px;border-radius:10px">👤 ${tbPersonFilter}</span>`:''}
           ${tbFilter!=='전체'?`<span style="font-size:14px;background:var(--surface2);color:var(--text2);padding:3px 9px;border-radius:10px">🏷 ${tbFilter}</span>`:''}
           ${overdueCount?`<span onclick="openOverdueModal()" style="font-size:14px;background:#fdf2f2;color:var(--red);padding:3px 9px;border-radius:10px;font-weight:600;cursor:pointer;transition:opacity .15s" onmouseenter="this.style.opacity='.7'" onmouseleave="this.style.opacity='1'" title="클릭하면 초과 태스크 목록 보기">⚠️ 초과 ${overdueCount}건</span>`:''}
@@ -8830,33 +8876,7 @@ function statusBoardHTML(){
   const allTasks=getAllTasks();
   // status board: show done tasks even if tbHideDone (user chose this view to see flow)
   // but respect dept/person/tag/period filter
-  let base=allTasks;
-  if(tbFilter!=='전체') base=base.filter(t=>{
-    const metaDepts=deptsFromMeta(t.meta);
-    if(metaDepts.includes(tbFilter)) return true;
-    return t.depts&&t.depts.includes(tbFilter);
-  });
-  if(tbPersonFilter!=='전체') base=base.filter(t=>t.meta&&t.meta.split(/[,·\/]/).map(m=>m.trim()).includes(tbPersonFilter));
-  if(tbTagFilter!=='전체') base=base.filter(t=>(t.tags||[]).includes(tbTagFilter));
-  if(tbPeriodFilter!=='전체'){
-    const today=new Date();today.setHours(0,0,0,0);
-    const todayMs=today.getTime();
-    const weekEnd=new Date(today);weekEnd.setDate(today.getDate()+(7-((today.getDay()||7))));weekEnd.setHours(23,59,59,999);
-    const monthEnd=new Date(today.getFullYear(),today.getMonth()+1,0,23,59,59,999);
-    const nextMonthStart=new Date(today.getFullYear(),today.getMonth()+1,1);
-    const nextMonthEnd=new Date(today.getFullYear(),today.getMonth()+2,0,23,59,59,999);
-    base=base.filter(t=>{
-      if(tbPeriodFilter==='no_date') return !t.dueDate;
-      if(!t.dueDate) return false;
-      const d=parseLocalDate(t.dueDate).getTime();
-      if(tbPeriodFilter==='overdue') return d<todayMs && !t.done;
-      if(tbPeriodFilter==='today') return d===todayMs;
-      if(tbPeriodFilter==='week') return d>=todayMs && d<=weekEnd.getTime();
-      if(tbPeriodFilter==='month') return d>=todayMs && d<=monthEnd.getTime();
-      if(tbPeriodFilter==='next_month') return d>=nextMonthStart.getTime() && d<=nextMonthEnd.getTime();
-      return true;
-    });
-  }
+  let base=tbBaseFilters(allTasks); // [v59] 공통 필터
   const today=new Date();today.setHours(0,0,0,0);
 
   const statuses=[
@@ -8898,7 +8918,7 @@ function statusBoardHTML(){
           ${t.meta?`<span style="font-size:14px;padding:2px 5px;border-radius:4px;background:${dc.bg};color:${dc.t}">${t.meta}</span>`:''}
           ${dueBadge}
         </div>
-        ${(t.tags||[]).length?`<div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:4px">${(t.tags||[]).map(tg=>`<span style="font-size:12px;background:#fff3a3;color:#854f0b;padding:1px 6px;border-radius:8px;cursor:pointer" onclick="event.stopPropagation();tbTagFilter='${tg}';renderTaskBoard()">🏷${tg}</span>`).join(' ')}</div>`:''}
+        ${(t.tags||[]).length?`<div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:4px">${(t.tags||[]).map(tg=>`<span style="font-size:12px;background:#fff3a3;color:#854f0b;padding:1px 6px;border-radius:8px;cursor:pointer" onclick="event.stopPropagation();tbToggleTag('${tg}')">🏷${tg}</span>`).join(' ')}</div>`:''}
       </div>`;
     }).join('');
 
@@ -8993,7 +9013,7 @@ function boardViewHTML(){
           <span style="font-size:14px;padding:2px 6px;border-radius:4px;background:${dc.bg};color:${dc.t}">${t.dept}</span>
           ${dueBadge}
         </div>
-        ${(t.tags||[]).length?`<div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:4px">${(t.tags||[]).map(tg=>`<span style="font-size:12px;background:#fff3a3;color:#854f0b;padding:1px 6px;border-radius:8px;cursor:pointer" onclick="event.stopPropagation();tbTagFilter='${tg}';renderTaskBoard()">🏷${tg}</span>`).join(' ')}</div>`:''}
+        ${(t.tags||[]).length?`<div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:4px">${(t.tags||[]).map(tg=>`<span style="font-size:12px;background:#fff3a3;color:#854f0b;padding:1px 6px;border-radius:8px;cursor:pointer" onclick="event.stopPropagation();tbToggleTag('${tg}')">🏷${tg}</span>`).join(' ')}</div>`:''}
         ${t.dueDate?`<div style="font-size:14px;color:var(--text3);font-family:var(--mono);margin-top:5px">${t.dueDate}</div>`:''}
       </div>`;
     }).join('');
@@ -9025,7 +9045,7 @@ function boardViewHTML(){
         const label=t.done?'완료':diff<0?`D+${-diff}`:diff===0?'오늘':`D-${diff}`;
         dueBadge=`<span class="sbadge ${cls}" style="font-size:14px;padding:2px 7px">${label}</span>`;
       }
-      const tagsHTML=(t.tags||[]).map(tg=>`<span style="font-size:12px;background:#fff3a3;color:#854f0b;padding:1px 6px;border-radius:8px;cursor:pointer" onclick="event.stopPropagation();tbTagFilter='${tg}';renderTaskBoard()">🏷${tg}</span>`).join(' ');
+      const tagsHTML=(t.tags||[]).map(tg=>`<span style="font-size:12px;background:#fff3a3;color:#854f0b;padding:1px 6px;border-radius:8px;cursor:pointer" onclick="event.stopPropagation();tbToggleTag('${tg}')">🏷${tg}</span>`).join(' ');
       return `<div class="bv-card" onclick="openSidePanel('${t.projId}','${t.schedId}','${t.id}')">
         <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
           <div class="bv-check${t.done?' on':''}" onclick="event.stopPropagation();toggleTaskByRef('${t.projId}','${t.schedId}','${t.id}')">${t.done?'✓':''}</div>
@@ -10271,12 +10291,13 @@ function openWeeklyReport(){
 // ═══════════════════════════════════════════════════════════════
 let spxUser=localStorage.getItem('spx_user')||'';
 let spxMode=localStorage.getItem('spx_mode')||'emp';
-let spxTab='my';
+let spxTab='board'; // [v59.1] 탭 순서: 공통보드 → 내 할 일 → 프로젝트
 let spxBoardTab='cal';
 let spxMeetDoneOpen=false;
 let spxCalY=(new Date()).getFullYear(), spxCalM=(new Date()).getMonth();
 // [v58] 직원모드 상태
 let spxMyLaterOpen=false,spxMyDoneOpen=false,spxMyPartOpen=false,spxProjTab='all',spxUrgFilter='';
+let spxCalProj='전체'; // [v59] 캘린더 프로젝트 필터 (가로/PC 전용)
 function spxWide(){return window.innerWidth>=900;}
 let _spxRz;
 window.addEventListener('resize',function(){
@@ -10352,7 +10373,7 @@ function spxApplyMode(){
     goHome();
   } else {
     document.body.classList.add('spx-emp');
-    spxGo(spxTab||'my');
+    spxGo(spxTab||'board'); // [v59.1] 첫 탭 = 공통보드
   }
   try{localStorage.setItem('spx_mode',spxMode);}catch(e){}
 }
@@ -10366,7 +10387,7 @@ function spxSetMode(m){
 function spxGo(tab){
   spxTab=tab;
   const b=document.getElementById('spx-back');if(b)b.remove();
-  ['my','proj','board'].forEach(function(k){
+  ['board','my','proj'].forEach(function(k){
     const el=document.getElementById('spxnav-'+k);
     if(el) el.classList.toggle('on',k===tab);
   });
@@ -10437,8 +10458,7 @@ function spxRenderMy(){
   // [v58] 참여 프로젝트 주의
   function partSec(){
     if(!part.length) return '';
-    let h='<div class="spx-sec" style="color:#185fa5">참여 프로젝트 주의 <span class="n">'+part.length+'</span></div>'+
-      '<div class="spx-tm" style="margin:0 4px 2px">함께하는 프로젝트에서 마감이 임박했거나 지난 업무입니다</div>';
+    let h='<div class="spx-tm" style="margin:2px 4px 4px">함께하는 프로젝트에서 마감이 임박했거나 지난 업무입니다</div>';
     const vis=(spxMyPartOpen||part.length<=3)?part:part.slice(0,3);
     h+=vis.map(function(x){return row(x,true);}).join('');
     if(part.length>3) h+='<div class="spx-fold" style="border-top:none;margin-top:0" onclick="spxMyPartOpen=!spxMyPartOpen;spxRenderMy()">'+(spxMyPartOpen?'▾ 접기':'▸ 더보기 '+(part.length-3)+'건')+'</div>';
@@ -10457,16 +10477,15 @@ function spxRenderMy(){
     body='<div class="empty" style="padding:50px 20px">담당으로 지정된 할 일이 없습니다.<br><span style="font-size:13px">아래 버튼으로 할 일을 추가해보세요.</span></div>';
   } else {
     const myOpen=over.length+week.length+later.length;
-    if(myOpen||part.length){
-      body+='<div style="background:var(--text);color:var(--surface);border-radius:14px;padding:13px 16px;margin-top:14px;display:flex;align-items:center;gap:10px">'+
-        '<div style="flex:1;min-width:0"><div style="font-size:11px;opacity:.65;margin-bottom:2px">오늘 확인할 흐름</div>'+
-        '<div style="font-size:14.5px;font-weight:700">내 업무 '+myOpen+(part.length?' · 참여 프로젝트 주의 '+part.length:'')+'</div></div>'+
-        '<span style="font-size:11.5px;background:rgba(255,255,255,.16);padding:4px 10px;border-radius:14px;flex-shrink:0">총 '+(myOpen+part.length)+'건</span></div>';
+    // [v58.1] 내 업무 / 참여 프로젝트 그룹 분리
+    let myBlock='<div class="spx-group-t">내 업무 <span class="n">'+myOpen+'</span></div>';
+    if(!myOpen) myBlock+='<div class="empty" style="padding:22px 20px 4px">🎉 내 미완료 할 일이 없습니다</div>';
+    myBlock+=sec('기한 지남',over,'#c0392b')+sec('이번 주',week,'var(--text)')+laterSec()+doneSec();
+    let partBlock='';
+    if(part.length){
+      partBlock='<div class="spx-part-card"><div class="spx-group-t" style="margin-top:0;color:#185fa5">참여 프로젝트 <span class="n">'+part.length+'</span></div>'+partSec()+'</div>';
     }
-    if(!myOpen) body+='<div class="empty" style="padding:26px 20px 4px">🎉 내 미완료 할 일이 없습니다</div>';
-    body+='<div class="spx-two"><div>'+
-      sec('기한 지남',over,'#c0392b')+sec('이번 주',week,'var(--text)')+laterSec()+
-      '</div><div>'+partSec()+doneSec()+'</div></div>';
+    body+='<div class="spx-two"><div>'+myBlock+'</div><div>'+partBlock+'</div></div>';
   }
   document.getElementById('my-content').innerHTML=
     '<div class="spx-hd"><div>'+
@@ -10626,8 +10645,11 @@ function spxBoardCal(){
       (meetByDay[d.getDate()]=meetByDay[d.getDate()]||[]).push(m);
     }
   });
+  const _wideCal=spxWide();
+  if(!_wideCal) spxCalProj='전체'; // [v59] 모바일 세로에서는 필터 미적용
   spxAllTasks().forEach(function(x){
     if(x.t.done)return;
+    if(spxCalProj!=='전체'&&x.p.id!==spxCalProj)return; // [v59] 프로젝트별 캘린더
     const d=spxDue(x.t);
     if(d&&d.getFullYear()===spxCalY&&d.getMonth()===spxCalM){
       (taskByDay[d.getDate()]=taskByDay[d.getDate()]||[]).push(x);
@@ -10638,7 +10660,7 @@ function spxBoardCal(){
   const startCol=first.getDay();
   let cells='';
   for(let i=0;i<startCol;i++) cells+='<div></div>';
-  const wide=spxWide(); // [v58] 가로/PC — 관리자 대시보드 캘린더처럼 업무 노출
+  const wide=_wideCal; // [v58] 가로/PC — 관리자 대시보드 캘린더처럼 업무 노출
   for(let d=1;d<=days;d++){
     const isT=(today.getFullYear()===spxCalY&&today.getMonth()===spxCalM&&today.getDate()===d);
     const wd=(startCol+d-1)%7;
@@ -10677,13 +10699,21 @@ function spxBoardCal(){
         '<span onclick="event.stopPropagation();deleteMeeting(\''+m.id+'\')" style="color:var(--text3);font-size:14px;padding:0 4px;cursor:pointer">✕</span>'+
       '</div></div>';
   }
-  return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 2px 6px">'+
+  // [v59] 가로/PC 전용 프로젝트 필터
+  const projSel=wide?('<select class="spx-calsel" onchange="spxCalProj=this.value;spxRenderBoard()">'+
+    '<option value="전체"'+(spxCalProj==='전체'?' selected':'')+'>전체 프로젝트</option>'+
+    (projects||[]).filter(function(p){return p&&!p.archived;}).map(function(p){
+      return '<option value="'+p.id+'"'+(spxCalProj===p.id?' selected':'')+'>'+spxEsc(p.name)+'</option>';
+    }).join('')+'</select>'):'';
+  return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 2px 6px">'+
+    '<div style="display:flex;align-items:center;gap:8px">'+
     '<button class="btn xs ghost" onclick="spxCalShift(-1)">‹</button>'+
     '<span style="font-size:15px;font-weight:700">'+spxCalY+'년 '+mn[spxCalM]+'</span>'+
     '<button class="btn xs ghost" onclick="spxCalShift(1)">›</button></div>'+
+    projSel+'</div>'+
     '<div class="spx-cal"><div class="spx-cal-wk"><span style="color:#a32d2d">일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span style="color:#2b5a8a">토</span></div>'+
     '<div class="spx-cal-g">'+cells+'</div>'+
-    '<div class="spx-tm" style="margin:7px 2px 0">회의 · <span style="color:#a32d2d">마감 태스크 건수</span>가 함께 표시됩니다. 날짜를 누르면 상세.</div></div>'+
+    '<div class="spx-tm" style="margin:7px 2px 0">'+(spxCalProj!=='전체'?'선택한 프로젝트의 마감 업무만 표시 중입니다 · 회의는 전사 공유라 계속 표시됩니다.':'회의 · <span style="color:#a32d2d">마감 태스크 건수</span>가 함께 표시됩니다. 날짜를 누르면 상세.')+'</div></div>'+
     '<div class="spx-sec" style="color:var(--text)">다가오는 회의 <span class="n">'+up.length+'</span></div>'+
     (up.length?up.map(mrow).join(''):'<div class="spx-tm" style="padding:6px 4px">예정된 회의가 없습니다</div>')+
     '<button class="spx-btn-lg" onclick="openAddMeeting()">＋ 회의 추가</button>'+
@@ -10707,7 +10737,7 @@ function spxCalShift(n){
 }
 function spxDayDetail(day){
   const meets=(meetings||[]).filter(function(m){const d=spxMDate(m);return d&&d.getFullYear()===spxCalY&&d.getMonth()===spxCalM&&d.getDate()===day;});
-  const tasks=spxAllTasks().filter(function(x){if(x.t.done)return false;const d=spxDue(x.t);return d&&d.getFullYear()===spxCalY&&d.getMonth()===spxCalM&&d.getDate()===day;});
+  const tasks=spxAllTasks().filter(function(x){if(x.t.done)return false;if(spxCalProj!=='전체'&&x.p.id!==spxCalProj)return false;const d=spxDue(x.t);return d&&d.getFullYear()===spxCalY&&d.getMonth()===spxCalM&&d.getDate()===day;});
   if(!meets.length&&!tasks.length){toast('이 날짜에 일정이 없습니다');return;}
   modal('<div class="m-title">'+(spxCalM+1)+'월 '+day+'일</div>'+
     (meets.length?'<div class="spx-sec" style="margin-top:4px">회의</div>'+meets.map(function(m){
@@ -10741,7 +10771,7 @@ function spxBoardUrgent(){
       '<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600;color:var(--text);line-height:1.4">'+spxEsc(x.t.name)+'</div>'+
       '<div class="spx-tm">'+spxEsc(x.p.name)+' · '+spxEsc(x.t.meta||'미지정')+'</div></div></div>';
   }
-  const chips=[['all','전체'],['proj','내 참여 프로젝트'],['mine','내 업무']].map(function(c){
+  const chips=[['all','전체'],['proj','내 참여 프로젝트']].map(function(c){
     return '<span class="spx-chip'+(f===c[0]?' on':'')+'" onclick="spxUrgFilter=\''+c[0]+'\';spxRenderBoard()">'+c[1]+'</span>';
   }).join('');
   return '<div style="display:flex;gap:10px;margin-top:14px">'+
@@ -10826,7 +10856,7 @@ function spxMoreSheet(){
     '<div style="display:flex;align-items:center;justify-content:space-between;margin:0 2px 12px">'+
       '<span style="font-size:16px;font-weight:700;color:var(--text)">더보기</span>'+
       '<span class="spx-tm" style="margin:0">'+spxEsc(spxUser||'게스트')+'</span></div>'+
-    menu('📋','#e6f1fb','태스크보드','전 직원 업무 현황 · 부하 분포','spxOpenTaskBoard()')+
+    menu('📋','#e6f1fb','태스크보드','전 직원 업무 현황 · 프로젝트별 보기','spxOpenTaskBoard()')+
     menu('📦','#faeeda','결과물 아카이브','프로젝트 산출물 모아보기','spxOpenDeliv()')+
     menu('❓','#f4f3f2','담당 미지정 할 일',un+'건','spxShowUnassigned()')+
     menu('⚙️','#ececec','설정','이름 바꾸기 · 모드 전환','spxOpenSettings()')+
@@ -10835,6 +10865,7 @@ function spxMoreSheet(){
 }
 function spxCloseSheet(){const o=document.getElementById('spx-sheet-ov');if(o)o.remove();}
 function spxOpenTaskBoard(){
+  if(tbView==='workload') tbView='board'; // [v59] 직원모드는 부하 현황 미제공
   renderTaskBoard();
   showView('v-tasks');
   spxAddBack('v-tasks',spxTab,'‹ 돌아가기');
@@ -10867,7 +10898,7 @@ function spxShowUnassigned(){
 // ── 부팅 ──
 function spxBoot(){
   spxSyncRoster();
-  if(!spxUser){ spxOpenGate(); document.body.classList.add('spx-emp'); spxGo('my'); return; }
+  if(!spxUser){ spxOpenGate(); document.body.classList.add('spx-emp'); spxGo('board'); return; }
   spxApplyMode();
 }
 
@@ -11296,7 +11327,7 @@ function tspTagsHTML(t){
   const tags=t.tags||[];
   return `
     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px">
-      ${tags.map(tg=>`<span style="font-size:14px;background:#fff3a3;color:#854f0b;border-radius:10px;padding:2px 8px 2px 10px;display:inline-flex;align-items:center;gap:4px;cursor:pointer" onclick="closeSidePanel();tbTagFilter='${tg}';goTaskBoard()" title="이 태그로 보드 필터">
+      ${tags.map(tg=>`<span style="font-size:14px;background:#fff3a3;color:#854f0b;border-radius:10px;padding:2px 8px 2px 10px;display:inline-flex;align-items:center;gap:4px;cursor:pointer" onclick="closeSidePanel();tbTagFilters=['${tg}'];goTaskBoard()" title="이 태그로 보드 필터">
         🏷 ${tg}
         <button onclick="event.stopPropagation();tspRemoveTag('${tg}')" style="background:none;border:none;cursor:pointer;color:#854f0b;font-size:14px;line-height:1;padding:0">×</button>
       </span>`).join('')}
@@ -11428,6 +11459,10 @@ function openKpiDetail(type){
 
 <!-- [v56] 직원 모드 하단 네비 -->
 <nav id="spx-emp-nav">
+  <div class="spx-nav-item" id="spxnav-board" onclick="spxGo('board')">
+    <svg viewBox="0 0 22 22" fill="none"><circle cx="8" cy="7" r="2.6" stroke="currentColor" stroke-width="1.5"/><circle cx="15.5" cy="8.5" r="2.1" stroke="currentColor" stroke-width="1.5"/><path d="M3 17c0-2.6 2.2-4.4 5-4.4s5 1.8 5 4.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14 13.2c2.7 0 5 1.5 5 3.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    공통보드
+  </div>
   <div class="spx-nav-item" id="spxnav-my" onclick="spxGo('my')">
     <svg viewBox="0 0 22 22" fill="none"><path d="M4 6.5l2 2 3.5-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 15.5l2 2 3.5-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.5 7.5H19M12.5 16.5H19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
     내 할 일
@@ -11435,10 +11470,6 @@ function openKpiDetail(type){
   <div class="spx-nav-item" id="spxnav-proj" onclick="spxGo('proj')">
     <svg viewBox="0 0 22 22" fill="none"><path d="M2.5 6a2 2 0 012-2h3.4l1.8 2.2h7.8a2 2 0 012 2v8.3a2 2 0 01-2 2h-13a2 2 0 01-2-2V6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
     프로젝트
-  </div>
-  <div class="spx-nav-item" id="spxnav-board" onclick="spxGo('board')">
-    <svg viewBox="0 0 22 22" fill="none"><circle cx="8" cy="7" r="2.6" stroke="currentColor" stroke-width="1.5"/><circle cx="15.5" cy="8.5" r="2.1" stroke="currentColor" stroke-width="1.5"/><path d="M3 17c0-2.6 2.2-4.4 5-4.4s5 1.8 5 4.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14 13.2c2.7 0 5 1.5 5 3.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-    공통보드
   </div>
   <div class="spx-nav-item" id="spxnav-more" onclick="spxMoreSheet()">
     <svg viewBox="0 0 22 22" fill="none"><circle cx="5" cy="11" r="1.7" fill="currentColor"/><circle cx="11" cy="11" r="1.7" fill="currentColor"/><circle cx="17" cy="11" r="1.7" fill="currentColor"/></svg>
