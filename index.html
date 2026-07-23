@@ -6812,7 +6812,7 @@ function initFirebase(){
     updateFbStatus('연결 중...');
     fbDB.ref('.info/connected').on('value',snap=>{
       if(snap.val()===true){
-        updateFbStatus('✅ Firebase 연결됨 (v2)');
+        updateFbStatus('✅ Firebase 연결됨 ('+FB_ROOT.replace('spextrum_','')+' · build '+APP_VERSION+')'); // [v62] 실제 데이터 경로를 동적 표시
         if(!fbInitDone){
           fbLoadData();
         } else {
