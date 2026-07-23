@@ -7416,7 +7416,7 @@ function fbSaveSnapshot(){
 // 원칙 3: 수신은 3-way 병합 — 로컬 미저장 변경은 원격이 절대 덮지 못한다.
 // ═══════════════════════════════════════════════════════════════════
 const FB_ROOT='spextrum_v3'; // [v62] 온라인 전용 — 새 데이터 세대. v2는 읽기전용 화석(Rules로 쓰기 차단)
-const APP_VERSION=6217; // [v62.1.7] 개요&스케줄에서 연결된 회의 목록 제거 (회의록만 유지)
+const APP_VERSION=6218; // [v62.1.8] 첫 진입 시 직원모드 화면 자동 갱신 + 로딩 표시
 let _versionBlocked=false;
 
 // ═══ [v55] 영속 outbox — "서버가 승인하기 전의 내 변경"을 기기에 보관 ═══
@@ -7951,7 +7951,11 @@ function refreshCurrentView(){
   if(id==='v-home') renderHome();
   else if(id==='v-list') renderList();
   else if(id==='v-tasks') renderTaskBoard();
-  // v-proj, v-sched, v-new, v-cal 은 건드리지 않음
+  // [v62.1.8] 직원모드 화면도 데이터 도착 시 자동 갱신 — 첫 진입이 빈 화면으로 멈춰 있던 문제 수정
+  else if(id==='v-my'){ if(typeof spxRenderMy==='function') try{spxRenderMy();}catch(e){} }
+  else if(id==='v-board'){ if(typeof spxRenderBoard==='function') try{spxRenderBoard();}catch(e){} }
+  else if(id==='v-eproj'){ if(typeof spxRenderProj==='function') try{spxRenderProj();}catch(e){} }
+  // v-proj, v-sched, v-new, v-cal 은 건드리지 않음 (입력 중 필드 보호)
   updateSb();
 }
 
@@ -10759,6 +10763,9 @@ function spxRenderMy(){
   let body='';
   if(!spxUser){
     body='<div class="empty" style="padding:50px 20px">이름을 먼저 선택해주세요</div>';
+  } else if(typeof fbInitDone!=='undefined'&&!fbInitDone){
+    // [v62.1.8] 서버 데이터 도착 전 — 빈 화면 대신 로딩 안내 (도착하면 자동 갱신됨)
+    body='<div class="empty" style="padding:50px 20px">⏳ 서버에서 데이터를 불러오는 중입니다...</div>';
   } else if(!mine.length&&!part.length){
     body='<div class="empty" style="padding:50px 20px">담당으로 지정된 할 일이 없습니다.<br><span style="font-size:13px">아래 버튼으로 할 일을 추가해보세요.</span></div>';
   } else {
