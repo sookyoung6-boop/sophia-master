@@ -7370,7 +7370,7 @@ function fbSaveSnapshot(){
 // 원칙 3: 수신은 3-way 병합 — 로컬 미저장 변경은 원격이 절대 덮지 못한다.
 // ═══════════════════════════════════════════════════════════════════
 const FB_ROOT='spextrum_v3'; // [v62] 온라인 전용 — 새 데이터 세대. v2는 읽기전용 화석(Rules로 쓰기 차단)
-const APP_VERSION=6214; // [v62.1.4] 연결된 회의 카드를 개요&스케줄(구 주간목표 자리)에도 표시
+const APP_VERSION=6215; // [v62.1.5] 참여 프로젝트 접기/펼치기
 let _versionBlocked=false;
 
 // ═══ [v55] 영속 outbox — "서버가 승인하기 전의 내 변경"을 기기에 보관 ═══
@@ -10507,6 +10507,8 @@ let spxMeetDoneOpen=false;
 let spxCalY=(new Date()).getFullYear(), spxCalM=(new Date()).getMonth();
 // [v58] 직원모드 상태
 let spxMyLaterOpen=false,spxMyDoneOpen=false,spxMyPartOpen=false,spxProjTab='all',spxUrgFilter='';
+let spxMyPartFold={}; // [v62.1.5] 참여 프로젝트 접기 상태 (pid → 펼침 여부, 기본 접힘)
+function spxTogglePartFold(pid){spxMyPartFold[pid]=!spxMyPartFold[pid];spxRenderMy();}
 let spxCalProj='전체'; // [v59] 캘린더 프로젝트 필터 (가로/PC 전용)
 function spxWide(){return window.innerWidth>=900;}
 let _spxRz;
@@ -10675,10 +10677,15 @@ function spxRenderMy(){
     order.forEach(function(pid){
       const arr=groups[pid];const pr=arr[0].p;
       const col=(typeof COLORS!=='undefined'&&COLORS[pr.color])?COLORS[pr.color]:{dot:'#888'};
-      h+='<div style="display:flex;align-items:center;gap:7px;margin:10px 4px 3px">'
+      const open=!!spxMyPartFold[pid]; // [v62.1.5] 기본 접힘 — 프로젝트를 누르면 하위 업무 표시
+      h+='<div onclick="spxTogglePartFold(\''+pid+'\')" title="'+(open?'접기':'하위 업무 보기')+'"'
+        +' style="display:flex;align-items:center;gap:7px;margin:8px 0 0;padding:7px 4px;cursor:pointer;border-radius:var(--rsm);user-select:none"'
+        +' onmouseenter="this.style.background=\'var(--surface2)\'" onmouseleave="this.style.background=\'\'">'
+        +'<span style="font-size:11px;color:var(--text3);width:12px;flex-shrink:0">'+(open?'▾':'▸')+'</span>'
         +'<span style="width:8px;height:8px;border-radius:50%;background:'+col.dot+';flex-shrink:0"></span>'
-        +'<span style="font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+spxEsc(pr.name)+'</span>'
-        +'<span style="font-size:12px;color:var(--text3)">'+arr.length+'건</span></div>';
+        +'<span style="font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">'+spxEsc(pr.name)+'</span>'
+        +'<span style="font-size:12px;color:var(--text3);flex-shrink:0">'+arr.length+'건</span></div>';
+      if(!open) return;
       h+=arr.map(function(x){
         const t=x.t,d=spxDue(t);
         let meta=spxEsc(t.meta||'담당 미지정');
