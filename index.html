@@ -1048,9 +1048,10 @@ function showView(id){document.querySelectorAll('.view').forEach(v=>v.classList.
     try{
       const st={spx:id,
         pid:(typeof curProj!=='undefined'&&curProj)?curProj.id:null,
-        sid:(typeof curSched!=='undefined'&&curSched)?curSched.id:null};
+        sid:(typeof curSched!=='undefined'&&curSched)?curSched.id:null,
+        tab:(id==='v-proj'&&typeof projTab!=='undefined')?projTab:null};
       const cur=history.state;
-      if(cur&&cur.spx===st.spx&&cur.pid===st.pid&&cur.sid===st.sid){ history.replaceState(st,''); } // 같은 화면 재렌더는 중복 기록 안 함
+      if(cur&&cur.spx===st.spx&&cur.pid===st.pid&&cur.sid===st.sid&&cur.tab===st.tab){ history.replaceState(st,''); } // 같은 화면 재렌더는 중복 기록 안 함
       else { history.pushState(st,''); }
     }catch(e){}
   }
@@ -1065,7 +1066,12 @@ function _spxRestoreState(st){
     else if(id==='v-list'){ goList(); }
     else if(id==='v-proj'){
       const p=st.pid?projects.find(x=>x.id===st.pid):null;
-      if(p){ curProj=p; renderProj(); } else goList();
+      if(p){
+        curProj=p;
+        projTab=st.tab||projTabMemory[p.id]||'main'; // [v62.1.3] 탭까지 복원
+        projTabMemory[p.id]=projTab;
+        renderProj();
+      } else goList();
     }
     else if(id==='v-sched'){
       const p=st.pid?projects.find(x=>x.id===st.pid):null;
@@ -1543,6 +1549,14 @@ const projTabMemory = {}; // remember last tab per project
 function switchProjTab(tab,pid){
   projTab=tab;
   projTabMemory[pid]=tab; // remember
+  // [v62.1.3] 개요&스케줄/태스크/결과물 탭 전환도 브라우저 히스토리에 기록
+  if(!window._spxNavFromPop){
+    try{
+      const st={spx:'v-proj',pid:pid,sid:null,tab:tab};
+      const cur=history.state;
+      if(!(cur&&cur.spx===st.spx&&cur.pid===st.pid&&cur.tab===st.tab)) history.pushState(st,'');
+    }catch(e){}
+  }
   const p=projects.find(x=>x.id===pid);
   const c=COLORS[p.color],pr=prog(p);
   const allT=p.schedules.flatMap(s=>s.tasks);
@@ -1782,7 +1796,14 @@ function projMainHTML(p,c,pr,allT,doneT){
         </div>
       </div>
 
-      <!-- [v62.1.1] 연결된 회의 카드는 태스크 탭으로 이동 (일상 작업 동선에 맞춤) -->
+      <!-- [v62.1.4] 연결된 회의 — 구 주간목표 자리 (태스크 탭에도 동일 카드 존재) -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:14px;font-weight:700;color:var(--text)">📅 연결된 회의 <span style="font-weight:400;color:var(--text3)">${meetings.filter(m=>m.projId===p.id).length||''}</span></div>
+          <button class="btn xs ghost" onclick="openAddMeeting('${p.id}')">+ 회의 추가</button>
+        </div>
+        <div style="padding:4px 0" id="proj-meetings">${projMeetingsHTML(p)}</div>
+      </div>
 
     </div>
   </div>`;
@@ -7349,7 +7370,7 @@ function fbSaveSnapshot(){
 // 원칙 3: 수신은 3-way 병합 — 로컬 미저장 변경은 원격이 절대 덮지 못한다.
 // ═══════════════════════════════════════════════════════════════════
 const FB_ROOT='spextrum_v3'; // [v62] 온라인 전용 — 새 데이터 세대. v2는 읽기전용 화석(Rules로 쓰기 차단)
-const APP_VERSION=6211; // [v62.1.1] 피드백 반영판
+const APP_VERSION=6214; // [v62.1.4] 연결된 회의 카드를 개요&스케줄(구 주간목표 자리)에도 표시
 let _versionBlocked=false;
 
 // ═══ [v55] 영속 outbox — "서버가 승인하기 전의 내 변경"을 기기에 보관 ═══
@@ -10645,13 +10666,35 @@ function spxRenderMy(){
     if(later.length>3) h+='<div class="spx-fold" style="border-top:none;margin-top:0" onclick="spxMyLaterOpen=!spxMyLaterOpen;spxRenderMy()">'+(spxMyLaterOpen?'▾ 접기':'▸ 더보기 '+(later.length-3)+'건')+'</div>';
     return h;
   }
-  // [v58] 참여 프로젝트 주의
+  // [v62.1.2] 참여 프로젝트 — 프로젝트별로 묶어서 표시 (내용은 v58 방식 그대로)
   function partSec(){
     if(!part.length) return '';
     let h='<div class="spx-tm" style="margin:2px 4px 4px">함께하는 프로젝트에서 마감이 임박했거나 지난 업무입니다</div>';
-    const vis=(spxMyPartOpen||part.length<=3)?part:part.slice(0,3);
-    h+=vis.map(function(x){return row(x,true);}).join('');
-    if(part.length>3) h+='<div class="spx-fold" style="border-top:none;margin-top:0" onclick="spxMyPartOpen=!spxMyPartOpen;spxRenderMy()">'+(spxMyPartOpen?'▾ 접기':'▸ 더보기 '+(part.length-3)+'건')+'</div>';
+    const groups={};const order=[];
+    part.forEach(function(x){ if(!groups[x.p.id]){groups[x.p.id]=[];order.push(x.p.id);} groups[x.p.id].push(x); });
+    order.forEach(function(pid){
+      const arr=groups[pid];const pr=arr[0].p;
+      const col=(typeof COLORS!=='undefined'&&COLORS[pr.color])?COLORS[pr.color]:{dot:'#888'};
+      h+='<div style="display:flex;align-items:center;gap:7px;margin:10px 4px 3px">'
+        +'<span style="width:8px;height:8px;border-radius:50%;background:'+col.dot+';flex-shrink:0"></span>'
+        +'<span style="font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+spxEsc(pr.name)+'</span>'
+        +'<span style="font-size:12px;color:var(--text3)">'+arr.length+'건</span></div>';
+      h+=arr.map(function(x){
+        const t=x.t,d=spxDue(t);
+        let meta=spxEsc(t.meta||'담당 미지정');
+        if(d){
+          const diff=Math.round((d-today)/864e5);
+          const lbl=diff<0?('D+'+(-diff)):diff===0?'오늘 마감':(t.dueDate+' 마감');
+          meta='<span style="color:'+(diff<=1?'#c0392b':diff<=3?'#854f0b':'var(--text3)')+';font-weight:600">'+lbl+'</span> · '+meta;
+        }
+        return '<div class="spx-row">'
+          +'<div class="spx-ck'+(t.done?' on':'')+'" onclick="spxToggle(\''+x.p.id+'\',\''+x.s.id+'\',\''+t.id+'\')">'+(t.done?'✓':'')+'</div>'
+          +'<div style="flex:1;min-width:0;cursor:pointer" onclick="openSidePanel(\''+x.p.id+'\',\''+x.s.id+'\',\''+t.id+'\')">'
+          +'<div class="spx-tn">'+spxEsc(t.name)+'</div>'
+          +'<div class="spx-tm">'+meta+'</div>'
+          +'</div></div>';
+      }).join('');
+    });
     return h;
   }
   // [v58] 완료 — 접기(기본 닫힘)
