@@ -7416,7 +7416,7 @@ function fbSaveSnapshot(){
 // 원칙 3: 수신은 3-way 병합 — 로컬 미저장 변경은 원격이 절대 덮지 못한다.
 // ═══════════════════════════════════════════════════════════════════
 const FB_ROOT='spextrum_v3'; // [v62] 온라인 전용 — 새 데이터 세대. v2는 읽기전용 화석(Rules로 쓰기 차단)
-const APP_VERSION=6218; // [v62.1.8] 첫 진입 시 직원모드 화면 자동 갱신 + 로딩 표시
+const APP_VERSION=6219; // [v62.1.9] 로드 완료 플래그를 화면 갱신보다 먼저 설정 (로딩 멈춤 수정)
 let _versionBlocked=false;
 
 // ═══ [v55] 영속 outbox — "서버가 승인하기 전의 내 변경"을 기기에 보관 ═══
@@ -7812,10 +7812,10 @@ function fbLoadData(){
       _shadow={};
       for(const p in flat) _shadow[p]=JSON.stringify(_cleanObj(flat[p]));
       _rebuildFromFlat(flat);
+      fbInitDone=true; // [v62.1.9] 반드시 화면 갱신보다 먼저 — 아니면 로딩 문구가 다시 그려진 채 멈춤
       refreshCurrentView();
       updateSb();
       setSaveStatus('saved');
-      fbInitDone=true;
       hideFbLoading();
       spxSetEditLock(false); // [v62] 서버 로드 완료 후에만 편집 허용
       // [v62] 클라이언트 trash 자동정리 중단(기기 시계 오류 방지) + 시작 직후 미전송분 재전송 제거
