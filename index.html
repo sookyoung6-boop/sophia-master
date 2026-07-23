@@ -1796,13 +1796,13 @@ function projMainHTML(p,c,pr,allT,doneT){
         </div>
       </div>
 
-      <!-- [v62.1.4] 연결된 회의 — 구 주간목표 자리 (태스크 탭에도 동일 카드 존재) -->
+      <!-- [v62.1.7] 회의록 카드 — 연결된 회의 목록은 태스크 탭에서만 표시 -->
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
         <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-          <div style="font-size:14px;font-weight:700;color:var(--text)">📅 연결된 회의 <span style="font-weight:400;color:var(--text3)">${meetings.filter(m=>m.projId===p.id).length||''}</span></div>
-          <button class="btn xs ghost" onclick="openAddMeeting('${p.id}')">+ 회의 추가</button>
+          <div style="font-size:14px;font-weight:700;color:var(--text)">📝 회의록</div>
+          <button class="btn xs ghost" onclick="pkAddMeetingNote('${p.id}')">+ 회의록 추가</button>
         </div>
-        <div style="padding:4px 0" id="proj-meetings">${projMeetingsHTML(p)}</div>
+        <div style="padding:2px 0" id="proj-meeting-notes">${projMeetingNotesHTML(p)}</div>
       </div>
 
     </div>
@@ -6149,6 +6149,52 @@ function projMeetingsHTML(p){
     </div>`).join('');
 }
 
+// [v62.1.6] 회의록 — 결과물 체크리스트('회의록' 카테고리/항목)를 개요&스케줄에서 바로 보기·추가
+function _projMeetNoteEntries(p){
+  const out=[];
+  (p.workAreas||[]).forEach(wa=>{
+    const waIs=String(wa.name||'').includes('회의록');
+    (wa.deliverables||[]).forEach(d=>{
+      if(waIs||String(d.name||'').includes('회의록')) out.push({wa:wa,d:d});
+    });
+  });
+  return out;
+}
+function projMeetingNotesHTML(p){
+  const entries=_projMeetNoteEntries(p);
+  if(!entries.length) return '<div class="empty" style="padding:12px 16px;font-size:13px">회의록이 없습니다. [+ 회의록 추가]를 누르면 결과물 체크리스트의 \'회의록\' 카테고리에 만들어집니다.</div>';
+  return entries.map(e=>{
+    const wa=e.wa,d=e.d;
+    return `
+    <div style="display:flex;align-items:center;gap:9px;padding:8px 16px;border-bottom:1px solid var(--border)">
+      <div class="chk${d.done?' on':''}" onclick="pkToggleMeetNote('${p.id}','${wa.id}','${d.id}')" style="flex-shrink:0">${d.done?'✓':''}</div>
+      <span style="font-size:14px;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;${d.done?'text-decoration:line-through;color:var(--text3)':''}"
+        onclick="switchProjTab('archive','${p.id}')" title="결과물 탭에서 편집">${d.name}</span>
+      ${d.link?`<a href="${d.link}" target="_blank" onclick="event.stopPropagation()" style="font-size:12px;color:#185fa5;text-decoration:none;background:#e6f1fb;padding:2px 8px;border-radius:6px;flex-shrink:0">🔗 링크 ↗</a>`:''}
+      ${d.file?`<span style="font-size:12px;color:var(--text3);flex-shrink:0;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${d.file}">📎 ${d.file}</span>`:''}
+    </div>`;
+  }).join('');
+}
+function pkToggleMeetNote(pid,waid,did){
+  const p=projects.find(x=>x.id===pid);
+  const wa=p&&p.workAreas.find(x=>x.id===waid);
+  const d=wa&&wa.deliverables.find(x=>x.id===did);
+  if(!d)return;
+  d.done=!d.done;saveToLS();
+  const e=document.getElementById('proj-meeting-notes');if(e&&typeof curProj!=='undefined'&&curProj)e.innerHTML=projMeetingNotesHTML(curProj);
+  const w=document.getElementById('wa-list');if(w&&typeof curProj!=='undefined'&&curProj)w.innerHTML=waListHTML(curProj);
+}
+function pkAddMeetingNote(pid){
+  const p=projects.find(x=>x.id===pid);if(!p)return;
+  if(!p.workAreas)p.workAreas=[];
+  let wa=p.workAreas.find(x=>String(x.name||'').includes('회의록'));
+  if(!wa){wa={id:uid(),name:'회의록',deliverables:[]};p.workAreas.push(wa);}
+  const label='회의록 '+new Date().toISOString().slice(0,10).replace(/-/g,'.');
+  wa.deliverables.push({id:uid(),name:label,done:false,file:null});
+  saveToLS();toast('결과물 체크리스트의 \'회의록\' 카테고리에 추가됐습니다');
+  const e=document.getElementById('proj-meeting-notes');if(e)e.innerHTML=projMeetingNotesHTML(p);
+}
+
 // MODAL HELPER
 function modal(html){
   const ov=document.createElement('div');ov.className='m-overlay';ov.id='modal-ov';
@@ -7370,7 +7416,7 @@ function fbSaveSnapshot(){
 // 원칙 3: 수신은 3-way 병합 — 로컬 미저장 변경은 원격이 절대 덮지 못한다.
 // ═══════════════════════════════════════════════════════════════════
 const FB_ROOT='spextrum_v3'; // [v62] 온라인 전용 — 새 데이터 세대. v2는 읽기전용 화석(Rules로 쓰기 차단)
-const APP_VERSION=6215; // [v62.1.5] 참여 프로젝트 접기/펼치기
+const APP_VERSION=6217; // [v62.1.7] 개요&스케줄에서 연결된 회의 목록 제거 (회의록만 유지)
 let _versionBlocked=false;
 
 // ═══ [v55] 영속 outbox — "서버가 승인하기 전의 내 변경"을 기기에 보관 ═══
