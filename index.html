@@ -1043,22 +1043,54 @@ function prog(p){
 }
 function showView(id){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById(id).classList.add('active');
   document.body.classList.toggle('spx-wide-page',id==='v-proj'||id==='v-tasks'||id==='v-deliv'); /* [v59.1] 넓게 쓰는 화면 */
-  // [v62.1] 브라우저 뒤로가기 지원 — 화면 전환마다 히스토리 한 칸 추가
-  if(!window._spxNavFromPop){ try{history.pushState({spx:id},''); }catch(e){} }
+  // [v62.1.1] 브라우저 뒤로가기 — 화면 전환마다 '어느 화면+어느 프로젝트/스케줄'을 히스토리에 기록
+  if(!window._spxNavFromPop){
+    try{
+      const st={spx:id,
+        pid:(typeof curProj!=='undefined'&&curProj)?curProj.id:null,
+        sid:(typeof curSched!=='undefined'&&curSched)?curSched.id:null};
+      const cur=history.state;
+      if(cur&&cur.spx===st.spx&&cur.pid===st.pid&&cur.sid===st.sid){ history.replaceState(st,''); } // 같은 화면 재렌더는 중복 기록 안 함
+      else { history.pushState(st,''); }
+    }catch(e){}
+  }
 }
-// [v62.1] 브라우저 뒤로가기 = 화면의 ← 버튼과 동일하게 동작. 모달이 열려 있으면 모달부터 닫는다.
+// [v62.1.1] 뒤로가기 = 기록된 화면을 직접 복원 (모달이 열려 있으면 모달만 먼저 닫음)
 window._spxNavFromPop=false;
-window.addEventListener('popstate',function(){
-  window._spxNavFromPop=true;
+function _spxRestoreState(st){
+  if(!st||!st.spx) return;
+  const id=st.spx;
   try{
-    if(document.getElementById('modal-ov')){ closeModal(); }
-    else {
-      const backBtn=document.getElementById('back-btn');
-      if(backBtn&&backBtn.style.display!=='none') goBack();
+    if(id==='v-home'){ goHome(); }
+    else if(id==='v-list'){ goList(); }
+    else if(id==='v-proj'){
+      const p=st.pid?projects.find(x=>x.id===st.pid):null;
+      if(p){ curProj=p; renderProj(); } else goList();
     }
-  }finally{ window._spxNavFromPop=false; }
+    else if(id==='v-sched'){
+      const p=st.pid?projects.find(x=>x.id===st.pid):null;
+      const s=p&&st.sid?p.schedules.find(x=>x.id===st.sid):null;
+      if(p&&s){ curProj=p; curSched=s; renderSchedDetail(); showView('v-sched'); }
+      else if(p){ curProj=p; renderProj(); }
+      else goList();
+    }
+    else if(id==='v-tasks'){ renderTaskBoard(); showView('v-tasks'); }
+    else if(id==='v-deliv'){ if(typeof renderDeliverableArchive==='function'){renderDeliverableArchive();showView('v-deliv');} }
+    else if(id==='v-cal'){ if(typeof goCalSettings==='function') goCalSettings(); }
+    else if(id==='v-new'){ goHome(); } // 새 프로젝트 폼으로의 복귀는 홈으로
+    else if(id==='v-my'||id==='v-board'||id==='v-eproj'){
+      if(typeof spxGo==='function') spxGo(id==='v-eproj'?'proj':id==='v-board'?'board':'my');
+    }
+    else { showView(id); }
+  }catch(e){ console.warn('[v62.1.1] back restore:',e); }
+}
+window.addEventListener('popstate',function(ev){
+  if(document.getElementById('modal-ov')){ closeModal(); try{history.pushState(history.state||{spx:'v-home'},'');}catch(e){} return; } // 모달만 닫고 화면 유지
+  window._spxNavFromPop=true;
+  try{ _spxRestoreState(ev.state||{spx:'v-home'}); }
+  finally{ window._spxNavFromPop=false; }
 });
-try{history.replaceState({spx:'root'},'');}catch(e){}
+try{history.replaceState({spx:'v-home',pid:null,sid:null},'');}catch(e){}
 function setBc(segs){
   document.getElementById('topbar-bc').innerHTML=segs.map((s,i)=>i===segs.length-1?`<span class="bc-seg cur">${s.label}</span>`:`<span class="bc-seg lnk" onclick="${s.fn}">${s.label}</span><span class="bc-sep">›</span>`).join('');
   // 뒤로가기 버튼 표시/숨김
@@ -1676,8 +1708,15 @@ function projMainHTML(p,c,pr,allT,doneT){
             style="opacity:0;cursor:grab;font-size:14px;color:var(--text3);padding:2px 4px;transition:opacity .15s"
             title="드래그로 순서 변경">⠿</span>
         </div>
-        ${fieldRow('담당자','manager','예: 김수경','fi-1')}
-        ${fieldRow('참여자','members','예: 김수경, 이은주','fi-2')}
+        <!-- [v62.1.1] 담당자/참여자 — 태스크와 동일한 태그(칩) 방식 -->
+        <div style="display:grid;grid-template-columns:90px 1fr;border-bottom:1px solid var(--border)">
+          <div style="padding:9px 12px;font-size:14px;color:var(--text3);background:var(--surface2);display:flex;align-items:flex-start;font-weight:500;padding-top:13px">담당자</div>
+          <div style="padding:8px 12px">${memberMultiSelectHTML('pinfo-mgr-'+p.id, p.manager||'', 'font-size:14px', "saveProjField('"+p.id+"','manager',value)")}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:90px 1fr;border-bottom:1px solid var(--border)">
+          <div style="padding:9px 12px;font-size:14px;color:var(--text3);background:var(--surface2);display:flex;align-items:flex-start;font-weight:500;padding-top:13px">참여자</div>
+          <div style="padding:8px 12px">${memberMultiSelectHTML('pinfo-mem-'+p.id, p.members||'', 'font-size:14px', "saveProjField('"+p.id+"','members',value)")}</div>
+        </div>
         <div style="display:grid;grid-template-columns:90px 1fr;border-bottom:1px solid var(--border)">
           <div style="padding:9px 12px;font-size:14px;color:var(--text3);background:var(--surface2);display:flex;align-items:center;font-weight:500">오픈일자</div>
           <div style="padding:7px 12px;display:flex;align-items:center;gap:10px">
@@ -6019,9 +6058,9 @@ function cycleMeetStatus(id){
 function setMeetFilter(f){meetFilter=f;document.getElementById('meet-list').innerHTML=meetListHTML()}
 function deleteMeeting(id){const m=meetings.find(x=>x.id===id);cfm('회의 삭제',`"${m.title}"을 삭제합니다.${m.calEventId&&gcConnected?' 캘린더 일정도 함께 삭제됩니다.':''}`,async()=>{
   if(m.calEventId&&gcConnected)await calFetch('DELETE',`/calendars/primary/events/${m.calEventId}`);
-  meetings=meetings.filter(x=>x.id!==id);saveToLS();{const _ml=document.getElementById('meet-list');if(_ml)_ml.innerHTML=meetListHTML();}if(typeof spxSharedRefresh==='function')spxSharedRefresh();toast('삭제됐습니다')})}function openAddMeeting(preProjId){
+  meetings=meetings.filter(x=>x.id!==id);saveToLS();{const _ml=document.getElementById('meet-list');if(_ml)_ml.innerHTML=meetListHTML();}if(typeof spxSharedRefresh==='function')spxSharedRefresh();toast('삭제됐습니다')})}function openAddMeeting(preProjId,preTitle){
   modal(`<div class="m-title">새 회의 추가</div>
-  <div class="frow"><label class="fl">회의 제목</label><input class="fi" id="mm-title" placeholder="주간 팀 미팅"></div>
+  <div class="frow"><label class="fl">회의 제목</label><input class="fi" id="mm-title" placeholder="주간 팀 미팅" value="${preTitle?String(preTitle).replace(/"/g,'&quot;')+' 회의':''}"></div>
   <div class="frow"><label class="fl">연결 프로젝트</label><select class="fi" id="mm-proj">${meetProjOptions(preProjId||'')}</select></div>
   <div class="two-col"><div class="frow"><label class="fl">날짜</label><input class="fi" id="mm-date" placeholder="2026.04.15"></div><div class="frow"><label class="fl">시간</label><input class="fi" id="mm-time" placeholder="10:00"></div></div>
   <div class="frow"><label class="fl">참석자</label><input class="fi" id="mm-att" placeholder="전사, COO, 디자인파트"></div>
@@ -7310,7 +7349,7 @@ function fbSaveSnapshot(){
 // 원칙 3: 수신은 3-way 병합 — 로컬 미저장 변경은 원격이 절대 덮지 못한다.
 // ═══════════════════════════════════════════════════════════════════
 const FB_ROOT='spextrum_v3'; // [v62] 온라인 전용 — 새 데이터 세대. v2는 읽기전용 화석(Rules로 쓰기 차단)
-const APP_VERSION=6210; // [v62.1] UI 개선판 — 서버 _minVersion(6200)보다 높으므로 v62와 공존 가능
+const APP_VERSION=6211; // [v62.1.1] 피드백 반영판
 let _versionBlocked=false;
 
 // ═══ [v55] 영속 outbox — "서버가 승인하기 전의 내 변경"을 기기에 보관 ═══
@@ -10568,11 +10607,14 @@ function spxRenderMy(){
   const bydue=function(a,b){const da=spxDue(a.t),db=spxDue(b.t);if(da&&db)return da-db;if(da)return -1;if(db)return 1;return 0;};
   over.sort(bydue);week.sort(bydue);later.sort(bydue);
 
-  // [v62.1] 참여 프로젝트 — 세부 업무 나열 대신 '어떤 프로젝트에 참여 중인지'를 프로젝트명 중심으로
+  // [v58] 참여 프로젝트 주의 — 내가 인볼브된 프로젝트에서 마감이 임박/초과된 (다른 팀원의) 업무
   const myPids={};
   mine.forEach(function(x){myPids[x.p.id]=1;});
-  const partProjs=Object.keys(myPids).map(function(id){return projects.find(function(p){return p.id===id&&!p.archived;});}).filter(Boolean);
-  const part=partProjs; // 하위 호환용 별칭
+  const part=all.filter(function(x){
+    if(!myPids[x.p.id]||x.t.done||spxMine(x.t)) return false;
+    const d=spxDue(x.t);
+    return d&&(d-today)/864e5<=3;
+  }).sort(bydue);
 
   function row(x,partMode){
     const t=x.t,d=spxDue(t);
@@ -10603,19 +10645,14 @@ function spxRenderMy(){
     if(later.length>3) h+='<div class="spx-fold" style="border-top:none;margin-top:0" onclick="spxMyLaterOpen=!spxMyLaterOpen;spxRenderMy()">'+(spxMyLaterOpen?'▾ 접기':'▸ 더보기 '+(later.length-3)+'건')+'</div>';
     return h;
   }
-  // [v62.1] 참여 프로젝트 — 프로젝트명 카드
+  // [v58] 참여 프로젝트 주의
   function partSec(){
-    if(!partProjs.length) return '';
-    return partProjs.map(function(p){
-      var myOpenCnt=mine.filter(function(x){return x.p.id===p.id&&!x.t.done;}).length;
-      var col=(typeof COLORS!=='undefined'&&COLORS[p.color])?COLORS[p.color]:{dot:'#888',tag:'#eee',tagT:'#555'};
-      return '<div class="spx-row" style="cursor:pointer;align-items:center" onclick="spxGo(\'proj\')" title="프로젝트 탭으로 이동">'
-        +'<div style="width:10px;height:10px;border-radius:50%;background:'+col.dot+';flex-shrink:0"></div>'
-        +'<div style="flex:1;min-width:0">'
-          +'<div style="font-size:16px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+spxEsc(p.name)+'</div>'
-          +'<div class="spx-tm">'+(myOpenCnt?('내 담당 '+myOpenCnt+'건 진행 중'):'내 담당 업무 모두 완료')+'</div>'
-        +'</div></div>';
-    }).join('');
+    if(!part.length) return '';
+    let h='<div class="spx-tm" style="margin:2px 4px 4px">함께하는 프로젝트에서 마감이 임박했거나 지난 업무입니다</div>';
+    const vis=(spxMyPartOpen||part.length<=3)?part:part.slice(0,3);
+    h+=vis.map(function(x){return row(x,true);}).join('');
+    if(part.length>3) h+='<div class="spx-fold" style="border-top:none;margin-top:0" onclick="spxMyPartOpen=!spxMyPartOpen;spxRenderMy()">'+(spxMyPartOpen?'▾ 접기':'▸ 더보기 '+(part.length-3)+'건')+'</div>';
+    return h;
   }
   // [v58] 완료 — 접기(기본 닫힘)
   function doneSec(){
@@ -11142,6 +11179,14 @@ function openSidePanel(pid,sid,tid){
     <div style="border-top:1px solid var(--border);padding-top:14px">
       <div style="font-size:14px;font-weight:600;color:var(--text3);margin-bottom:8px">🏷 태그</div>
       <div id="tsp-tags-wrap">${tspTagsHTML(t)}</div>
+    </div>
+
+    <!-- [v62.1.1] 이 태스크 관련 회의 등록 — 프로젝트에 자동 연결 -->
+    <div style="border-top:1px solid var(--border);padding-top:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:14px;font-weight:600;color:var(--text3)">📅 회의</div>
+        <button class="btn xs ghost" onclick="openAddMeeting('${p.id}','${(t.name||'').replace(/'/g,'').replace(/"/g,'').slice(0,40)}')">+ 회의 등록</button>
+      </div>
     </div>
 
     <div style="border-top:1px solid var(--border);padding-top:14px">
