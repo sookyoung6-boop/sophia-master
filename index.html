@@ -5093,10 +5093,10 @@ function openCalDay(yr,mo,d){
   projects.forEach(p=>{
     const c=COLORS[p.color];
     p.schedules.forEach(s=>s.tasks.forEach(t=>{
-      if(!t.dueDate||t.done)return;
+      if(!t.dueDate)return; // [v62.2.1] 완료 태스크 포함
       const td=parseLocalDate(t.dueDate);
       if(td&&td.getFullYear()===yr&&td.getMonth()===mo&&td.getDate()===d)
-        evs.push({type:'task',label:t.name,color:c.dot,bg:c.tag,proj:p.name,pid:p.id,schedId:s.id,tid:t.id,action:`closeModal();openSidePanel('${p.id}','${s.id}','${t.id}')`});
+        evs.push({type:'task',label:(t.done?'✓ ':'')+t.name,color:c.dot,bg:c.tag,proj:p.name,pid:p.id,schedId:s.id,tid:t.id,action:`closeModal();openSidePanel('${p.id}','${s.id}','${t.id}')`});
     }));
   });
   campaigns.forEach(c=>{
@@ -5220,10 +5220,10 @@ function renderHomeCal(){
     const c=COLORS[p.color]||COLORS['teal'];
     p.schedules.forEach(s=>{
       (s.tasks||[]).forEach(t=>{
-        if(!t||!t.dueDate||t.done)return;
+        if(!t||!t.dueDate)return; // [v62.2.1] 완료 태스크도 표시 — 완료됐다고 캘린더에서 사라지지 않게
         const d=parseLocalDate(t.dueDate);
         if(d&&d.getFullYear()===yr&&d.getMonth()===mo)
-          addEv(d.getDate(),{type:'task',label:t.name||'',color:c.dot,bg:c.tag,proj:p.name,pid:p.id,sid:s.id,tid:t.id});
+          addEv(d.getDate(),{type:'task',label:(t.done?'✓ ':'')+(t.name||''),done:!!t.done,color:c.dot,bg:c.tag,proj:p.name,pid:p.id,sid:s.id,tid:t.id});
       });
     });
   });
@@ -5262,7 +5262,7 @@ function renderHomeCal(){
     const numBg=isToday?'#E24B4A':'transparent';
 
     const evChips=evs.slice(0,3).map(ev=>`
-      <div style="font-size:14px;padding:2px 6px;border-radius:4px;background:${ev.bg};color:${ev.color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;margin-bottom:2px;line-height:1.4"
+      <div style="font-size:14px;padding:2px 6px;border-radius:4px;background:${ev.bg};color:${ev.color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;margin-bottom:2px;line-height:1.4;${ev.done?'opacity:.5;text-decoration:line-through;':''}"
         title="${ev.label}${ev.proj?' ('+ev.proj+')':''}"
         onclick="${ev.type==='task'&&ev.tid?`openSidePanel('${ev.pid}','${ev.sid}','${ev.tid}')`:ev.type==='launch'&&ev.pid?`openProj('${ev.pid}')`:ev.type==='meet'?'goHome()':ev.pid?`openProj('${ev.pid}')`:'goHome()'}">${ev.label}</div>`).join('');
     const moreChip=evs.length>3?`<div onclick="openCalDay(${yr},${mo},${d})" style="font-size:14px;color:#185fa5;padding:1px 6px;cursor:pointer;font-weight:600;background:#e6f1fb;border-radius:4px;display:inline-block" onmouseenter="this.style.opacity='.7'" onmouseleave="this.style.opacity='1'">+${evs.length-3}개 더보기</div>`:'';
@@ -5325,10 +5325,11 @@ function saveNotice(){
 // Parse "YYYY-MM-DD" as local midnight (not UTC) to avoid timezone offset
 function parseLocalDate(s){
   if(!s) return null;
-  const m=s.match(/(\d{4})-(\d{2})-(\d{2})/);
+  // [v62.2.2] YYYY-MM-DD 외에 YYYY.M.D, YYYY/M/D, 한 자리 월·일, 공백 섞임도 허용
+  const m=String(s).match(/(\d{4})[.\-\/]\s*(\d{1,2})[.\-\/]\s*(\d{1,2})/);
   if(!m) return null;
   const d=new Date(+m[1],+m[2]-1,+m[3]); // local midnight, no UTC shift
-  return d;
+  return isNaN(d.getTime())?null:d;
 }
 // ═══════════════════════════════════════════════════════════════════
 // [v48] 개인 화면 설정 — 이 PC에만 저장 (Firebase 아님, 개인별 자동 분리)
@@ -7418,7 +7419,7 @@ function fbSaveSnapshot(){
 // 원칙 3: 수신은 3-way 병합 — 로컬 미저장 변경은 원격이 절대 덮지 못한다.
 // ═══════════════════════════════════════════════════════════════════
 const FB_ROOT='spextrum_v3'; // [v62] 온라인 전용 — 새 데이터 세대. v2는 읽기전용 화석(Rules로 쓰기 차단)
-const APP_VERSION=6221; // [v62.2] 주간회의 모드
+const APP_VERSION=6223; // [v62.2.2] 기간 필터 전수 점검 — '이번 달 마감' 범위 수정 + 날짜 파서 확대
 let _versionBlocked=false;
 
 // ═══ [v55] 영속 outbox — "서버가 승인하기 전의 내 변경"을 기기에 보관 ═══
@@ -8681,6 +8682,7 @@ function tbBaseFilters(tasks){
     const lastWeekStart=new Date(today);lastWeekStart.setDate(today.getDate()-dow-6);lastWeekStart.setHours(0,0,0,0);
     const lastWeekEnd=new Date(today);lastWeekEnd.setDate(today.getDate()-dow);lastWeekEnd.setHours(23,59,59,999);
     const monthEnd=new Date(today.getFullYear(),today.getMonth()+1,0,23,59,59,999);
+    const monthStart=new Date(today.getFullYear(),today.getMonth(),1); // [v62.2.2] 이번 달 1일
     const lastMonthStart=new Date(today.getFullYear(),today.getMonth()-1,1);
     const lastMonthEnd=new Date(today.getFullYear(),today.getMonth(),0,23,59,59,999);
     const nextMonthStart=new Date(today.getFullYear(),today.getMonth()+1,1);
@@ -8698,7 +8700,7 @@ function tbBaseFilters(tasks){
       if(tbPeriodFilter==='today') return d===todayMs;
       if(tbPeriodFilter==='week') return d>=weekStart.getTime() && d<=weekEnd.getTime(); // [v62.1.10] 오늘 이전이라도 이번 주면 표시
       if(tbPeriodFilter==='last_week') return d>=lastWeekStart.getTime() && d<=lastWeekEnd.getTime();
-      if(tbPeriodFilter==='month') return d>=todayMs && d<=monthEnd.getTime();
+      if(tbPeriodFilter==='month') return d>=monthStart.getTime() && d<=monthEnd.getTime(); // [v62.2.2] 이달 초 마감도 포함
       if(tbPeriodFilter==='last_month') return d>=lastMonthStart.getTime() && d<=lastMonthEnd.getTime();
       if(tbPeriodFilter==='next_month') return d>=nextMonthStart.getTime() && d<=nextMonthEnd.getTime();
       return true;
@@ -11040,7 +11042,7 @@ function spxBoardCal(){
   const _wideCal=spxWide();
   if(!_wideCal) spxCalProj='전체'; // [v59] 모바일 세로에서는 필터 미적용
   spxAllTasks().forEach(function(x){
-    if(x.t.done)return;
+    // [v62.2.1] 완료 태스크도 캘린더에 표시
     if(spxCalProj!=='전체'&&x.p.id!==spxCalProj)return; // [v59] 프로젝트별 캘린더
     const d=spxDue(x.t);
     if(d&&d.getFullYear()===spxCalY&&d.getMonth()===spxCalM){
@@ -11129,13 +11131,13 @@ function spxCalShift(n){
 }
 function spxDayDetail(day){
   const meets=(meetings||[]).filter(function(m){const d=spxMDate(m);return d&&d.getFullYear()===spxCalY&&d.getMonth()===spxCalM&&d.getDate()===day;});
-  const tasks=spxAllTasks().filter(function(x){if(x.t.done)return false;if(spxCalProj!=='전체'&&x.p.id!==spxCalProj)return false;const d=spxDue(x.t);return d&&d.getFullYear()===spxCalY&&d.getMonth()===spxCalM&&d.getDate()===day;});
+  const tasks=spxAllTasks().filter(function(x){if(spxCalProj!=='전체'&&x.p.id!==spxCalProj)return false;const d=spxDue(x.t);return d&&d.getFullYear()===spxCalY&&d.getMonth()===spxCalM&&d.getDate()===day;}); // [v62.2.1] 완료 포함
   if(!meets.length&&!tasks.length){toast('이 날짜에 일정이 없습니다');return;}
   modal('<div class="m-title">'+(spxCalM+1)+'월 '+day+'일</div>'+
     (meets.length?'<div class="spx-sec" style="margin-top:4px">회의</div>'+meets.map(function(m){
       return '<div class="spx-line" onclick="closeModal();openEditMeeting(\''+m.id+'\')"><span style="flex:1">'+spxEsc(m.title)+'</span><span class="spx-tm">'+spxEsc(m.time||'')+'</span></div>';}).join(''):'')+
     (tasks.length?'<div class="spx-sec">마감 태스크</div>'+tasks.map(function(x){
-      return '<div class="spx-line" onclick="closeModal();openSidePanel(\''+x.p.id+'\',\''+x.s.id+'\',\''+x.t.id+'\')"><span style="flex:1">'+spxEsc(x.t.name)+'</span><span class="spx-tm">'+spxEsc(x.t.meta||'')+'</span></div>';}).join(''):'')+
+      return '<div class="spx-line" onclick="closeModal();openSidePanel(\''+x.p.id+'\',\''+x.s.id+'\',\''+x.t.id+'\')"><span style="flex:1;'+(x.t.done?'opacity:.5;text-decoration:line-through':'')+'">'+(x.t.done?'✓ ':'')+spxEsc(x.t.name)+'</span><span class="spx-tm">'+spxEsc(x.t.meta||'')+'</span></div>';}).join(''):'')+
     '<div class="btn-row" style="margin-top:14px"><button class="btn sm" onclick="closeModal()">닫기</button></div>');
 }
 
