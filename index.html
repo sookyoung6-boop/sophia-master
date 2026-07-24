@@ -2296,8 +2296,8 @@ function pkDrop(e,pid,status){
   const s=p.schedules.find(x=>x.id===pkDraggingSchedId);
   const t=s?.tasks.find(x=>x.id===pkDraggingId);
   if(!t)return;
-  if(status==='완료'){t.done=true;t.taskStatus='완료';}
-  else{t.done=false;t.taskStatus=status;}
+  if(status==='완료'){t.done=true;t.taskStatus='완료';if(!t.completedAt)t.completedAt=new Date().toISOString();}
+  else{t.done=false;t.taskStatus=status;delete t.completedAt;}
   pkDraggingId=null;pkDraggingSchedId=null;
   if(!_autoRunning){_autoRunning=true;automate(pid);_autoRunning=false;}
   saveToLS();
@@ -3862,8 +3862,8 @@ function tkDrop(e,pid,sid,status){
   if(!tkDragging)return;
   const p=projects.find(x=>x.id===pid),s=p.schedules.find(x=>x.id===sid),t=s.tasks.find(x=>x.id===tkDragging);
   if(!t)return;
-  if(status==='완료'){t.done=true;t.taskStatus='완료';}
-  else{t.done=false;t.taskStatus=status;}
+  if(status==='완료'){t.done=true;t.taskStatus='완료';if(!t.completedAt)t.completedAt=new Date().toISOString();}
+  else{t.done=false;t.taskStatus=status;delete t.completedAt;}
   tkDragging=null;
   saveToLS();
   automate(pid);
@@ -3877,6 +3877,7 @@ function toggleTaskStatus(pid,sid,tid){
   if(!t)return;
   t.done=!t.done;
   t.taskStatus=t.done?'완료':(t.taskStatus==='완료'?'예정':t.taskStatus||'예정');
+  if(t.done){if(!t.completedAt)t.completedAt=new Date().toISOString();}else{delete t.completedAt;} // [v62.1.10]
   if(!_autoRunning){_autoRunning=true;automate(pid);_autoRunning=false;}
   saveToLS();
   refreshTaskView(p,s);
@@ -4454,6 +4455,7 @@ function toggleTask(pid,sid,tid){
   t.done=!t.done;
   if(t.done) t.taskStatus='완료';
   else if(t.taskStatus==='완료') t.taskStatus='예정';
+  if(t.done){if(!t.completedAt)t.completedAt=new Date().toISOString();}else{delete t.completedAt;} // [v62.1.10]
   if(!_autoRunning){_autoRunning=true;automate(pid);_autoRunning=false;}
   syncGoalsFromTask(pid,tid,t.done);
   saveToLS();
@@ -7416,7 +7418,7 @@ function fbSaveSnapshot(){
 // 원칙 3: 수신은 3-way 병합 — 로컬 미저장 변경은 원격이 절대 덮지 못한다.
 // ═══════════════════════════════════════════════════════════════════
 const FB_ROOT='spextrum_v3'; // [v62] 온라인 전용 — 새 데이터 세대. v2는 읽기전용 화석(Rules로 쓰기 차단)
-const APP_VERSION=6219; // [v62.1.9] 로드 완료 플래그를 화면 갱신보다 먼저 설정 (로딩 멈춤 수정)
+const APP_VERSION=6221; // [v62.2] 주간회의 모드
 let _versionBlocked=false;
 
 // ═══ [v55] 영속 outbox — "서버가 승인하기 전의 내 변경"을 기기에 보관 ═══
@@ -8675,6 +8677,7 @@ function tbBaseFilters(tasks){
     const todayMs=today.getTime();
     const dow=today.getDay()||7; // 월=1 … 일=7
     const weekEnd=new Date(today);weekEnd.setDate(today.getDate()+(7-dow));weekEnd.setHours(23,59,59,999);
+    const weekStart=new Date(today);weekStart.setDate(today.getDate()-(dow-1));weekStart.setHours(0,0,0,0); // [v62.1.10] 이번 주 월요일
     const lastWeekStart=new Date(today);lastWeekStart.setDate(today.getDate()-dow-6);lastWeekStart.setHours(0,0,0,0);
     const lastWeekEnd=new Date(today);lastWeekEnd.setDate(today.getDate()-dow);lastWeekEnd.setHours(23,59,59,999);
     const monthEnd=new Date(today.getFullYear(),today.getMonth()+1,0,23,59,59,999);
@@ -8684,11 +8687,16 @@ function tbBaseFilters(tasks){
     const nextMonthEnd=new Date(today.getFullYear(),today.getMonth()+2,0,23,59,59,999);
     result=result.filter(t=>{
       if(tbPeriodFilter==='no_date') return !t.dueDate;
+      if(tbPeriodFilter==='done_week'){ // [v62.1.10] 이번 주에 실제로 완료한 태스크 (마감일 무관)
+        if(!t.done||!t.completedAt) return false;
+        const c=new Date(t.completedAt).getTime();
+        return c>=weekStart.getTime() && c<=weekEnd.getTime();
+      }
       if(!t.dueDate) return false;
       const d=parseLocalDate(t.dueDate).getTime();
       if(tbPeriodFilter==='overdue') return d<todayMs && !t.done;
       if(tbPeriodFilter==='today') return d===todayMs;
-      if(tbPeriodFilter==='week') return d>=todayMs && d<=weekEnd.getTime();
+      if(tbPeriodFilter==='week') return d>=weekStart.getTime() && d<=weekEnd.getTime(); // [v62.1.10] 오늘 이전이라도 이번 주면 표시
       if(tbPeriodFilter==='last_week') return d>=lastWeekStart.getTime() && d<=lastWeekEnd.getTime();
       if(tbPeriodFilter==='month') return d>=todayMs && d<=monthEnd.getTime();
       if(tbPeriodFilter==='last_month') return d>=lastMonthStart.getTime() && d<=lastMonthEnd.getTime();
@@ -8875,6 +8883,9 @@ function renderTaskBoard(){
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="0" y="0" width="12" height="12" rx="1" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M0 4h12M0 8h12M4 0v12" stroke="currentColor" stroke-width="1"/></svg>
             표
           </button>
+          <button class="tb-vbtn${tbView==='meeting'?' on':''}" onclick="setTbView('meeting')" title="주간회의 발표 순서대로 자동 구성">
+            📋 주간회의
+          </button>
           ${_tbEmp?'':`<button class="tb-vbtn${tbView==='workload'?' on':''}" onclick="setTbView('workload')">
             👥 부하 현황
           </button>`}
@@ -8902,6 +8913,7 @@ function renderTaskBoard(){
           <option value="overdue"${tbPeriodFilter==='overdue'?' selected':''}>⚠️ 마감 초과</option>
           <option value="today"${tbPeriodFilter==='today'?' selected':''}>📍 오늘 마감</option>
           <option value="week"${tbPeriodFilter==='week'?' selected':''}>이번 주 마감</option>
+          <option value="done_week"${tbPeriodFilter==='done_week'?' selected':''}>✅ 이번 주 완료</option>
           <option value="last_week"${tbPeriodFilter==='last_week'?' selected':''}>지난주 마감</option>
           <option value="month"${tbPeriodFilter==='month'?' selected':''}>이번 달 마감</option>
           <option value="last_month"${tbPeriodFilter==='last_month'?' selected':''}>지난달 마감</option>
@@ -8993,11 +9005,96 @@ function openOverdueModal(){
 }
 
 function tbBodyHTML(){
+  if(tbView==='meeting')  return meetingViewHTML(); // [v62.2] 주간회의 모드
   if(tbView==='board')    return boardViewHTML();
   if(tbView==='status')   return statusBoardHTML();
   if(tbView==='timeline') return deptTimelineHTML();
   if(tbView==='workload') return workloadViewHTML();
   return tableViewHTML();
+}
+
+// ═══ [v62.2] 주간회의 모드 ═══════════════════════════════════
+// 발표 프로세스에 맞춰 프로젝트별로 자동 구성:
+//   🔴결정필요/🤝서포트/📅회의요청 태그 모음 → ✅지난주 완료 → ⚠️지난주 미완료(만회 대상) → 📌이번 주 액션
+// 리더의 준비 = 결정받을 태스크에 표준 태그 붙이기 + 서술형 이슈는 프로젝트 MEMO. 그게 전부.
+const MEETING_TAGS=['결정필요','서포트','회의요청'];
+const MEETING_TAG_ICON={'결정필요':'🔴','서포트':'🤝','회의요청':'📅'};
+function meetingViewHTML(){
+  const today=new Date();today.setHours(0,0,0,0);
+  const dow=today.getDay()||7;
+  const weekStart=new Date(today);weekStart.setDate(today.getDate()-(dow-1));weekStart.setHours(0,0,0,0);
+  const weekEnd=new Date(today);weekEnd.setDate(today.getDate()+(7-dow));weekEnd.setHours(23,59,59,999);
+  const lastWeekStart=new Date(weekStart);lastWeekStart.setDate(weekStart.getDate()-7);
+  const lastWeekEnd=new Date(weekStart);lastWeekEnd.setTime(weekStart.getTime()-1);
+
+  const allT=getAllTasks();
+  const plist=(tbProjFilter!=='전체')
+    ? projects.filter(p=>p.id===tbProjFilter)
+    : projects.filter(p=>!p.archived);
+
+  const fmtD=iso=>{const d=new Date(iso);return (d.getMonth()+1)+'/'+d.getDate();};
+  function taskRow(t,badge){
+    const dc=deptColor(t.dept);
+    return `<div style="display:flex;align-items:center;gap:9px;padding:7px 14px;border-bottom:1px solid var(--border)">
+      <div class="spx-ck${t.done?' on':''}" style="width:17px;height:17px;flex-shrink:0;border:1.5px solid ${t.done?'var(--green,#27ae60)':'var(--border2)'};border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;background:${t.done?'#27ae60':'transparent'};color:#fff"
+        onclick="event.stopPropagation();toggleTaskByRef('${t.projId}','${t.schedId}','${t.id}');renderTaskBoard()">${t.done?'✓':''}</div>
+      <div style="flex:1;min-width:0;cursor:pointer" onclick="openSidePanel('${t.projId}','${t.schedId}','${t.id}')">
+        <span style="font-size:14px;color:var(--text);${t.done?'opacity:.55;text-decoration:line-through;':''}">${t.name}</span>
+        ${(t.tags||[]).filter(tg=>MEETING_TAGS.includes(tg)).map(tg=>` <span style="font-size:12px;background:#fde8e8;color:#b03030;padding:1px 6px;border-radius:8px">${MEETING_TAG_ICON[tg]}${tg}</span>`).join('')}
+      </div>
+      ${t.meta?`<span style="font-size:13px;color:var(--text3);flex-shrink:0">${t.meta}</span>`:''}
+      ${t.dueDate?`<span style="font-size:13px;font-family:var(--mono);color:var(--text3);flex-shrink:0">~${t.dueDate}</span>`:''}
+      ${badge||''}
+    </div>`;
+  }
+  function section(title,arr,emptyMsg,badgeFn){
+    return `<div style="padding:8px 14px 4px;font-size:13px;font-weight:700;color:var(--text3)">${title} <span style="font-weight:400">${arr.length}건</span></div>`
+      +(arr.length?arr.map(t=>taskRow(t,badgeFn?badgeFn(t):'')).join(''):`<div style="padding:4px 14px 10px;font-size:13px;color:var(--text3)">${emptyMsg}</div>`);
+  }
+
+  let h='<div style="padding:10px 14px;background:#fbf7ee;border:1px solid #eadfc8;border-radius:var(--rsm);margin-bottom:14px;font-size:13.5px;color:#6b5d3f;line-height:1.6">'
+    +'📋 <b>주간회의 모드</b> — 발표 순서대로 자동 구성됩니다. 결정·지원이 필요한 태스크에는 태그 <b>결정필요 / 서포트 / 회의요청</b>을 붙여두면 프로젝트 맨 위에 모입니다. 서술형 이슈는 프로젝트 MEMO에 적어주세요.</div>';
+
+  plist.forEach(p=>{
+    const pt=allT.filter(t=>t.projId===p.id);
+    if(!pt.length&&tbProjFilter==='전체') return; // 태스크 없는 프로젝트는 전체 보기에서 생략
+    const c=COLORS[p.color]||{dot:'#888',tag:'#eee',tagT:'#555'};
+
+    const flagged=pt.filter(t=>(t.tags||[]).some(tg=>MEETING_TAGS.includes(tg))&&!t.done);
+    const doneLast=pt.filter(t=>{
+      if(!t.done||!t.completedAt) return false;
+      const ct=new Date(t.completedAt).getTime();
+      return ct>=lastWeekStart.getTime()&&ct<=lastWeekEnd.getTime();
+    });
+    const missedLast=pt.filter(t=>{
+      if(t.done||!t.dueDate) return false;
+      const d=parseLocalDate(t.dueDate).getTime();
+      return d>=lastWeekStart.getTime()&&d<=lastWeekEnd.getTime();
+    });
+    const thisWeek=pt.filter(t=>{
+      if(t.done||!t.dueDate) return false;
+      const d=parseLocalDate(t.dueDate).getTime();
+      return d>=weekStart.getTime()&&d<=weekEnd.getTime();
+    });
+    const memoTxt=(p.statusNote||'').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').trim();
+
+    h+=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:9px;padding:12px 14px;background:${c.tag};cursor:pointer" onclick="openProj('${p.id}')" title="프로젝트로 이동">
+        <div style="width:9px;height:9px;border-radius:50%;background:${c.dot}"></div>
+        <span style="font-size:15.5px;font-weight:700;color:${c.tagT};flex:1">${p.name}</span>
+        ${p.manager?`<span style="font-size:13px;color:${c.tagT};opacity:.8">👤 ${p.manager}</span>`:''}
+      </div>
+      ${memoTxt?`<div style="padding:9px 14px;border-bottom:1px solid var(--border);background:var(--surface2);font-size:13.5px;color:var(--text2,#555);line-height:1.6"><b style="color:var(--text3)">MEMO</b> · ${memoTxt.slice(0,200)}${memoTxt.length>200?'…':''}</div>`:''}
+      ${flagged.length?section('🔔 결정·지원 요청',flagged,''):''}
+      ${section('✅ 지난주 완료 <span style="font-weight:400">('+fmtD(lastWeekStart)+'–'+fmtD(lastWeekEnd)+')</span>',doneLast,'지난주 완료 처리된 태스크가 없습니다')}
+      ${section('⚠️ 지난주 미완료 — 만회 계획 논의',missedLast,'지난주 마감 중 밀린 태스크가 없습니다 👏',t=>{
+        const dd=Math.round((today-parseLocalDate(t.dueDate))/864e5);
+        return `<span style="font-size:12.5px;font-weight:700;color:var(--red);flex-shrink:0">D+${dd}</span>`;})}
+      ${section('📌 이번 주 액션 <span style="font-weight:400">('+fmtD(weekStart)+'–'+fmtD(weekEnd)+')</span>',thisWeek,'이번 주 마감 태스크가 없습니다 — 이번 주 액션을 등록해 주세요')}
+    </div>`;
+  });
+  if(!plist.length) h+='<div class="empty" style="padding:30px">표시할 프로젝트가 없습니다</div>';
+  return h;
 }
 
 function workloadViewHTML(){
@@ -9227,6 +9324,7 @@ function statusDrop(e,newStatus){
   t.taskStatus=newStatus;
   if(newStatus==='완료') t.done=true;
   else if(t.done&&newStatus!=='완료') t.done=false;
+  if(t.done){if(!t.completedAt)t.completedAt=new Date().toISOString();}else{delete t.completedAt;} // [v62.1.10]
   saveToLS();
   _statusDragTask=null;
   document.getElementById('tb-body').innerHTML=statusBoardHTML();
@@ -9762,6 +9860,7 @@ function toggleTaskByRef(pid,sid,tid){
   if(!t)return;
   t.done=!t.done;
   t.taskStatus=t.done?'완료':(t.taskStatus==='완료'?'예정':t.taskStatus||'예정');
+  if(t.done){if(!t.completedAt)t.completedAt=new Date().toISOString();}else{delete t.completedAt;} // [v62.1.10]
   syncGoalsFromTask(pid,tid,t.done);
   saveToLS();
   document.getElementById('tb-body').innerHTML=tbBodyHTML();
@@ -11628,6 +11727,15 @@ function tspDeleteComment(cid){
   toast('코멘트가 삭제됐습니다');
 }
 
+function tspQuickTag(tag){ // [v62.2] 주간회의 표준 태그 원클릭
+  const p=projects.find(x=>x.id===_tspPid);
+  const s=p?.schedules.find(x=>x.id===_tspSid);
+  const t=s?.tasks.find(x=>x.id===_tspTid);
+  if(!t)return;
+  if(!t.tags) t.tags=[];
+  if(!t.tags.includes(tag)){ t.tags.push(tag); saveToLS(); }
+  const w=document.getElementById('tsp-tags-wrap'); if(w) w.innerHTML=tspTagsHTML(t);
+}
 function tspTagsHTML(t){
   const tags=t.tags||[];
   return `
@@ -11636,6 +11744,10 @@ function tspTagsHTML(t){
         🏷 ${tg}
         <button onclick="event.stopPropagation();tspRemoveTag('${tg}')" style="background:none;border:none;cursor:pointer;color:#854f0b;font-size:14px;line-height:1;padding:0">×</button>
       </span>`).join('')}
+    </div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">
+      ${['결정필요','서포트','회의요청'].filter(tg=>!tags.includes(tg)).map(tg=>
+        `<button onclick="tspQuickTag('${tg}')" style="font-size:12.5px;background:var(--surface2);border:1px dashed var(--border2);border-radius:10px;padding:2px 9px;cursor:pointer;color:var(--text3)" title="주간회의 표준 태그">+ ${({'결정필요':'🔴','서포트':'🤝','회의요청':'📅'})[tg]}${tg}</button>`).join('')}
     </div>
     <div style="display:flex;gap:6px">
       <input id="tsp-tag-inp" class="fi" placeholder="태그 추가 (Enter)" style="flex:1;font-size:14px;padding:5px 9px"
