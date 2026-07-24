@@ -7419,7 +7419,7 @@ function fbSaveSnapshot(){
 // 원칙 3: 수신은 3-way 병합 — 로컬 미저장 변경은 원격이 절대 덮지 못한다.
 // ═══════════════════════════════════════════════════════════════════
 const FB_ROOT='spextrum_v3'; // [v62] 온라인 전용 — 새 데이터 세대. v2는 읽기전용 화석(Rules로 쓰기 차단)
-const APP_VERSION=6223; // [v62.2.2] 기간 필터 전수 점검 — '이번 달 마감' 범위 수정 + 날짜 파서 확대
+const APP_VERSION=6224; // [v62.2.3] 주간회의 모드: 지난주 완료/미완료를 마감일 기준으로, 이번 주 액션에 완료 포함
 let _versionBlocked=false;
 
 // ═══ [v55] 영속 outbox — "서버가 승인하기 전의 내 변경"을 기기에 보관 ═══
@@ -9063,21 +9063,23 @@ function meetingViewHTML(){
     const c=COLORS[p.color]||{dot:'#888',tag:'#eee',tagT:'#555'};
 
     const flagged=pt.filter(t=>(t.tags||[]).some(tg=>MEETING_TAGS.includes(tg))&&!t.done);
-    const doneLast=pt.filter(t=>{
-      if(!t.done||!t.completedAt) return false;
-      const ct=new Date(t.completedAt).getTime();
-      return ct>=lastWeekStart.getTime()&&ct<=lastWeekEnd.getTime();
-    });
-    const missedLast=pt.filter(t=>{
-      if(t.done||!t.dueDate) return false;
-      const d=parseLocalDate(t.dueDate).getTime();
+    // [v62.2.3] 지난주 완료/미완료는 '지난주 마감 업무'를 체크 여부로 가른다
+    // (지난주에 일하고 오늘 완료 버튼을 눌러도 지난주 업무로 집계되도록 — 완료시각이 아니라 마감일 기준)
+    const lastWeekTasks=pt.filter(t=>{
+      if(!t.dueDate) return false;
+      const dd=parseLocalDate(t.dueDate); if(!dd) return false;
+      const d=dd.getTime();
       return d>=lastWeekStart.getTime()&&d<=lastWeekEnd.getTime();
     });
+    const doneLast=lastWeekTasks.filter(t=>t.done);
+    const missedLast=lastWeekTasks.filter(t=>!t.done);
+    // [v62.2.3] 이번 주 액션은 완료된 것도 포함 (어차피 이번 주 할 일 전체) — 미완료 먼저, 완료 뒤로
     const thisWeek=pt.filter(t=>{
-      if(t.done||!t.dueDate) return false;
-      const d=parseLocalDate(t.dueDate).getTime();
+      if(!t.dueDate) return false;
+      const dd=parseLocalDate(t.dueDate); if(!dd) return false;
+      const d=dd.getTime();
       return d>=weekStart.getTime()&&d<=weekEnd.getTime();
-    });
+    }).sort((a,b)=>(a.done?1:0)-(b.done?1:0));
     const memoTxt=(p.statusNote||'').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').trim();
 
     h+=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;overflow:hidden">
@@ -9088,7 +9090,7 @@ function meetingViewHTML(){
       </div>
       ${memoTxt?`<div style="padding:9px 14px;border-bottom:1px solid var(--border);background:var(--surface2);font-size:13.5px;color:var(--text2,#555);line-height:1.6"><b style="color:var(--text3)">MEMO</b> · ${memoTxt.slice(0,200)}${memoTxt.length>200?'…':''}</div>`:''}
       ${flagged.length?section('🔔 결정·지원 요청',flagged,''):''}
-      ${section('✅ 지난주 완료 <span style="font-weight:400">('+fmtD(lastWeekStart)+'–'+fmtD(lastWeekEnd)+')</span>',doneLast,'지난주 완료 처리된 태스크가 없습니다')}
+      ${section('✅ 지난주 완료 <span style="font-weight:400">('+fmtD(lastWeekStart)+'–'+fmtD(lastWeekEnd)+' 마감 기준)</span>',doneLast,'지난주 마감 업무 중 완료된 태스크가 없습니다')}
       ${section('⚠️ 지난주 미완료 — 만회 계획 논의',missedLast,'지난주 마감 중 밀린 태스크가 없습니다 👏',t=>{
         const dd=Math.round((today-parseLocalDate(t.dueDate))/864e5);
         return `<span style="font-size:12.5px;font-weight:700;color:var(--red);flex-shrink:0">D+${dd}</span>`;})}
