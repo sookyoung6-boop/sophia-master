@@ -1023,7 +1023,7 @@ function toast(msg){
   if(window._spxSilentToast) return; // [v55] 자동 커밋 중 토스트 억제
   const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
 
-function cfm(title,msg,onYes,yesLabel,noLabel){
+function cfm(title,msg,onYes,yesLabel,noLabel,onNo){ // [v62.2.4] onNo: 취소 시 콜백
   const ov=document.createElement('div');ov.className='c-overlay';
   const yLbl=yesLabel||'삭제';
   const nLbl=noLabel||'취소';
@@ -1031,8 +1031,8 @@ function cfm(title,msg,onYes,yesLabel,noLabel){
   ov.innerHTML=`<div class="c-box"><div class="c-title">${title}</div><div class="c-msg" style="white-space:pre-line">${msg}</div><div class="btn-row"><button class="${yClass}" id="cyes">${yLbl}</button><button class="btn sm" id="cno">${nLbl}</button></div></div>`;
   document.body.appendChild(ov);
   ov.querySelector('#cyes').onclick=()=>{document.body.removeChild(ov);onYes()};
-  ov.querySelector('#cno').onclick=()=>document.body.removeChild(ov);
-  ov.addEventListener('click',e=>{if(e.target===ov)document.body.removeChild(ov)});
+  ov.querySelector('#cno').onclick=()=>{document.body.removeChild(ov);if(typeof onNo==='function')onNo();};
+  ov.addEventListener('click',e=>{if(e.target===ov){document.body.removeChild(ov);if(typeof onNo==='function')onNo();}});
 }
 
 function prog(p){
@@ -1391,6 +1391,7 @@ function duplicateProj(id){
   newP.blocks=(newP.blocks||[]).map(b=>({...b,id:uid()}));
   newP.history=[];newP.autoLog=[];
   projects.push(newP);
+  _massChangeOk=true; // [v62.2.4] 프로젝트 복제도 가드 예외
   saveToLS();renderList();
   toast(`"${p.name}" 복제됐습니다`);
 }
@@ -4903,6 +4904,7 @@ function createProj(){
   }));
   const was=formWAs.map(wa=>({id:uid(),name:wa.name||'카테고리',deliverables:(wa.dels||'').split('\n').filter(l=>l.trim()).map(l=>({id:uid(),name:l.trim(),done:false,file:null}))}));
   projects.push({id:uid(),color:formColor,name,tag,desc:overview.slice(0,70)||(name+' 프로젝트'),start,end,overview,departments:formDepts.length?formDepts:['미정'],schedules:scheds,workAreas:was,refFiles:[]});
+  _massChangeOk=true; // [v62.2.4] 프로젝트 생성은 노드가 많은 정상 작업 — 가드 예외
   saveToLS();toast('프로젝트가 생성됐습니다');navAll();
 }
 
@@ -7419,7 +7421,7 @@ function fbSaveSnapshot(){
 // 원칙 3: 수신은 3-way 병합 — 로컬 미저장 변경은 원격이 절대 덮지 못한다.
 // ═══════════════════════════════════════════════════════════════════
 const FB_ROOT='spextrum_v3'; // [v62] 온라인 전용 — 새 데이터 세대. v2는 읽기전용 화석(Rules로 쓰기 차단)
-const APP_VERSION=6224; // [v62.2.3] 주간회의 모드: 지난주 완료/미완료를 마감일 기준으로, 이번 주 액션에 완료 포함
+const APP_VERSION=6225; // [v62.2.4] 대량 변경 가드 개선 — 정상 작업(프로젝트 생성·복제) 오탐 제거, 버튼 라벨·취소 처리 수정
 let _versionBlocked=false;
 
 // ═══ [v55] 영속 outbox — "서버가 승인하기 전의 내 변경"을 기기에 보관 ═══
@@ -7741,12 +7743,14 @@ function _fbSyncNow(){
   // (조립 버그·낡은 화면 상태가 대량 덮어쓰기로 번역되는 것을 차단. 스냅샷 복구는 예외 플래그 사용)
   try{
     var _gBytes=JSON.stringify(patch).length;
-    if((nChg>=20||_gBytes>100*1024)&&!_massChangeOk){
+    if((nChg>=50||_gBytes>100*1024)&&!_massChangeOk){ // [v62.2.4] 임계 20→50 (프로젝트 생성 등 정상 작업 오탐 방지)
       if(!_massChangeAsked){
         _massChangeAsked=true;
         cfm('⚠️ 대량 변경 감지',
-          nChg+'건(약 '+Math.round(_gBytes/1024)+'KB)의 항목이 한 번에 저장되려 합니다.\n\n직접 수정하신 것이 맞으면 확인을 누르세요. 아니라면 취소 후 데이터 패널에서 🚨 긴급 백업을 받고 관리자에게 알려주세요.',
-          function(){_massChangeOk=true;_massChangeAsked=false;_fbSyncNow();});
+          nChg+'건(약 '+Math.round(_gBytes/1024)+'KB)의 항목이 한 번에 저장되려 합니다.\n\n직접 작업하신 결과가 맞으면 [저장 진행]을 누르세요. 본인이 한 작업이 아니라면 [취소] 후 데이터 패널에서 🚨 긴급 백업을 받고 관리자에게 알려주세요.',
+          function(){_massChangeOk=true;_massChangeAsked=false;_fbSyncNow();},
+          '저장 진행','취소',
+          function(){_massChangeAsked=false;setSaveStatus('error');}); // [v62.2.4] 취소해도 다음 저장 시 다시 물음 (조용히 멈추지 않음)
       }
       setSaveStatus('error');
       return;
