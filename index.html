@@ -7453,7 +7453,7 @@ function fbSaveSnapshot(){
 // 원칙 3: 수신은 3-way 병합 — 로컬 미저장 변경은 원격이 절대 덮지 못한다.
 // ═══════════════════════════════════════════════════════════════════
 const FB_ROOT='spextrum_v3'; // [v62] 온라인 전용 — 새 데이터 세대. v2는 읽기전용 화석(Rules로 쓰기 차단)
-const APP_VERSION=6500; // [v65] 타임라인 기간 줌(전체/이번달/분기/30일)+마감 위험 강조 + 현황표 '현재 단계' 미니 플로우(병목 강조) — 읽기 전용 뷰, 동기화 엔진 미변경
+const APP_VERSION=6601; // [v66.1] 공통보드 긴급현황 탭 삭제 — 읽기 전용 뷰, 동기화 엔진 미변경
 let _versionBlocked=false;
 
 // ═══ [v55] 영속 outbox — "서버가 승인하기 전의 내 변경"을 기기에 보관 ═══
@@ -11138,6 +11138,9 @@ let spxUser=localStorage.getItem('spx_user')||'';
 let spxMode=localStorage.getItem('spx_mode')||'emp';
 let spxTab='my'; // [v60] 탭 순서: 내 할 일 → 공통보드 → 프로젝트
 let spxBoardTab='cal';
+// [v66] 공통보드 '프로젝트 현황' 탭 (직원 공개용 — 프로젝트 단위만, 개인 드릴다운·편집 버튼 숨김)
+let spxBoardOvCat='전체';
+let spxBoardOvRisk=false;
 let spxMeetDoneOpen=false;
 let spxCalY=(new Date()).getFullYear(), spxCalM=(new Date()).getMonth();
 // [v58] 직원모드 상태
@@ -11498,11 +11501,12 @@ function spxAddBack(containerId,tab,label){
 
 // ── 공통보드 ──
 function spxRenderBoard(){
-  const tabs=[['cal','캘린더 · 회의'],['annual','연간'],['camp','캠페인'],['urgent','긴급현황']];
+  const tabs=[['cal','캘린더 · 회의'],['annual','연간'],['status','프로젝트 현황'],['camp','캠페인']];
+  if(spxBoardTab==='urgent') spxBoardTab='cal'; // [v66.1] 긴급현황 탭 삭제 — 이전 선택 보정
   let body='';
   if(spxBoardTab==='cal') body=spxBoardCal();
   else if(spxBoardTab==='annual') body=spxBoardAnnual();
-  else if(spxBoardTab==='urgent') body=spxBoardUrgent();
+  else if(spxBoardTab==='status') body=spxBoardStatus();
   else body=spxBoardCamp();
   document.getElementById('board-content').innerHTML=
     '<div class="spx-hd"><div class="spx-hd-t">공통보드</div></div>'+
@@ -11779,6 +11783,93 @@ function spxDayDetail(day){
 }
 
 // 전사 긴급현황
+// [v66] 공통보드 '프로젝트 현황' — 전 직원 공개용. 프로젝트 단위만 보여주고
+//       개인 업무량 드릴다운·시트 추가/편집 버튼 등 관리자/감시성 요소는 숨김.
+function spxBoardStatus(){
+  const wide=spxWide();
+  const act=(projects||[]).filter(function(p){return p&&!p.archived;});
+  const cats=[...new Set(act.map(function(p){return p.tag||'기타';}))];
+  let list=act.slice();
+  if(spxBoardOvCat!=='전체') list=list.filter(function(p){return (p.tag||'기타')===spxBoardOvCat;});
+  if(spxBoardOvRisk) list=list.filter(function(p){var r=povRisk(p);return r.over>0||r.soon>0;});
+  // 정렬: 위험도 높은 순
+  list.sort(function(a,b){var ra=povRisk(a),rb=povRisk(b);return (rb.over*1000+rb.soon*10)-(ra.over*1000+ra.soon*10);});
+
+  // 상단 요약 (프로젝트 단위 집계 — 개인 수치 아님)
+  var totOver=0,totSoon=0;
+  act.forEach(function(p){var r=povRisk(p);totOver+=r.over;totSoon+=r.soon;});
+  var activeN=act.filter(function(p){return (p.schedules||[]).some(function(s){return s.status==='진행중';});}).length;
+
+  var catChips=['전체'].concat(cats).map(function(c){
+    return '<button class="filt-btn'+(spxBoardOvCat===c?' on':'')+'" onclick="spxBoardOvCat=\''+c+'\';spxRenderBoard()">'+(c==='전체'?'전체':spxEsc(c))+'</button>';
+  }).join('');
+
+  var head='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:6px 2px 12px">'+
+    '<div style="display:flex;gap:16px;text-align:center;flex-wrap:wrap">'+
+      '<div><div style="font-size:20px;font-weight:700;font-family:var(--mono);color:#185fa5">'+activeN+'</div><div style="font-size:11px;color:var(--text3)">진행중</div></div>'+
+      '<div><div style="font-size:20px;font-weight:700;font-family:var(--mono);color:'+(totOver?'#c0392b':'var(--text3)')+'">'+totOver+'</div><div style="font-size:11px;color:var(--text3)">마감 초과</div></div>'+
+      '<div><div style="font-size:20px;font-weight:700;font-family:var(--mono);color:'+(totSoon?'#854f0b':'var(--text3)')+'">'+totSoon+'</div><div style="font-size:11px;color:var(--text3)">3일 이내</div></div>'+
+    '</div>'+
+    '<label style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--text2);cursor:pointer">'+
+      '<input type="checkbox" '+(spxBoardOvRisk?'checked':'')+' onchange="spxBoardOvRisk=this.checked;spxRenderBoard()" style="accent-color:var(--text);width:13px;height:13px">위험 있는 것만</label>'+
+  '</div>'+
+  '<div class="camp-filter-bar" style="margin-bottom:12px">'+catChips+'</div>';
+
+  if(!list.length) return head+'<div class="spx-tm" style="padding:30px 4px;text-align:center">해당 조건의 프로젝트가 없습니다</div>';
+
+  function riskBadge(p){
+    var r=povRisk(p);var allT=(p.schedules||[]).flatMap(function(s){return s.tasks||[];});
+    if(r.over>0) return '<span class="pov-badge" style="background:#fdf2f2;color:#c0392b">마감초과 '+r.over+'</span>';
+    if(r.soon>0) return '<span class="pov-badge" style="background:#faeeda;color:#854f0b">3일내 '+r.soon+'</span>';
+    if(r.open===0&&allT.length>0) return '<span class="pov-badge" style="background:#eaf3de;color:#3b6d11">완료</span>';
+    return '<span class="pov-badge" style="background:var(--surface2);color:var(--text3)">정상</span>';
+  }
+  function persons(str,sub){
+    if(!str) return '<span style="color:var(--text3);font-size:13px">—</span>';
+    return str.split(/[,·+]/).map(function(m){return m.trim();}).filter(Boolean).slice(0,sub?4:99)
+      .map(function(m){return '<span class="pov-person'+(sub?' sub':'')+'">'+spxEsc(m)+'</span>';}).join('');
+  }
+  function sheetCell(p){
+    var s=povSheetLink(p);
+    if(!s) return '<span style="color:var(--text3);font-size:13px">—</span>';
+    return '<a href="'+s.url+'" target="_blank" onclick="event.stopPropagation()" class="pov-sheet" title="'+s.url+'">'+(s.cat==='구글시트'?'📊':s.cat==='프로젝트 드라이브'?'📁':'🔗')+' '+(s.title&&s.title!==s.cat?spxEsc(s.title.slice(0,14)):spxEsc(s.cat||'링크'))+' ↗</a>';
+  }
+
+  if(wide){
+    var rows=list.map(function(p){
+      var c=COLORS[p.color]||COLORS.blue;var pr=prog(p);
+      var allT=(p.schedules||[]).flatMap(function(s){return s.tasks||[];});var doneT=allT.filter(function(t){return t.done;}).length;
+      return '<tr onclick="openProj(\''+p.id+'\')">'+
+        '<td style="padding-left:14px"><span style="display:inline-flex;align-items:center;gap:8px"><span style="width:9px;height:9px;border-radius:50%;background:'+c.dot+';flex-shrink:0"></span><span style="font-weight:500">'+spxEsc(p.name)+'</span></span><div style="font-size:12px;color:var(--text3);margin-top:2px;margin-left:17px">'+spxEsc(p.tag||'기타')+'</div></td>'+
+        '<td>'+riskBadge(p)+'</td>'+
+        '<td>'+povStageFlow(p)+'</td>'+
+        '<td><div class="pov-persons">'+persons(p.manager,false)+'</div></td>'+
+        '<td><div class="pov-persons">'+persons(p.members,true)+'</div></td>'+
+        '<td style="min-width:120px"><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;min-width:50px"><div style="height:100%;width:'+pr+'%;background:'+c.dot+';border-radius:3px"></div></div><span style="font-size:12px;font-family:var(--mono);color:var(--text2);width:34px;text-align:right">'+pr+'%</span></div><div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:2px">'+doneT+'/'+allT.length+'</div></td>'+
+        '<td><span style="font-size:12px;font-family:var(--mono);color:var(--text3)">'+(p.start||'?')+'<br>~'+(p.end||'?')+'</span></td>'+
+        '<td onclick="event.stopPropagation()">'+sheetCell(p)+'</td>'+
+      '</tr>';
+    }).join('');
+    return head+'<div class="pov-wrap"><table class="pov-table"><thead><tr>'+
+      '<th style="padding-left:14px">프로젝트</th><th>상태</th><th>현재 단계</th><th>담당자</th><th>참여자</th><th>진행률</th><th>기간</th><th>시트·링크</th>'+
+      '</tr></thead><tbody>'+rows+'</tbody></table></div>'+
+      '<div style="font-size:12px;color:var(--text3);margin-top:10px">* 프로젝트를 누르면 상세로 이동합니다.</div>';
+  }
+
+  // 모바일: 카드 스택
+  var cards=list.map(function(p){
+    var c=COLORS[p.color]||COLORS.blue;var pr=prog(p);
+    return '<div onclick="openProj(\''+p.id+'\')" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:13px 14px;margin-bottom:10px;cursor:pointer">'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="width:9px;height:9px;border-radius:50%;background:'+c.dot+';flex-shrink:0"></span><span style="font-size:15px;font-weight:600;flex:1;min-width:0">'+spxEsc(p.name)+'</span>'+riskBadge(p)+'</div>'+
+      '<div style="margin-bottom:8px">'+povStageFlow(p)+'</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">'+persons(p.manager,false)+persons(p.members,true)+'</div>'+
+      '<div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pr+'%;background:'+c.dot+';border-radius:3px"></div></div><span style="font-size:12px;font-family:var(--mono);color:var(--text2)">'+pr+'%</span></div>'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:7px;font-size:12px;color:var(--text3);font-family:var(--mono)"><span>'+(p.start||'?')+' ~ '+(p.end||'?')+'</span>'+sheetCell(p)+'</div>'+
+    '</div>';
+  }).join('');
+  return head+cards;
+}
+
 function spxBoardUrgent(){
   const today=spxToday();
   const all=spxAllTasks().filter(function(x){return !x.t.done;});
