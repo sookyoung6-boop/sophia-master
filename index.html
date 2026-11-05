@@ -652,6 +652,26 @@ body.spx-emp #spx-emp-nav{display:grid}
 .notif-time{font-size:14px;color:var(--text3);margin-top:2px;font-family:var(--mono)}
 
 .home-content{padding:28px 32px;max-width:1100px}
+/* [v63] 프로젝트 현황표 */
+.pov-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)}
+.pov-table{width:100%;border-collapse:collapse;font-size:14px;min-width:900px}
+.pov-table th{font-size:12px;font-weight:600;color:var(--text3);letter-spacing:.03em;padding:10px 12px;border-bottom:1.5px solid var(--border2);text-align:left;background:var(--surface2);white-space:nowrap;position:sticky;top:0;z-index:1}
+.pov-table td{padding:11px 12px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text)}
+.pov-table tbody tr{cursor:pointer;transition:background .12s}
+.pov-table tbody tr:hover td{background:#faf9f7}
+.pov-table tr:last-child td{border-bottom:none}
+.pov-badge{font-size:12px;font-weight:600;padding:3px 9px;border-radius:10px;white-space:nowrap}
+.pov-persons{display:flex;flex-wrap:wrap;gap:4px}
+.pov-person{font-size:12px;background:var(--surface2);border:1px solid var(--border2);border-radius:9px;padding:2px 8px;color:var(--text2);white-space:nowrap}
+.pov-person.sub{background:transparent;color:var(--text3);border-color:var(--border)}
+.pov-sheet{font-size:12.5px;color:#185fa5;text-decoration:none;background:#e6f1fb;padding:3px 9px;border-radius:8px;white-space:nowrap;display:inline-block}
+.pov-sheet:hover{background:#d4e7f8}
+.pov-sheet-add{font-size:12px;color:var(--text3);background:transparent;border:1px dashed var(--border2);border-radius:8px;padding:3px 9px;cursor:pointer}
+.pov-sheet-add:hover{background:var(--surface2);color:var(--text2)}
+@media(max-width:768px){
+  #overview-content{padding:16px 14px!important}
+  #overview-content h1{font-size:18px}
+}
 .h-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:20px;overflow:hidden}
 .home-sec-handle{color:var(--text3);font-size:14px;cursor:grab;opacity:0;transition:opacity .15s;padding:2px 4px;user-select:none}
 .h-section:hover .home-sec-handle{opacity:.4}
@@ -865,6 +885,10 @@ body.spx-emp #spx-emp-nav{display:grid}
       태스크 보드
     </div>
     <div class="nav-label">프로젝트</div>
+    <div class="nav-item" id="nav-overview" onclick="goProjectOverview()">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="1.5" width="11" height="2.3" rx="1" fill="currentColor" opacity=".7"/><rect x="1" y="5.3" width="11" height="2.3" rx="1" fill="currentColor" opacity=".5"/><rect x="1" y="9.1" width="11" height="2.3" rx="1" fill="currentColor" opacity=".35"/></svg>
+      프로젝트 현황표 <span class="nav-count" id="nav-overview-count"></span>
+    </div>
     <div class="nav-item active" id="nav-all" onclick="navAll()">
       <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="5" height="5" rx="1.5" fill="currentColor" opacity=".6"/><rect x="7" y="1" width="5" height="5" rx="1.5" fill="currentColor" opacity=".6"/><rect x="1" y="7" width="5" height="5" rx="1.5" fill="currentColor" opacity=".6"/><rect x="7" y="7" width="5" height="5" rx="1.5" fill="currentColor" opacity=".6"/></svg>
       전체 프로젝트 <span class="nav-count" id="nav-total">4</span>
@@ -934,6 +958,7 @@ body.spx-emp #spx-emp-nav{display:grid}
   <div class="view" id="v-deliv"><div class="content" id="deliv-content" style="max-width:1100px"></div></div>
   <div class="view" id="v-cal"><div class="content" id="cal-content" style="max-width:640px"></div></div>
   <div class="view" id="v-home"><div class="home-content" id="home-content"></div></div>
+  <div class="view" id="v-overview"><div class="home-content" id="overview-content" style="max-width:1280px"></div></div>
   <div class="view active" id="v-list">
     <div class="content">
       <div style="margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
@@ -7421,7 +7446,7 @@ function fbSaveSnapshot(){
 // 원칙 3: 수신은 3-way 병합 — 로컬 미저장 변경은 원격이 절대 덮지 못한다.
 // ═══════════════════════════════════════════════════════════════════
 const FB_ROOT='spextrum_v3'; // [v62] 온라인 전용 — 새 데이터 세대. v2는 읽기전용 화석(Rules로 쓰기 차단)
-const APP_VERSION=6225; // [v62.2.4] 대량 변경 가드 개선 — 정상 작업(프로젝트 생성·복제) 오탐 제거, 버튼 라벨·취소 처리 수정
+const APP_VERSION=6300; // [v63] 프로젝트 현황표(대시보드) + 태스크보드 타임라인 프로젝트별 그룹·접기 + 공통보드 연간(Annual) 뷰 추가 — 읽기 전용 뷰, 동기화 엔진 미변경
 let _versionBlocked=false;
 
 // ═══ [v55] 영속 outbox — "서버가 승인하기 전의 내 변경"을 기기에 보관 ═══
@@ -8743,6 +8768,210 @@ document.addEventListener('click',function(e){
 
 let delivGroupBy='project'; // 'project' | 'tag'
 
+// ═══════════════════════════════════════════════════════════════════
+// [v63] 프로젝트 현황표 — 전 프로젝트를 한 줄씩 한눈에 보는 대시보드
+// 상태·담당자·참여자·진행률·마감·시트링크를 열로 훑고 정렬·필터
+// 추가-전용: 기존 데이터/동기화 엔진은 건드리지 않음 (읽기만)
+// ═══════════════════════════════════════════════════════════════════
+let povSort='risk';    // 'risk'|'name'|'progress'|'due'|'cat'
+let povCatFilter='전체';
+let povRiskOnly=false;
+
+// 프로젝트의 시트/드라이브 링크 1개 추출 (links 배열에서 구글시트>드라이브>기타 순)
+function povSheetLink(p){
+  const links=p.links||[];
+  if(!links.length) return null;
+  const byCat=c=>links.find(l=>(l.cat||'')===c&&l.url);
+  return byCat('구글시트')||byCat('프로젝트 드라이브')||byCat('기획안')||links.find(l=>l.url)||null;
+}
+// 프로젝트 위험도 요약 (마감초과 / 3일이내 / 미완료)
+function povRisk(p){
+  const today=new Date();today.setHours(0,0,0,0);
+  let over=0,soon=0,open=0;
+  (p.schedules||[]).forEach(s=>(s.tasks||[]).forEach(t=>{
+    if(t.done) return;
+    open++;
+    if(t.dueDate){
+      const d=parseLocalDate(t.dueDate);
+      if(d){const diff=Math.round((d-today)/864e5);if(diff<0)over++;else if(diff<=3)soon++;}
+    }
+  }));
+  return {over,soon,open};
+}
+// 현재 진행 중인 스케줄 단계명
+function povCurrentStage(p){
+  const active=(p.schedules||[]).find(s=>!s.archived&&s.status==='진행중');
+  if(active) return active.name;
+  const pending=(p.schedules||[]).find(s=>!s.archived&&s.status!=='완료');
+  if(pending) return pending.name;
+  const all=(p.schedules||[]).filter(s=>!s.archived);
+  return all.length&&all.every(s=>s.status==='완료')?'완료':'—';
+}
+
+function goProjectOverview(){
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('nav-overview').classList.add('active');
+  setBc([{label:'프로젝트 현황표'}]);
+  document.getElementById('topbar-actions').innerHTML='';
+  renderProjectOverview();
+  showView('v-overview');
+}
+
+function renderProjectOverview(){
+  const act=(projects||[]).filter(p=>p&&!p.archived);
+  // 카테고리 목록
+  const cats=[...new Set(act.map(p=>p.tag||'기타'))];
+  // 필터
+  let list=act.slice();
+  if(povCatFilter!=='전체') list=list.filter(p=>(p.tag||'기타')===povCatFilter);
+  if(povRiskOnly) list=list.filter(p=>{const r=povRisk(p);return r.over>0||r.soon>0;});
+  // 정렬
+  const riskScore=p=>{const r=povRisk(p);return r.over*1000+r.soon*10+r.open;};
+  const dueVal=p=>{const d=p.end?p.end.replace(/\D/g,''):'';return d||'999999';};
+  list.sort((a,b)=>{
+    if(povSort==='risk') return riskScore(b)-riskScore(a);
+    if(povSort==='name') return String(a.name).localeCompare(String(b.name),'ko');
+    if(povSort==='progress') return prog(b)-prog(a);
+    if(povSort==='due') return dueVal(a).localeCompare(dueVal(b));
+    if(povSort==='cat') return String(a.tag||'').localeCompare(String(b.tag||''),'ko');
+    return 0;
+  });
+
+  // 상단 요약 수치
+  const today=new Date();today.setHours(0,0,0,0);
+  let totOver=0,totSoon=0;
+  act.forEach(p=>{const r=povRisk(p);totOver+=r.over;totSoon+=r.soon;});
+  const activeCount=act.filter(p=>(p.schedules||[]).some(s=>s.status==='진행중')).length;
+
+  const catChips=['전체',...cats].map(c=>
+    `<button class="filt-btn${povCatFilter===c?' on':''}" onclick="povCatFilter='${c}';renderProjectOverview()">${c==='전체'?'전체':c}</button>`
+  ).join('');
+
+  const rows=list.map(p=>{
+    const c=COLORS[p.color]||COLORS.blue;
+    const pr=prog(p);
+    const r=povRisk(p);
+    const allT=(p.schedules||[]).flatMap(s=>s.tasks||[]);
+    const doneT=allT.filter(t=>t.done).length;
+    const stage=povCurrentStage(p);
+    const sheet=povSheetLink(p);
+    // 위험 배지 (가장 심각한 것 1개 위주 + 보조)
+    let riskBadge='';
+    if(r.over>0) riskBadge=`<span class="pov-badge" style="background:#fdf2f2;color:#c0392b">마감초과 ${r.over}</span>`;
+    else if(r.soon>0) riskBadge=`<span class="pov-badge" style="background:#faeeda;color:#854f0b">3일내 ${r.soon}</span>`;
+    else if(r.open===0&&allT.length>0) riskBadge=`<span class="pov-badge" style="background:#eaf3de;color:#3b6d11">완료</span>`;
+    else riskBadge=`<span class="pov-badge" style="background:var(--surface2);color:var(--text3)">정상</span>`;
+
+    const mgr=p.manager||'';
+    const members=p.members||'';
+    const mgrChips=mgr?mgr.split(/[,·+]/).map(m=>m.trim()).filter(Boolean).map(m=>`<span class="pov-person">${m}</span>`).join(''):'<span style="color:var(--text3);font-size:13px">—</span>';
+    const memChips=members?members.split(/[,·+]/).map(m=>m.trim()).filter(Boolean).slice(0,4).map(m=>`<span class="pov-person sub">${m}</span>`).join(''):'<span style="color:var(--text3);font-size:13px">—</span>';
+
+    const sheetCell=sheet
+      ?`<a href="${sheet.url}" target="_blank" onclick="event.stopPropagation()" class="pov-sheet" title="${sheet.url}">${sheet.cat==='구글시트'?'📊':sheet.cat==='프로젝트 드라이브'?'📁':'🔗'} ${sheet.title&&sheet.title!==sheet.cat?sheet.title.slice(0,14):(sheet.cat||'링크')} ↗</a>`
+      :`<button class="pov-sheet-add" onclick="event.stopPropagation();povAddSheet('${p.id}')" title="시트/드라이브 링크 추가">+ 링크</button>`;
+
+    return `<tr onclick="openProj('${p.id}')">
+      <td style="padding-left:14px"><span style="display:inline-flex;align-items:center;gap:8px">
+        <span style="width:9px;height:9px;border-radius:50%;background:${c.dot};flex-shrink:0"></span>
+        <span style="font-weight:500">${p.name}</span></span>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px;margin-left:17px">${p.tag||'기타'}</div>
+      </td>
+      <td>${riskBadge}</td>
+      <td><span style="font-size:13px;color:var(--text2)">${stage}</span></td>
+      <td><div class="pov-persons">${mgrChips}</div></td>
+      <td><div class="pov-persons">${memChips}</div></td>
+      <td style="min-width:120px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="flex:1;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;min-width:50px">
+            <div style="height:100%;width:${pr}%;background:${c.dot};border-radius:3px"></div>
+          </div>
+          <span style="font-size:12px;font-family:var(--mono);color:var(--text2);width:34px;text-align:right">${pr}%</span>
+        </div>
+        <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:2px">${doneT}/${allT.length}</div>
+      </td>
+      <td><span style="font-size:12px;font-family:var(--mono);color:var(--text3)">${p.start||'?'}<br>~${p.end||'?'}</span></td>
+      <td onclick="event.stopPropagation()">${sheetCell}</td>
+    </tr>`;
+  }).join('');
+
+  const sortLabels={risk:'위험도순',name:'이름순',progress:'진행률순',due:'마감순',cat:'카테고리순'};
+
+  document.getElementById('overview-content').innerHTML=`
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px">
+    <div>
+      <h1 style="font-size:20px;font-weight:700">프로젝트 현황표</h1>
+      <p style="font-size:13px;color:var(--text3);margin-top:3px">전 프로젝트를 한눈에 — 행 클릭 시 프로젝트로 이동</p>
+    </div>
+    <div style="display:flex;gap:16px;text-align:center;flex-wrap:wrap">
+      <div><div style="font-size:22px;font-weight:700;font-family:var(--mono);color:#185fa5">${activeCount}</div><div style="font-size:12px;color:var(--text3)">진행중 프로젝트</div></div>
+      <div><div style="font-size:22px;font-weight:700;font-family:var(--mono);color:${totOver?'#c0392b':'var(--text3)'}">${totOver}</div><div style="font-size:12px;color:var(--text3)">마감 초과</div></div>
+      <div><div style="font-size:22px;font-weight:700;font-family:var(--mono);color:${totSoon?'#854f0b':'var(--text3)'}">${totSoon}</div><div style="font-size:12px;color:var(--text3)">3일 이내</div></div>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+    <div class="camp-filter-bar">${catChips}</div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--text2);cursor:pointer">
+        <input type="checkbox" ${povRiskOnly?'checked':''} onchange="povRiskOnly=this.checked;renderProjectOverview()" style="accent-color:var(--text);width:13px;height:13px">
+        위험 있는 것만
+      </label>
+      <select class="tb-filter" onchange="povSort=this.value;renderProjectOverview()" style="font-size:13px;padding:5px 8px">
+        ${Object.entries(sortLabels).map(([k,v])=>`<option value="${k}"${povSort===k?' selected':''}>${v}</option>`).join('')}
+      </select>
+    </div>
+  </div>
+
+  <div class="pov-wrap">
+    <table class="pov-table">
+      <thead>
+        <tr>
+          <th style="padding-left:14px">프로젝트</th>
+          <th>상태</th>
+          <th>현재 단계</th>
+          <th>담당자</th>
+          <th>참여자</th>
+          <th>진행률</th>
+          <th>기간</th>
+          <th>시트·링크</th>
+        </tr>
+      </thead>
+      <tbody>${rows||`<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text3)">해당 조건의 프로젝트가 없습니다</td></tr>`}</tbody>
+    </table>
+  </div>
+  <div style="font-size:12px;color:var(--text3);margin-top:10px">* 담당자·참여자·시트링크는 각 프로젝트 상세에서 입력한 값을 모읍니다. 비어 있으면 상세 페이지에서 채워주세요.</div>`;
+
+  const cntEl=document.getElementById('nav-overview-count');
+  if(cntEl) cntEl.textContent=act.length||'';
+}
+
+// 시트 링크 빠른 추가 (현황표에서 바로)
+function povAddSheet(pid){
+  const p=projects.find(x=>x.id===pid);if(!p)return;
+  modal(`<div class="m-title">🔗 시트·드라이브 링크 추가</div>
+  <div style="font-size:13px;color:var(--text3);margin-bottom:12px">${p.name}</div>
+  <div class="frow"><label class="fl">종류</label>
+    <select class="fi" id="pov-sheet-cat">
+      <option value="구글시트">📊 구글시트</option>
+      <option value="프로젝트 드라이브">📁 프로젝트 드라이브</option>
+      <option value="기획안">📄 기획안</option>
+      <option value="기타">🔗 기타</option>
+    </select></div>
+  <div class="frow"><label class="fl">URL</label><input class="fi" id="pov-sheet-url" placeholder="https://docs.google.com/..." style="font-family:var(--mono);font-size:13px"></div>
+  <div class="btn-row"><button class="btn pri sm" onclick="povSaveSheet('${pid}')">추가</button><button class="btn sm" onclick="closeModal()">취소</button></div>`);
+  setTimeout(()=>document.getElementById('pov-sheet-url')?.focus(),50);
+}
+function povSaveSheet(pid){
+  const p=projects.find(x=>x.id===pid);if(!p)return;
+  const cat=document.getElementById('pov-sheet-cat').value;
+  const url=document.getElementById('pov-sheet-url').value.trim();
+  if(!url){toast('URL을 입력해주세요');return;}
+  if(!p.links)p.links=[];
+  p.links.push({id:uid(),title:cat,url,cat});
+  saveToLS();closeModal();renderProjectOverview();toast('링크가 추가됐습니다');
+}
+
 function goDeliverableArchive(){
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   document.getElementById('nav-deliv').classList.add('active');
@@ -9444,10 +9673,16 @@ function boardViewHTML(){
 }
 
 // ── DEPT TIMELINE VIEW ───────────────────────────────────────
+// [v63] 타임라인 그룹 기준: 'dept'(파트별) | 'project'(프로젝트별)
+let tbTimelineGroup=prefGet('tbTimelineGroup','project');
+let tbTlCollapsed={}; // projId/dept → true면 접힘
+function setTbTimelineGroup(v){tbTimelineGroup=v;prefSet('tbTimelineGroup',v);document.getElementById('tb-body').innerHTML=tbBodyHTML();}
+function tbTlToggle(key){tbTlCollapsed[key]=!tbTlCollapsed[key];document.getElementById('tb-body').innerHTML=tbBodyHTML();}
+function tbTlCollapseAll(keys){keys.forEach(k=>tbTlCollapsed[k]=true);document.getElementById('tb-body').innerHTML=tbBodyHTML();}
+function tbTlExpandAll(){tbTlCollapsed={};document.getElementById('tb-body').innerHTML=tbBodyHTML();}
+
 function deptTimelineHTML(){
   const allTasks=getAllTasks();
-  // 파트 필터 걸릴 때 해당 파트만 표시
-  const depts=tbFilter!=='전체'?[tbFilter]:getAllDepts().slice(1);
   const filtered=applyTbFilters(allTasks);
 
   // compute global date range
@@ -9456,8 +9691,19 @@ function deptTimelineHTML(){
     if(t.startDate) allDates.push(parseLocalDate(t.startDate));
     if(t.dueDate)   allDates.push(parseLocalDate(t.dueDate));
   });
+  const groupToggle=`<div style="display:flex;align-items:center;gap:10px;padding:10px 24px;border-bottom:1px solid var(--border);flex-wrap:wrap;background:var(--surface)">
+    <span style="font-size:13px;color:var(--text3)">그룹 기준</span>
+    <div class="view-toggle">
+      <button class="vt-btn${tbTimelineGroup==='project'?' on':''}" onclick="setTbTimelineGroup('project')">📁 프로젝트별</button>
+      <button class="vt-btn${tbTimelineGroup==='dept'?' on':''}" onclick="setTbTimelineGroup('dept')">👥 파트별</button>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:6px">
+      <button class="btn xs ghost" onclick="tbTlToggleAllCurrent(true)">▷ 모두 접기</button>
+      <button class="btn xs ghost" onclick="tbTlExpandAll()">▽ 모두 펼치기</button>
+    </div>
+  </div>`;
   if(!allDates.length){
-    return `<div style="padding:24px;text-align:center;color:var(--text3);font-size:14px">태스크에 날짜를 입력하면 타임라인이 표시됩니다.<br><span style="font-size:14px">스케줄 상세 → 태스크 추가 시 시작일/마감일 입력, 또는 ✎ 버튼으로 편집</span></div>`;
+    return groupToggle+`<div style="padding:40px 24px;text-align:center;color:var(--text3);font-size:14px">태스크에 날짜를 입력하면 타임라인이 표시됩니다.<br><span style="font-size:13px">스케줄 상세 → 태스크 추가 시 시작일/마감일 입력, 또는 ✎ 버튼으로 편집</span></div>`;
   }
   const minD=new Date(Math.min(...allDates.map(d=>d.getTime())));
   const maxD=new Date(Math.max(...allDates.map(d=>d.getTime())));
@@ -9476,47 +9722,75 @@ function deptTimelineHTML(){
     dayLabels+=`<div style="position:absolute;left:${(i/totalDays)*100}%;font-size:14px;color:${isT?'var(--red)':'var(--text3)'};font-family:var(--mono);font-weight:${isT?700:400};white-space:nowrap">${d.getMonth()+1}/${d.getDate()}</div>`;
   }
 
-  const groups=depts.map(dept=>{
-    const tasks=filtered.filter(t=>t.depts.includes(dept)||t.dept===dept);
-    if(!tasks.length) return '';
-    const dc=deptColor(dept);
-    const rows=tasks.map(t=>{
-      const c=COLORS[t.projColor];
-      const sd=t.startDate?parseLocalDate(t.startDate):null;
-      const ed=t.dueDate?parseLocalDate(t.dueDate):null;
-      let bar='';
-      if(sd||ed){
-        const ref=sd||ed;
-        const l=Math.max(0,((( sd||ed)-minD)/totalMs)*100);
-        const r=Math.min(100,(((ed||sd)-minD)/totalMs)*100);
-        const w=Math.max(1,r-l);
-        bar=`<div style="position:absolute;left:${l}%;width:${w}%;height:16px;border-radius:4px;background:${t.done?'#a8a49e':c.dot};display:flex;align-items:center;padding:0 6px;font-size:14px;color:#fff;white-space:nowrap;overflow:hidden;z-index:1" title="${t.name}">${w>10?t.name:''}</div>`;
-      }
-      return `<div class="dtl-row">
-        <div class="dtl-label">
-          <div class="dtl-check${t.done?' on':''}" onclick="toggleTaskByRef('${t.projId}','${t.schedId}','${t.id}')">${t.done?'✓':''}</div>
-          <span class="dtl-name${t.done?' done':''}" title="${t.name}">${t.name}</span>
+  // 태스크 1줄 렌더 (공통)
+  function taskRow(t){
+    const c=COLORS[t.projColor];
+    const sd=t.startDate?parseLocalDate(t.startDate):null;
+    const ed=t.dueDate?parseLocalDate(t.dueDate):null;
+    let bar='';
+    if(sd||ed){
+      const l=Math.max(0,((( sd||ed)-minD)/totalMs)*100);
+      const r=Math.min(100,(((ed||sd)-minD)/totalMs)*100);
+      const w=Math.max(1,r-l);
+      bar=`<div onclick="event.stopPropagation();openSidePanel('${t.projId}','${t.schedId}','${t.id}')" style="position:absolute;left:${l}%;width:${w}%;height:16px;border-radius:4px;background:${t.done?'#a8a49e':c.dot};display:flex;align-items:center;padding:0 6px;font-size:14px;color:#fff;white-space:nowrap;overflow:hidden;z-index:1;cursor:pointer" title="${t.name}${t.meta?' · '+t.meta:''}">${w>10?t.name:''}</div>`;
+    }
+    return `<div class="dtl-row">
+      <div class="dtl-label">
+        <div class="dtl-check${t.done?' on':''}" onclick="toggleTaskByRef('${t.projId}','${t.schedId}','${t.id}')">${t.done?'✓':''}</div>
+        <span class="dtl-name${t.done?' done':''}" onclick="openSidePanel('${t.projId}','${t.schedId}','${t.id}')" style="cursor:pointer" title="${t.name}">${t.name}</span>
+      </div>
+      <div class="dtl-track">
+        ${Array.from({length:Math.ceil(totalDays/step)+1},(_,i)=>`<div style="position:absolute;left:${Math.min(100,(i*step/totalDays)*100)}%;top:0;bottom:0;width:1px;background:var(--border)"></div>`).join('')}
+        <div style="position:absolute;left:${todayPct}%;top:0;bottom:0;width:1.5px;background:var(--red);z-index:2"></div>
+        ${bar||`<div style="padding:0 8px;font-size:14px;color:var(--text3);font-style:italic">날짜 없음</div>`}
+      </div>
+    </div>`;
+  }
+
+  let groups='';
+  if(tbTimelineGroup==='project'){
+    // [v63] 프로젝트별 그룹 + 접기/펼치기 — 참고 이미지(SPEXTRUM OBJET/쓰리포) 레이아웃
+    const act=(projects||[]).filter(p=>p&&!p.archived);
+    groups=act.map(p=>{
+      const tasks=filtered.filter(t=>t.projId===p.id);
+      if(!tasks.length) return '';
+      const c=COLORS[p.color]||COLORS.blue;
+      const collapsed=tbTlCollapsed[p.id]===true;
+      const doneN=tasks.filter(t=>t.done).length;
+      return `<div class="dtl-group">
+        <div class="dtl-group-head" onclick="tbTlToggle('${p.id}')" style="cursor:pointer;background:${c.tag};border-radius:6px 6px 0 0">
+          <div style="display:flex;align-items:center;gap:8px;flex:1">
+            <span style="font-size:11px;color:${c.tagT};width:12px;transform:rotate(${collapsed?'-90':'0'}deg);transition:transform .15s;display:inline-block">▾</span>
+            <span style="width:8px;height:8px;border-radius:50%;background:${c.dot};flex-shrink:0"></span>
+            <span style="font-size:14px;font-weight:700;color:${c.tagT}">${p.name}</span>
+            <span style="font-size:12px;color:${c.tagT};opacity:.7">${doneN}/${tasks.length}${collapsed?' · 접힘':''}</span>
+          </div>
         </div>
-        <div class="dtl-track">
-          ${Array.from({length:Math.ceil(totalDays/step)+1},(_,i)=>`<div style="position:absolute;left:${Math.min(100,(i*step/totalDays)*100)}%;top:0;bottom:0;width:1px;background:var(--border)"></div>`).join('')}
-          <div style="position:absolute;left:${todayPct}%;top:0;bottom:0;width:1.5px;background:var(--red);z-index:2"></div>
-          ${bar||`<div style="padding:0 8px;font-size:14px;color:var(--text3);font-style:italic">날짜 없음</div>`}
-        </div>
+        ${collapsed?'':tasks.map(taskRow).join('')}
       </div>`;
     }).join('');
-
-    return `<div class="dtl-group">
-      <div class="dtl-group-head">
-        <div style="display:flex;align-items:center;gap:8px;width:170px;flex-shrink:0">
-          <span style="font-size:14px;font-weight:700;color:${dc.t};background:${dc.bg};padding:2px 9px;border-radius:10px">${dept}</span>
-          <span style="font-size:14px;color:var(--text3)">${tasks.length}</span>
+  } else {
+    // 파트별 그룹 (기존) + 접기/펼치기
+    const depts=tbFilter!=='전체'?[tbFilter]:getAllDepts().slice(1);
+    groups=depts.map(dept=>{
+      const tasks=filtered.filter(t=>t.depts.includes(dept)||t.dept===dept);
+      if(!tasks.length) return '';
+      const dc=deptColor(dept);
+      const collapsed=tbTlCollapsed['dept:'+dept]===true;
+      return `<div class="dtl-group">
+        <div class="dtl-group-head" onclick="tbTlToggle('dept:${dept}')" style="cursor:pointer">
+          <div style="display:flex;align-items:center;gap:8px;width:170px;flex-shrink:0">
+            <span style="font-size:11px;color:var(--text3);width:12px;transform:rotate(${collapsed?'-90':'0'}deg);transition:transform .15s;display:inline-block">▾</span>
+            <span style="font-size:14px;font-weight:700;color:${dc.t};background:${dc.bg};padding:2px 9px;border-radius:10px">${dept}</span>
+            <span style="font-size:14px;color:var(--text3)">${tasks.length}</span>
+          </div>
         </div>
-      </div>
-      ${rows}
-    </div>`;
-  }).join('');
+        ${collapsed?'':tasks.map(taskRow).join('')}
+      </div>`;
+    }).join('');
+  }
 
-  return `<div class="dtl-wrap">
+  return groupToggle+`<div class="dtl-wrap">
     <div style="min-width:770px">
       <div style="display:flex;border-bottom:1px solid var(--border);height:28px;position:sticky;top:0;background:var(--surface);z-index:3">
         <div style="width:170px;flex-shrink:0"></div>
@@ -9525,6 +9799,14 @@ function deptTimelineHTML(){
       ${groups||'<div style="padding:24px;color:var(--text3);font-size:14px;text-align:center">해당 조건의 태스크가 없습니다</div>'}
     </div>
   </div>`;
+}
+// [v63] 현재 그룹 기준에 맞춰 전체 접기
+function tbTlToggleAllCurrent(collapse){
+  if(!collapse){tbTlExpandAll();return;}
+  const keys=[];
+  if(tbTimelineGroup==='project'){ (projects||[]).filter(p=>p&&!p.archived).forEach(p=>keys.push(p.id)); }
+  else { getAllDepts().slice(1).forEach(d=>keys.push('dept:'+d)); }
+  tbTlCollapseAll(keys);
 }
 
 // ── TABLE VIEW ───────────────────────────────────────────────
@@ -11020,9 +11302,10 @@ function spxAddBack(containerId,tab,label){
 
 // ── 공통보드 ──
 function spxRenderBoard(){
-  const tabs=[['cal','캘린더 · 회의'],['camp','캠페인'],['urgent','긴급현황']];
+  const tabs=[['cal','캘린더 · 회의'],['annual','연간'],['camp','캠페인'],['urgent','긴급현황']];
   let body='';
   if(spxBoardTab==='cal') body=spxBoardCal();
+  else if(spxBoardTab==='annual') body=spxBoardAnnual();
   else if(spxBoardTab==='urgent') body=spxBoardUrgent();
   else body=spxBoardCamp();
   document.getElementById('board-content').innerHTML=
@@ -11031,6 +11314,127 @@ function spxRenderBoard(){
       return '<div class="spx-tab'+(spxBoardTab===t[0]?' on':'')+'" onclick="spxBoardTab=\''+t[0]+'\';spxRenderBoard()">'+t[1]+'</div>';
     }).join('')+'</div>'+
     '<div style="padding:4px 14px 20px">'+body+'</div>';
+}
+
+// ═══ [v63] 연간 뷰 — 월×날짜 매트릭스 (참고: Annual Calendar) ═══
+// 종류별 색: 회의=회색 / 마감=빨강 / 전시=초록 / 캠페인=주황 / 출시(오픈)=파랑
+let spxAnnualYear=(new Date()).getFullYear();
+let spxAnnualMonth=(new Date()).getMonth(); // 모바일: 선택된 월
+const SPX_ANNUAL_KINDS={
+  meet:  {label:'회의',  bg:'#eae8e4', c:'#5f5e5a'},
+  due:   {label:'마감',  bg:'#fdf2f2', c:'#c0392b'},
+  exhibit:{label:'전시', bg:'#eaf3de', c:'#3b6d11'},
+  camp:  {label:'캠페인',bg:'#faeeda', c:'#854f0b'},
+  launch:{label:'출시·오픈',bg:'#e6f1fb', c:'#185fa5'},
+};
+// 특정 연도의 모든 이벤트를 {월→{일→[ev]}} 로 수집
+function spxAnnualEvents(yr){
+  const map={}; // 'M-D' → [{kind,label,pid,sid,tid}]
+  function add(mo,d,ev){const k=mo+'-'+d;(map[k]=map[k]||[]).push(ev);}
+  // 회의
+  (meetings||[]).forEach(function(m){
+    const dt=spxMDate(m);
+    if(dt&&dt.getFullYear()===yr) add(dt.getMonth(),dt.getDate(),{kind:'meet',label:m.title||'회의',mid:m.id});
+  });
+  // 태스크 마감 (전시 키워드는 전시색)
+  spxAllTasks().forEach(function(x){
+    const d=spxDue(x.t);
+    if(d&&d.getFullYear()===yr){
+      const nm=(x.t.name||'')+' '+(x.p.name||'')+' '+(x.p.tag||'');
+      const isExhibit=/전시|expo|엑스포|부스|기프트|쇼룸/i.test(nm);
+      add(d.getMonth(),d.getDate(),{kind:isExhibit?'exhibit':'due',label:(x.t.done?'✓ ':'')+x.t.name,pid:x.p.id,sid:x.s.id,tid:x.t.id,done:x.t.done});
+    }
+  });
+  // 프로젝트 오픈일자 (출시)
+  (projects||[]).filter(function(p){return p&&!p.archived&&p.launchDate;}).forEach(function(p){
+    const d=parseLocalDate(p.launchDate);
+    if(d&&d.getFullYear()===yr) add(d.getMonth(),d.getDate(),{kind:'launch',label:'🚀 '+p.name,pid:p.id});
+  });
+  // 캠페인 시작·종료
+  (campaigns||[]).forEach(function(c){
+    [['start','▶'],['end','■']].forEach(function(pair){
+      const s=c[pair[0]];if(!s)return;
+      const m=String(s).match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+      if(m&&+m[1]===yr) add(+m[2]-1,+m[3],{kind:'camp',label:pair[1]+' '+c.name});
+    });
+  });
+  return map;
+}
+function spxAnnualEvAction(ev){
+  if(ev.tid) return "openSidePanel('"+ev.pid+"','"+ev.sid+"','"+ev.tid+"')";
+  if(ev.kind==='launch'&&ev.pid) return "spxOpenProject('"+ev.pid+"')";
+  if(ev.mid) return "openEditMeeting('"+ev.mid+"')";
+  return '';
+}
+function spxBoardAnnual(){
+  const yr=spxAnnualYear;
+  const map=spxAnnualEvents(yr);
+  const wide=spxWide();
+  const today=new Date();today.setHours(0,0,0,0);
+  const mn=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const legend='<div style="display:flex;gap:12px;flex-wrap:wrap;margin:10px 2px 4px;font-size:12px;color:var(--text3)">'+
+    Object.keys(SPX_ANNUAL_KINDS).map(function(k){var o=SPX_ANNUAL_KINDS[k];
+      return '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:3px;background:'+o.bg+';border:1px solid '+o.c+'33;display:inline-block"></span>'+o.label+'</span>';
+    }).join('')+'</div>';
+  const nav='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 2px 6px">'+
+    '<div style="display:flex;align-items:center;gap:8px">'+
+      '<button class="btn xs ghost" onclick="spxAnnualYear--;spxRenderBoard()">‹</button>'+
+      '<span style="font-size:17px;font-weight:700">'+yr+'년</span>'+
+      '<button class="btn xs ghost" onclick="spxAnnualYear++;spxRenderBoard()">›</button></div>'+
+    '<button class="btn xs ghost" onclick="spxAnnualYear=(new Date()).getFullYear();spxAnnualMonth=(new Date()).getMonth();spxRenderBoard()">올해</button></div>';
+
+  if(wide){
+    // ── 넓은 화면: 월(가로) × 날짜(세로 1~31) 매트릭스 ──
+    const COL_W=150;
+    let head='<div style="display:flex;position:sticky;top:0;z-index:3;background:var(--surface)"><div style="width:30px;flex-shrink:0;border-bottom:2px solid var(--border2)"></div>'+
+      mn.map(function(m){return '<div style="width:'+COL_W+'px;flex-shrink:0;text-align:center;font-size:13px;font-weight:700;color:var(--text2);padding:8px 0;border-bottom:2px solid var(--border2);border-left:1px solid var(--border)">'+m+'</div>';}).join('')+'</div>';
+    let rows='';
+    for(let d=1;d<=31;d++){
+      let cells='<div style="width:30px;flex-shrink:0;text-align:center;font-size:11px;color:var(--text3);font-family:var(--mono);padding-top:5px;border-right:1px solid var(--border)">'+d+'</div>';
+      for(let mo=0;mo<12;mo++){
+        const dim=new Date(yr,mo+1,0).getDate();
+        if(d>dim){cells+='<div style="width:'+COL_W+'px;flex-shrink:0;background:var(--surface2);border-left:1px solid var(--border);border-bottom:1px solid var(--border)"></div>';continue;}
+        const date=new Date(yr,mo,d);const wd=date.getDay();
+        const isT=today.getFullYear()===yr&&today.getMonth()===mo&&today.getDate()===d;
+        const evs=map[mo+'-'+d]||[];
+        const chips=evs.slice(0,3).map(function(ev){var o=SPX_ANNUAL_KINDS[ev.kind]||SPX_ANNUAL_KINDS.due;var act=spxAnnualEvAction(ev);
+          return '<div '+(act?'onclick="'+act+'"':'')+' title="'+spxEsc(ev.label)+'" style="font-size:10.5px;line-height:1.35;padding:1px 5px;border-radius:4px;margin:1px 2px 0;background:'+o.bg+';color:'+o.c+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'+(act?'cursor:pointer':'')+(ev.done?';opacity:.5;text-decoration:line-through':'')+'">'+spxEsc(String(ev.label))+'</div>';
+        }).join('')+(evs.length>3?'<div style="font-size:10px;color:#185fa5;margin:1px 4px;font-weight:600">+'+(evs.length-3)+'</div>':'');
+        cells+='<div style="width:'+COL_W+'px;flex-shrink:0;min-height:26px;border-left:1px solid var(--border);border-bottom:1px solid var(--border);padding-bottom:2px;'+(isT?'box-shadow:inset 0 0 0 2px #c0392b;':(wd===0?'background:#fdfafa;':wd===6?'background:#fafcff;':''))+'">'+chips+'</div>';
+      }
+      rows+='<div style="display:flex">'+cells+'</div>';
+    }
+    return nav+legend+'<div style="overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);margin-top:4px"><div style="min-width:'+(30+COL_W*12)+'px">'+head+rows+'</div></div>';
+  }
+
+  // ── 모바일 세로: 월 선택 → 그 달 이벤트 리스트 ──
+  const monthPick='<div style="display:flex;gap:5px;overflow-x:auto;padding:8px 0 4px;-webkit-overflow-scrolling:touch">'+
+    mn.map(function(m,i){
+      let cnt=0;for(let d=1;d<=31;d++){cnt+=(map[i+'-'+d]||[]).length;}
+      return '<button onclick="spxAnnualMonth='+i+';spxRenderBoard()" style="flex-shrink:0;font-size:13px;padding:6px 12px;border-radius:20px;border:1px solid '+(spxAnnualMonth===i?'var(--text)':'var(--border2)')+';background:'+(spxAnnualMonth===i?'var(--text)':'var(--surface)')+';color:'+(spxAnnualMonth===i?'var(--surface)':'var(--text2)')+';cursor:pointer;white-space:nowrap">'+m+(cnt?' <span style="opacity:.7">'+cnt+'</span>':'')+'</button>';
+    }).join('')+'</div>';
+  const mo=spxAnnualMonth;
+  const dim=new Date(yr,mo+1,0).getDate();
+  let list='';
+  for(let d=1;d<=dim;d++){
+    const evs=map[mo+'-'+d]||[];
+    if(!evs.length)continue;
+    const date=new Date(yr,mo,d);
+    const wk=['일','월','화','수','목','금','토'][date.getDay()];
+    const isT=today.getFullYear()===yr&&today.getMonth()===mo&&today.getDate()===d;
+    list+='<div style="display:flex;gap:11px;padding:10px 4px;border-bottom:1px solid var(--border)">'+
+      '<div style="width:40px;flex-shrink:0;text-align:center">'+
+        '<div style="font-size:17px;font-weight:700;font-family:var(--mono);line-height:1.1;color:'+(isT?'#c0392b':'var(--text)')+'">'+d+'</div>'+
+        '<div style="font-size:10.5px;color:'+(date.getDay()===0?'#c0392b':date.getDay()===6?'#2b5a8a':'var(--text3)')+'">'+wk+'</div></div>'+
+      '<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">'+
+      evs.map(function(ev){var o=SPX_ANNUAL_KINDS[ev.kind]||SPX_ANNUAL_KINDS.due;var act=spxAnnualEvAction(ev);
+        return '<div '+(act?'onclick="'+act+'"':'')+' style="display:flex;align-items:center;gap:7px;'+(act?'cursor:pointer':'')+'">'+
+          '<span style="width:7px;height:7px;border-radius:2px;background:'+o.c+';flex-shrink:0"></span>'+
+          '<span style="font-size:14px;color:var(--text);'+(ev.done?'opacity:.5;text-decoration:line-through':'')+'">'+spxEsc(String(ev.label))+'</span>'+
+          '<span style="font-size:10.5px;color:'+o.c+';background:'+o.bg+';padding:1px 6px;border-radius:7px;flex-shrink:0;margin-left:auto">'+o.label+'</span></div>';
+      }).join('')+'</div></div>';
+  }
+  return nav+legend+monthPick+(list||'<div class="spx-tm" style="padding:24px 4px;text-align:center">'+mn[mo]+'에 등록된 일정이 없습니다</div>');
 }
 
 // 캘린더 · 회의 (통합 탭)
