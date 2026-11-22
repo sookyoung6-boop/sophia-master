@@ -7453,7 +7453,7 @@ function fbSaveSnapshot(){
 // 원칙 3: 수신은 3-way 병합 — 로컬 미저장 변경은 원격이 절대 덮지 못한다.
 // ═══════════════════════════════════════════════════════════════════
 const FB_ROOT='spextrum_v3'; // [v62] 온라인 전용 — 새 데이터 세대. v2는 읽기전용 화석(Rules로 쓰기 차단)
-const APP_VERSION=6700; // [v67] 공통보드 '일정' 탭 — 리스트(아젠다)/월간/연간 토글, 모바일 기본은 날짜순 아젠다(제목까지 노출). 연간 탭 흡수 — 읽기 전용 뷰, 동기화 엔진 미변경
+const APP_VERSION=6601; // [v66.1] 공통보드 긴급현황 탭 삭제 — 읽기 전용 뷰, 동기화 엔진 미변경
 let _versionBlocked=false;
 
 // ═══ [v55] 영속 outbox — "서버가 승인하기 전의 내 변경"을 기기에 보관 ═══
@@ -11141,9 +11141,6 @@ let spxBoardTab='cal';
 // [v66] 공통보드 '프로젝트 현황' 탭 (직원 공개용 — 프로젝트 단위만, 개인 드릴다운·편집 버튼 숨김)
 let spxBoardOvCat='전체';
 let spxBoardOvRisk=false;
-// [v67] '일정' 탭 내부 뷰: 'list'(아젠다·기본) | 'month'(월간) | 'year'(연간)
-let spxCalView=prefGet('spxCalView','list');
-function setSpxCalView(v){spxCalView=v;prefSet('spxCalView',v);spxRenderBoard();}
 let spxMeetDoneOpen=false;
 let spxCalY=(new Date()).getFullYear(), spxCalM=(new Date()).getMonth();
 // [v58] 직원모드 상태
@@ -11504,11 +11501,11 @@ function spxAddBack(containerId,tab,label){
 
 // ── 공통보드 ──
 function spxRenderBoard(){
-  const tabs=[['cal','일정'],['status','프로젝트 현황'],['camp','캠페인']];
+  const tabs=[['cal','캘린더 · 회의'],['annual','연간'],['status','프로젝트 현황'],['camp','캠페인']];
   if(spxBoardTab==='urgent') spxBoardTab='cal'; // [v66.1] 긴급현황 탭 삭제 — 이전 선택 보정
-  if(spxBoardTab==='annual'){spxBoardTab='cal';spxCalView='year';} // [v67] 연간 탭을 일정 탭 안으로 흡수
   let body='';
-  if(spxBoardTab==='cal') body=spxBoardSchedule();
+  if(spxBoardTab==='cal') body=spxBoardCal();
+  else if(spxBoardTab==='annual') body=spxBoardAnnual();
   else if(spxBoardTab==='status') body=spxBoardStatus();
   else body=spxBoardCamp();
   document.getElementById('board-content').innerHTML=
@@ -11672,70 +11669,6 @@ function spxBoardAnnual(){
 }
 
 // 캘린더 · 회의 (통합 탭)
-// [v67] '일정' 탭 래퍼 — 리스트(아젠다)/월간/연간 토글
-function spxBoardSchedule(){
-  const views=[['list','📋 리스트'],['month','📅 월간'],['year','🗓 연간']];
-  const toggle='<div class="view-toggle" style="margin:6px 2px 10px">'+views.map(function(v){
-    return '<button class="vt-btn'+(spxCalView===v[0]?' on':'')+'" onclick="setSpxCalView(\''+v[0]+'\')">'+v[1]+'</button>';
-  }).join('')+'</div>';
-  var body=spxCalView==='month'?spxBoardCal():(spxCalView==='year'?spxBoardAnnual():spxBoardAgenda());
-  return toggle+body;
-}
-// [v67] 아젠다(리스트) 뷰 — 오늘부터 날짜순으로 '무슨 일정'인지 제목까지. 모바일 기본.
-function spxBoardAgenda(){
-  const today=spxToday();
-  const yr=today.getFullYear();
-  const items=[];
-  [yr,yr+1].forEach(function(y){
-    const map=spxAnnualEvents(y);
-    Object.keys(map).forEach(function(k){
-      const parts=k.split('-'),mo=+parts[0],d=+parts[1];
-      const dt=new Date(y,mo,d);dt.setHours(0,0,0,0);
-      if(dt<today) return;
-      map[k].forEach(function(ev){
-        if(spxAnnualOff.indexOf(ev.kind)>=0) return;
-        items.push({dt:dt,ev:ev});
-      });
-    });
-  });
-  items.sort(function(a,b){return a.dt-b.dt;});
-  // 종류 on/off (연간과 동일한 설정 공유)
-  const legend='<div style="display:flex;gap:7px;flex-wrap:wrap;margin:2px 2px 10px">'+
-    Object.keys(SPX_ANNUAL_KINDS).map(function(kk){var oo=SPX_ANNUAL_KINDS[kk];var on=spxAnnualOff.indexOf(kk)<0;
-      return '<button onclick="spxAnnualToggleKind(\''+kk+'\')" style="display:flex;align-items:center;gap:5px;font-size:12px;padding:4px 10px;border-radius:20px;cursor:pointer;border:1px solid '+(on?oo.c+'55':'var(--border2)')+';background:'+(on?oo.bg:'var(--surface)')+';color:'+(on?oo.c:'var(--text3)')+';'+(on?'':'opacity:.6')+'">'+
-        '<span style="width:13px;height:13px;border-radius:3px;border:1.5px solid '+(on?oo.c:'var(--border2)')+';background:'+(on?oo.c:'transparent')+';display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:9px">'+(on?'✓':'')+'</span>'+
-        oo.label+'</button>';
-    }).join('')+'</div>';
-  const addBtn='<button class="spx-btn-lg" onclick="openAddMeeting()" style="margin-top:14px">＋ 회의 추가</button>';
-  if(!items.length) return legend+'<div class="spx-tm" style="padding:30px 4px;text-align:center">앞으로 예정된 일정이 없습니다</div>'+addBtn;
-  const WD=['일','월','화','수','목','금','토'];
-  function bucket(dt){
-    const diff=Math.round((dt-today)/864e5);
-    if(diff===0) return '오늘';
-    if(diff===1) return '내일';
-    if(diff<=7) return '이번 주';
-    if(diff<=14) return '다음 주';
-    return (dt.getFullYear()!==today.getFullYear()?dt.getFullYear()+'년 ':'')+(dt.getMonth()+1)+'월';
-  }
-  let html='',lastB='';
-  items.slice(0,120).forEach(function(it){
-    const b=bucket(it.dt);
-    if(b!==lastB){html+='<div class="spx-sec" style="color:var(--text);margin-top:14px">'+b+'</div>';lastB=b;}
-    const o=SPX_ANNUAL_KINDS[it.ev.kind]||SPX_ANNUAL_KINDS.due;
-    const act=spxAnnualEvAction(it.ev);
-    const wd=it.dt.getDay(),isT=(it.dt-today===0);
-    html+='<div '+(act?'onclick="'+act+'"':'')+' style="display:flex;gap:11px;padding:10px 4px;border-bottom:1px solid var(--border);align-items:center;'+(act?'cursor:pointer':'')+'">'+
-      '<div class="spx-day-chip" style="'+(isT?'background:#fdf2f2;':'')+'text-align:center;flex-shrink:0">'+
-        '<div style="font-size:9.5px;color:var(--text3)">'+(it.dt.getMonth()+1)+'월</div>'+
-        '<div style="font-size:16px;font-weight:700;font-family:var(--mono);line-height:1.1;'+(isT?'color:#c0392b':'')+'">'+it.dt.getDate()+'</div>'+
-        '<div style="font-size:9px;color:'+(wd===0?'#a32d2d':wd===6?'#2b5a8a':'var(--text3)')+'">'+WD[wd]+'</div></div>'+
-      '<span style="width:8px;height:8px;border-radius:50%;background:'+o.c+';flex-shrink:0"></span>'+
-      '<div style="flex:1;min-width:0">'+
-        '<div style="font-size:14px;color:var(--text);'+(it.ev.done?'opacity:.5;text-decoration:line-through':'')+'">'+spxEsc(String(it.ev.label))+'</div>'+
-        '<div class="spx-tm">'+o.label+'</div></div></div>';
-  });
-  return legend+html+(items.length>120?'<div class="spx-tm" style="padding:8px 4px">…외 '+(items.length-120)+'건</div>':'')+addBtn;
-}
 function spxBoardCal(){
   const mn=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
   const today=spxToday();
